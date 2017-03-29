@@ -60,10 +60,11 @@ func NewSimpleFS(config libkbfs.Config) keybase1.SimpleFSInterface {
 func newSimpleFS(config libkbfs.Config) *SimpleFS {
 	log := config.MakeLogger("simplefs")
 	return &SimpleFS{
-		config:     config,
-		handles:    map[keybase1.OpID]*handle{},
-		inProgress: map[keybase1.OpID]*inprogress{},
-		log:        log,
+		config:       config,
+		handles:      map[keybase1.OpID]*handle{},
+		inProgress:   map[keybase1.OpID]*inprogress{},
+		readWriteOps: map[keybase1.OpID]*keybase1.OpDescription{},
+		log:          log,
 	}
 }
 
@@ -420,6 +421,18 @@ func (k *SimpleFS) SimpleFSSetStat(ctx context.Context, arg keybase1.SimpleFSSet
 	return nil
 }
 
+func (k *SimpleFS) addReadWriteDesc(opid keybase1.OpID, desc keybase1.OpDescription) {
+	k.lock.RLock()
+	k.inProgress[opid] = &inprogress{desc, func() {}, make(chan error, 1)}
+	k.lock.RUnlock()
+}
+
+func (k *SimpleFS) clearReadWriteDesc(opID keybase1.OpID) {
+	k.lock.RLock()
+	delete(k.inProgress, opID)
+	k.lock.RUnlock()
+}
+
 // SimpleFSRead - Read (possibly partial) contents of open file,
 // up to the amount specified by size.
 // Repeat until zero bytes are returned or error.
@@ -538,6 +551,7 @@ func (k *SimpleFS) SimpleFSClose(ctx context.Context, opid keybase1.OpID) (err e
 
 	k.lock.Lock()
 	defer k.lock.Unlock()
+	delete(k.inProgress, opid)
 	h, ok := k.handles[opid]
 	if !ok {
 		return errNoSuchHandle
@@ -586,6 +600,9 @@ func (k *SimpleFS) SimpleFSGetOps(_ context.Context) ([]keybase1.OpDescription, 
 	r := make([]keybase1.OpDescription, 0, len(k.inProgress))
 	for _, p := range k.inProgress {
 		r = append(r, p.desc)
+	}
+	for _, d := range k.readWriteOps {
+		r = append(r, *d)
 	}
 	k.lock.RUnlock()
 	return r, nil
