@@ -56,7 +56,7 @@ func NewKeybaseDaemonRPC(config Config, kbCtx Context, log logger.Logger,
 		k.simplefs = createSimpleFS(config)
 	}
 	if debug {
-		k.daemonLog.Configure("", true, "")
+		k.daemonLog.Configure("", true)
 	}
 	conn := NewSharedKeybaseConnection(kbCtx, config, k)
 	k.fillClients(conn.GetClient())

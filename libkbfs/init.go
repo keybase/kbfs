@@ -378,7 +378,7 @@ func InitLog(params InitParams, ctx Context) (logger.Logger, error) {
 		err = logger.SetLogFileConfig(&params.LogFileConfig)
 	}
 
-	log.Configure("", params.Debug, "")
+	log.Configure("", params.Debug)
 	log.Info("KBFS version %s", VersionString())
 
 	if err != nil {
@@ -480,7 +480,7 @@ func doInit(ctx Context, params InitParams, keybaseServiceCn KeybaseServiceCn,
 		if params.Debug {
 			// Turn on debugging.  TODO: allow a proper log file and
 			// style to be specified.
-			lg.Configure("", true, "")
+			lg.Configure("", true)
 		}
 		return lg
 	}, params.StorageRoot)
