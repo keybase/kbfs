@@ -60,11 +60,10 @@ func NewSimpleFS(config libkbfs.Config) keybase1.SimpleFSInterface {
 func newSimpleFS(config libkbfs.Config) *SimpleFS {
 	log := config.MakeLogger("simplefs")
 	return &SimpleFS{
-		config:       config,
-		handles:      map[keybase1.OpID]*handle{},
-		inProgress:   map[keybase1.OpID]*inprogress{},
-		readWriteOps: map[keybase1.OpID]*keybase1.OpDescription{},
-		log:          log,
+		config:     config,
+		handles:    map[keybase1.OpID]*handle{},
+		inProgress: map[keybase1.OpID]*inprogress{},
+		log:        log,
 	}
 }
 
@@ -600,9 +599,6 @@ func (k *SimpleFS) SimpleFSGetOps(_ context.Context) ([]keybase1.OpDescription, 
 	r := make([]keybase1.OpDescription, 0, len(k.inProgress))
 	for _, p := range k.inProgress {
 		r = append(r, p.desc)
-	}
-	for _, d := range k.readWriteOps {
-		r = append(r, *d)
 	}
 	k.lock.RUnlock()
 	return r, nil
