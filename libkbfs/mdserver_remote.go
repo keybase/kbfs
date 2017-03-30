@@ -110,6 +110,7 @@ func NewMDServerRemote(config Config, srvAddr string,
 		WrapErrorFunc:    libkb.WrapError,
 		TagsFunc:         libkb.LogTagsFromContext,
 		ReconnectBackoff: func() backoff.BackOff { return constBackoff },
+		DisableSigPipe:   true,
 	}
 	mdServer.initNewConnection()
 

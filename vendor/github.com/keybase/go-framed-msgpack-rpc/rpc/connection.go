@@ -56,6 +56,7 @@ type connTransport struct {
 	conn            net.Conn
 	transport       Transporter
 	stagedTransport Transporter
+	disableSigPipe  bool
 }
 
 var _ ConnectionTransport = (*connTransport)(nil)
@@ -75,6 +76,14 @@ func (t *connTransport) Dial(context.Context) (Transporter, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// If the client has requested to disable SIGPIPE, then do so now
+	if t.disableSigPipe {
+		if err = disableSigPipe(t.conn); err != nil {
+			return nil, err
+		}
+	}
+
 	t.stagedTransport = NewTransport(t.conn, t.l, t.wef)
 	return t.stagedTransport, nil
 }
@@ -130,9 +139,10 @@ type ConnectionHandler interface {
 // ConnectionTransportTLS is a ConnectionTransport implementation that
 // uses TLS+rpc.
 type ConnectionTransportTLS struct {
-	rootCerts []byte
-	srvAddr   string
-	tlsConfig *tls.Config
+	rootCerts      []byte
+	srvAddr        string
+	tlsConfig      *tls.Config
+	disableSigPipe bool
 
 	// Protects everything below.
 	mutex           sync.Mutex
@@ -152,6 +162,10 @@ func (ct *ConnectionTransportTLS) Dial(ctx context.Context) (
 	var conn net.Conn
 	err := runUnlessCanceled(ctx, func() error {
 		config := ct.tlsConfig
+		host, _, err := net.SplitHostPort(ct.srvAddr)
+		if err != nil {
+			return err
+		}
 
 		// If we didn't specify a tls.Config, but we did specify
 		// explicit rootCerts, then populate a new tls.Config here.
@@ -162,13 +176,33 @@ func (ct *ConnectionTransportTLS) Dial(ctx context.Context) (
 			if !certs.AppendCertsFromPEM(ct.rootCerts) {
 				return errors.New("Unable to load root certificates")
 			}
-			config = &tls.Config{RootCAs: certs}
+			config = &tls.Config{
+				RootCAs:    certs,
+				ServerName: host,
+			}
 		}
+		// Final check to make sure we have a TLS config since tls.Client requires
+		// either ServerName or InsecureSkipVerify to be set
+		if config == nil {
+			config = &tls.Config{ServerName: host}
+		}
+
 		// connect
-		var err error
-		conn, err = tls.DialWithDialer(&net.Dialer{
+		dialer := net.Dialer{
 			KeepAlive: 10 * time.Second,
-		}, "tcp", ct.srvAddr, config)
+		}
+		baseConn, err := dialer.Dial("tcp", ct.srvAddr)
+		if err != nil {
+			return err
+		}
+		conn = tls.Client(baseConn, config)
+
+		// If the client has requested we disable SIGPIPE for this connection, then do it using
+		// this somewhat janky method below. See:
+		// https://github.com/golang/go/issues/17393
+		if ct.disableSigPipe {
+			err = disableSigPipe(baseConn)
+		}
 		return err
 	})
 	if err != nil {
@@ -260,6 +294,7 @@ type ConnectionOpts struct {
 	WrapErrorFunc    WrapErrorFunc
 	ReconnectBackoff func() backoff.BackOff
 	CommandBackoff   func() backoff.BackOff
+	DisableSigPipe   bool
 }
 
 // NewTLSConnection returns a connection that tries to connect to the
@@ -274,10 +309,11 @@ func NewTLSConnection(
 	opts ConnectionOpts,
 ) *Connection {
 	transport := &ConnectionTransportTLS{
-		rootCerts:  rootCerts,
-		srvAddr:    srvAddr,
-		logFactory: logFactory,
-		wef:        opts.WrapErrorFunc,
+		rootCerts:      rootCerts,
+		srvAddr:        srvAddr,
+		logFactory:     logFactory,
+		wef:            opts.WrapErrorFunc,
+		disableSigPipe: opts.DisableSigPipe,
 	}
 	return newConnectionWithTransportAndProtocols(handler, transport, errorUnwrapper, logOutput, opts)
 }
