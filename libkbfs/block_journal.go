@@ -1008,7 +1008,8 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkers(ctx context.Context,
 		idsToIgnore[id] = true
 	}
 
-	return j.ignoreBlocksAndMDRevMarkersInJournal(ctx, idsToIgnore, rev, j.j)
+	return j.ignoreBlocksAndMDRevMarkersInJournal(
+		ctx, idsToIgnore, rev, j.j)
 }
 
 // getDeferredRange gets the earliest and latest revision of the
