@@ -377,7 +377,8 @@ func newJournalTracker(
 	byteLimit, fileLimit, freeBytes, freeFiles int64) (
 	journalTracker, error) {
 	// byteLimit and fileLimit must be scaled by the proportion of
-	// the limit that the journal should consume.
+	// the limit that the journal should consume. Add 0.5 to round
+	// up.
 	journalByteLimit := int64((float64(byteLimit) * journalFrac) + 0.5)
 	byteTracker, err := newBackpressureTracker(
 		minThreshold, maxThreshold, journalFrac, journalByteLimit,
@@ -387,7 +388,7 @@ func newJournalTracker(
 	}
 	// the fileLimit is only used here, but in the interest of
 	// consistency with how we treat the byteLimit, we multiply it
-	// by the journalFrac.
+	// by the journalFrac. Add 0.5 to round up.
 	journalFileLimit := int64((float64(fileLimit) * journalFrac) + 0.5)
 	fileTracker, err := newBackpressureTracker(
 		minThreshold, maxThreshold, journalFrac, journalFileLimit,
@@ -687,7 +688,7 @@ func newBackpressureDiskLimiter(
 	}
 
 	// byteLimit must be scaled by the proportion of the limit
-	// that the disk journal should consume.
+	// that the disk journal should consume. Add 0.5 to round up.
 	diskCacheByteLimit := int64((float64(params.byteLimit) * params.diskCacheFrac) + 0.5)
 	diskCacheByteTracker, err := newBackpressureTracker(
 		1.0, 1.0, params.diskCacheFrac, diskCacheByteLimit, freeBytes)
