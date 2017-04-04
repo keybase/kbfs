@@ -552,6 +552,39 @@ func testTLFJournalBlockOpDiskQuotaLimit(t *testing.T, ver MetadataVer) {
 
 	tlfJournal.diskLimiter.onJournalEnable(ctx, 0, math.MaxInt64-6, 0)
 
+	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+
+	errCh := make(chan error, 1)
+	go func() {
+		data2 := []byte{5, 6, 7}
+		id, bCtx, serverHalf := config.makeBlock(data2)
+		errCh <- tlfJournal.putBlockData(
+			ctx, id, bCtx, data2, serverHalf)
+	}()
+
+	numFlushed, rev, converted, err :=
+		tlfJournal.flushBlockEntries(ctx, firstValidJournalOrdinal+1)
+	require.NoError(t, err)
+	require.Equal(t, 1, numFlushed)
+	require.Equal(t, rev, MetadataRevisionUninitialized)
+	require.False(t, converted)
+
+	select {
+	case err := <-errCh:
+		require.NoError(t, err)
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+}
+
+func testTLFJournalBlockOpDiskQuotaLimitResolve(t *testing.T, ver MetadataVer) {
+	tempdir, config, ctx, cancel, tlfJournal, delegate :=
+		setupTLFJournalTest(t, ver, TLFJournalBackgroundWorkPaused)
+	defer teardownTLFJournalTest(
+		tempdir, config, ctx, cancel, tlfJournal, delegate)
+
+	tlfJournal.diskLimiter.onJournalEnable(ctx, 0, math.MaxInt64-6, 0)
+
 	data1 := []byte{1, 2, 3, 4}
 	id1, bCtx1, serverHalf1 := config.makeBlock(data1)
 	err := tlfJournal.putBlockData(ctx, id1, bCtx1, data1, serverHalf1)
@@ -565,12 +598,23 @@ func testTLFJournalBlockOpDiskQuotaLimit(t *testing.T, ver MetadataVer) {
 			ctx, id2, bCtx2, data2, serverHalf2)
 	}()
 
-	numFlushed, rev, converted, err :=
-		tlfJournal.flushBlockEntries(ctx, firstValidJournalOrdinal+1)
+	md1 := config.makeMD(MetadataRevisionInitial, MdID{})
+	mdID1, err := tlfJournal.putMD(ctx, md1)
 	require.NoError(t, err)
-	require.Equal(t, 1, numFlushed)
-	require.Equal(t, rev, MetadataRevisionUninitialized)
-	require.False(t, converted)
+
+	err = tlfJournal.convertMDsToBranch(ctx)
+	require.NoError(t, err)
+
+	bid, err := tlfJournal.getBranchID()
+	require.NoError(t, err)
+
+	// Ignore the block instead of flushing it.
+	md2 := config.makeMD(MetadataRevisionInitial+1, mdID1)
+	_, retry, err := tlfJournal.doResolveBranch(
+		ctx, bid, []kbfsblock.ID{id1}, md2, nil,
+		unflushedPathMDInfo{}, unflushedPathsPerRevMap{})
+	require.NoError(t, err)
+	require.False(t, retry)
 
 	select {
 	case err := <-errCh:
@@ -1634,6 +1678,7 @@ func TestTLFJournal(t *testing.T) {
 		testTLFJournalBlockOpDiskByteLimit,
 		testTLFJournalBlockOpDiskFileLimit,
 		testTLFJournalBlockOpDiskQuotaLimit,
+		testTLFJournalBlockOpDiskQuotaLimitResolve,
 		testTLFJournalBlockOpDiskLimitDuplicate,
 		testTLFJournalBlockOpDiskLimitCancel,
 		testTLFJournalBlockOpDiskLimitTimeout,
