@@ -386,9 +386,10 @@ func newJournalTracker(
 	if err != nil {
 		return journalTracker{}, err
 	}
-	// the fileLimit is only used here, but in the interest of
-	// consistency with how we treat the byteLimit, we multiply it
-	// by the journalFrac. Add 0.5 to round up.
+	// the fileLimit is only used by the journal, so in theory we
+	// don't have to scale it by journalFrac, but in the interest
+	// of consistency with how we treat the byteLimit, we do so
+	// anyway. Add 0.5 to round up.
 	journalFileLimit := int64((float64(fileLimit) * journalFrac) + 0.5)
 	fileTracker, err := newBackpressureTracker(
 		minThreshold, maxThreshold, journalFrac, journalFileLimit,
