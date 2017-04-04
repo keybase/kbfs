@@ -5,31 +5,35 @@
 package libkbfs
 
 import (
-	"math"
-
 	"github.com/keybase/kbfs/kbfssync"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
 // semaphoreDiskLimiter is an implementation of diskLimiter that uses
-// semaphores to limit the byte and file usage.
+// semaphores to limit the byte, file, and quota usage.
 type semaphoreDiskLimiter struct {
-	byteLimit     int64
-	byteSemaphore *kbfssync.Semaphore
-	fileLimit     int64
-	fileSemaphore *kbfssync.Semaphore
+	byteLimit      int64
+	byteSemaphore  *kbfssync.Semaphore
+	fileLimit      int64
+	fileSemaphore  *kbfssync.Semaphore
+	quotaLimit     int64
+	quotaSemaphore *kbfssync.Semaphore
 }
 
 var _ DiskLimiter = semaphoreDiskLimiter{}
 
-func newSemaphoreDiskLimiter(byteLimit, fileLimit int64) semaphoreDiskLimiter {
+func newSemaphoreDiskLimiter(
+	byteLimit, fileLimit, quotaLimit int64) semaphoreDiskLimiter {
 	byteSemaphore := kbfssync.NewSemaphore()
 	byteSemaphore.Release(byteLimit)
 	fileSemaphore := kbfssync.NewSemaphore()
 	fileSemaphore.Release(fileLimit)
+	quotaSemaphore := kbfssync.NewSemaphore()
+	quotaSemaphore.Release(quotaLimit)
 	return semaphoreDiskLimiter{
 		byteLimit, byteSemaphore, fileLimit, fileSemaphore,
+		quotaLimit, quotaSemaphore,
 	}
 }
 
@@ -49,6 +53,9 @@ func (sdl semaphoreDiskLimiter) onJournalEnable(
 	} else {
 		availableFiles = sdl.fileSemaphore.Count()
 	}
+	if journalUnflushedBytes != 0 {
+		sdl.quotaSemaphore.ForceAcquire(journalUnflushedBytes)
+	}
 	return availableBytes, availableFiles
 }
 
@@ -62,6 +69,9 @@ func (sdl semaphoreDiskLimiter) onJournalDisable(
 	// go through here, too.
 	if journalFiles != 0 {
 		sdl.fileSemaphore.Release(journalFiles)
+	}
+	if journalUnflushedBytes != 0 {
+		sdl.quotaSemaphore.Release(journalUnflushedBytes)
 	}
 }
 
@@ -109,7 +119,9 @@ func (sdl semaphoreDiskLimiter) beforeBlockPut(
 
 func (sdl semaphoreDiskLimiter) afterBlockPut(
 	ctx context.Context, blockBytes, blockFiles int64, putData bool) {
-	if !putData {
+	if putData {
+		sdl.quotaSemaphore.Acquire(ctx, blockBytes)
+	} else {
 		sdl.byteSemaphore.Release(blockBytes)
 		sdl.fileSemaphore.Release(blockFiles)
 	}
@@ -117,7 +129,9 @@ func (sdl semaphoreDiskLimiter) afterBlockPut(
 
 func (sdl semaphoreDiskLimiter) onBlocksFlush(
 	ctx context.Context, blockBytes int64) {
-	// Do nothing, since we don't keep track of quota.
+	if blockBytes != 0 {
+		sdl.quotaSemaphore.Release(blockBytes)
+	}
 }
 
 func (sdl semaphoreDiskLimiter) onBlocksDelete(
@@ -152,21 +166,24 @@ func (sdl semaphoreDiskLimiter) afterDiskBlockCachePut(ctx context.Context,
 }
 
 func (sdl semaphoreDiskLimiter) getQuotaInfo() (usedQuotaBytes, quotaBytes int64) {
-	return 0, math.MaxInt64
+	return sdl.quotaSemaphore.Count(), sdl.quotaLimit
 }
 
 type semaphoreDiskLimiterStatus struct {
 	Type string
 
 	// Derived numbers.
-	ByteUsageFrac float64
-	FileUsageFrac float64
+	ByteUsageFrac  float64
+	FileUsageFrac  float64
+	QuotaUsageFrac float64
 
 	// Raw numbers.
 	LimitMB        float64
 	AvailableMB    float64
 	LimitFiles     float64
 	AvailableFiles float64
+	LimitQuota     float64
+	AvailableQuota float64
 }
 
 func (sdl semaphoreDiskLimiter) getStatus() interface{} {
@@ -180,15 +197,22 @@ func (sdl semaphoreDiskLimiter) getStatus() interface{} {
 	availableFiles := float64(sdl.fileSemaphore.Count()) / MB
 	fileUsageFrac := 1 - availableFiles/limitFiles
 
+	limitQuota := float64(sdl.quotaLimit) / MB
+	availableQuota := float64(sdl.quotaSemaphore.Count()) / MB
+	quotaUsageFrac := 1 - availableQuota/limitQuota
+
 	return semaphoreDiskLimiterStatus{
 		Type: "SemaphoreDiskLimiter",
 
-		ByteUsageFrac: byteUsageFrac,
-		FileUsageFrac: fileUsageFrac,
+		ByteUsageFrac:  byteUsageFrac,
+		FileUsageFrac:  fileUsageFrac,
+		QuotaUsageFrac: quotaUsageFrac,
 
 		LimitMB:        limitMB,
 		AvailableMB:    availableMB,
 		LimitFiles:     limitFiles,
 		AvailableFiles: availableFiles,
+		LimitQuota:     limitQuota,
+		AvailableQuota: availableQuota,
 	}
 }

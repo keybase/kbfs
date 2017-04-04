@@ -18,7 +18,7 @@ import (
 // particular, that we don't leak either bytes or files if either
 // semaphore times out.
 func TestSemaphoreDiskLimiterBeforeBlockPutError(t *testing.T) {
-	sdl := newSemaphoreDiskLimiter(10, 1)
+	sdl := newSemaphoreDiskLimiter(10, 1, 8)
 
 	ctx, cancel := context.WithTimeout(
 		context.Background(), 3*time.Millisecond)
