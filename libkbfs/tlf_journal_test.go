@@ -611,7 +611,7 @@ func testTLFJournalBlockOpDiskQuotaLimitResolve(t *testing.T, ver MetadataVer) {
 	// Ignore the block instead of flushing it.
 	md2 := config.makeMD(MetadataRevisionInitial+1, mdID1)
 	_, retry, err := tlfJournal.doResolveBranch(
-		ctx, bid, []kbfsblock.ID{id1}, md2, nil,
+		ctx, bid, []kbfsblock.ID{id1}, md2,
 		unflushedPathMDInfo{}, unflushedPathsPerRevMap{})
 	require.NoError(t, err)
 	require.False(t, retry)
@@ -1139,7 +1139,7 @@ func testTLFJournalFlushOrderingAfterSquashAndCR(
 
 	squashMD := config.makeMD(firstRev, firstPrevRoot)
 	prevRoot, err = tlfJournal.resolveBranch(ctx,
-		PendingLocalSquashBranchID, []kbfsblock.ID{}, squashMD, nil)
+		PendingLocalSquashBranchID, []kbfsblock.ID{}, squashMD)
 	require.NoError(t, err)
 	requireJournalEntryCounts(t, tlfJournal, blockEnd+3, 1)
 
@@ -1197,8 +1197,8 @@ func testTLFJournalFlushOrderingAfterSquashAndCR(
 	// Use revision 11 (as if two revisions had been merged by another
 	// device).
 	resolveMD := config.makeMD(md2.Revision(), firstPrevRoot)
-	_, err = tlfJournal.resolveBranch(ctx,
-		branchID, []kbfsblock.ID{}, resolveMD, nil)
+	_, err = tlfJournal.resolveBranch(
+		ctx, branchID, []kbfsblock.ID{}, resolveMD)
 	require.NoError(t, err)
 	// Blocks: the ones from the last check, plus the new blocks, plus
 	// the resolve rev marker.
@@ -1426,7 +1426,7 @@ func testTLFJournalSquashWhileFlushing(t *testing.T, ver MetadataVer) {
 	// While it's paused, resolve the branch.
 	resolveMD := config.makeMD(firstRev, firstPrevRoot)
 	_, err := tlfJournal.resolveBranch(ctx,
-		tlfJournal.mdJournal.getBranchID(), []kbfsblock.ID{}, resolveMD, nil)
+		tlfJournal.mdJournal.getBranchID(), []kbfsblock.ID{}, resolveMD)
 	require.NoError(t, err)
 	requireJournalEntryCounts(
 		t, tlfJournal, blocksLeftAfterFlush+maxJournalBlockFlushBatchSize+1, 1)
@@ -1558,7 +1558,7 @@ func testTLFJournalResolveBranch(t *testing.T, ver MetadataVer) {
 	// Resolve the branch.
 	resolveMD := config.makeMD(firstRevision, firstPrevRoot)
 	_, err = tlfJournal.resolveBranch(ctx,
-		tlfJournal.mdJournal.getBranchID(), []kbfsblock.ID{bids[1]}, resolveMD, nil)
+		tlfJournal.mdJournal.getBranchID(), []kbfsblock.ID{bids[1]}, resolveMD)
 	require.NoError(t, err)
 
 	blockEnd, newMDEnd, err := tlfJournal.getJournalEnds(ctx)

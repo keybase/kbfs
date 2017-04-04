@@ -1999,8 +1999,8 @@ func (j *tlfJournal) clearMDs(ctx context.Context, bid BranchID) error {
 
 func (j *tlfJournal) doResolveBranch(ctx context.Context,
 	bid BranchID, blocksToDelete []kbfsblock.ID, rmd *RootMetadata,
-	extra ExtraMetadata, mdInfo unflushedPathMDInfo,
-	perRevMap unflushedPathsPerRevMap) (mdID MdID, retry bool, err error) {
+	mdInfo unflushedPathMDInfo, perRevMap unflushedPathsPerRevMap) (
+	mdID MdID, retry bool, err error) {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	if err := j.checkEnabledLocked(); err != nil {
@@ -2048,14 +2048,14 @@ func (j *tlfJournal) doResolveBranch(ctx context.Context,
 }
 
 func (j *tlfJournal) resolveBranch(ctx context.Context,
-	bid BranchID, blocksToDelete []kbfsblock.ID, rmd *RootMetadata,
-	extra ExtraMetadata) (MdID, error) {
+	bid BranchID, blocksToDelete []kbfsblock.ID, rmd *RootMetadata) (
+	MdID, error) {
 	var mdID MdID
 	err := j.prepAndAddRMDWithRetry(ctx, rmd,
 		func(mdInfo unflushedPathMDInfo, perRevMap unflushedPathsPerRevMap) (
 			retry bool, err error) {
 			mdID, retry, err = j.doResolveBranch(
-				ctx, bid, blocksToDelete, rmd, extra, mdInfo, perRevMap)
+				ctx, bid, blocksToDelete, rmd, mdInfo, perRevMap)
 			return retry, err
 		})
 	if err != nil {
