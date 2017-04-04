@@ -2025,11 +2025,14 @@ func (j *tlfJournal) doResolveBranch(ctx context.Context,
 	}
 
 	// Then go through and mark blocks and md rev markers for ignoring.
-	err = j.blockJournal.ignoreBlocksAndMDRevMarkers(ctx, blocksToDelete,
-		rmd.Revision())
+	totalIgnoredBytes, err := j.blockJournal.ignoreBlocksAndMDRevMarkers(
+		ctx, blocksToDelete, rmd.Revision())
 	if err != nil {
 		return MdID{}, false, err
 	}
+
+	// TODO: Plumb up.
+	_ = totalIgnoredBytes
 
 	// Finally, append a new, non-ignored md rev marker for the new revision.
 	err = j.blockJournal.markMDRevision(

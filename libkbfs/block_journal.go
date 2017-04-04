@@ -907,16 +907,16 @@ func (j *blockJournal) removeFlushedEntries(ctx context.Context,
 
 func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
 	idsToIgnore map[kbfsblock.ID]bool, rev MetadataRevision,
-	dj *diskJournal) error {
+	dj *diskJournal) (totalIgnoredBytes int64, err error) {
 	first, err := dj.readEarliestOrdinal()
 	if ioutil.IsNotExist(err) {
-		return nil
+		return 0, nil
 	} else if err != nil {
-		return err
+		return 0, err
 	}
 	last, err := dj.readLatestOrdinal()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	isMainJournal := dj.dir == j.j.dir
@@ -931,7 +931,7 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
 	for i := last; i >= first && i <= last; i-- {
 		entry, err := dj.readJournalEntry(i)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		e := entry.(blockJournalEntry)
 
@@ -939,7 +939,7 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
 		case blockPutOp, addRefOp:
 			id, _, err := e.getSingleContext()
 			if err != nil {
-				return err
+				return 0, err
 			}
 
 			if !idsToIgnore[id] {
@@ -950,7 +950,7 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
 			e.Ignore = true
 			err = dj.writeJournalEntry(i, e)
 			if err != nil {
-				return err
+				return 0, err
 			}
 
 			if e.Op == blockPutOp && isMainJournal {
@@ -958,13 +958,15 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
 				// for the purposes of accounting.
 				ignoredBytes, err := j.s.getDataSize(id)
 				if err != nil {
-					return err
+					return 0, err
 				}
 
 				err = j.flushBlock(ignoredBytes)
 				if err != nil {
-					return err
+					return 0, err
 				}
+
+				totalIgnoredBytes += ignoredBytes
 			}
 
 		case mdRevMarkerOp:
@@ -975,7 +977,7 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
 			e.Ignore = true
 			err = dj.writeJournalEntry(i, e)
 			if err != nil {
-				return err
+				return 0, err
 			}
 
 			// We must ignore all the way up to the MD marker that
@@ -991,15 +993,16 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
 		// the earliest md marker we care about, we can avoid
 		// iterating through the rest of the journal.
 		if len(idsToIgnore) == ignored && ignoredRev {
-			return nil
+			return totalIgnoredBytes, nil
 		}
 	}
 
-	return nil
+	return totalIgnoredBytes, nil
 }
 
 func (j *blockJournal) ignoreBlocksAndMDRevMarkers(ctx context.Context,
-	blocksToIgnore []kbfsblock.ID, rev MetadataRevision) error {
+	blocksToIgnore []kbfsblock.ID, rev MetadataRevision) (
+	totalIgnoredBytes int64, err error) {
 	idsToIgnore := make(map[kbfsblock.ID]bool)
 	for _, id := range blocksToIgnore {
 		idsToIgnore[id] = true
