@@ -2031,8 +2031,9 @@ func (j *tlfJournal) doResolveBranch(ctx context.Context,
 		return MdID{}, false, err
 	}
 
-	// TODO: Plumb up.
-	_ = totalIgnoredBytes
+	// Treat ignored blocks as flushed for the purposes of
+	// accounting.
+	j.diskLimiter.onBlocksFlush(ctx, totalIgnoredBytes)
 
 	// Finally, append a new, non-ignored md rev marker for the new revision.
 	err = j.blockJournal.markMDRevision(
