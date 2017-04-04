@@ -364,7 +364,9 @@ func (qbt *quotaBackpressureTracker) getStatus() quotaBackpressureTrackerStatus 
 	}
 }
 
-// journalTracker aggregates all the journal trackers.
+// journalTracker aggregates all the journal trackers. This type also
+// doesn't do any locking, so it's the caller's responsibility to do
+// so.
 type journalTracker struct {
 	byte, file *backpressureTracker
 	quota      *quotaBackpressureTracker
