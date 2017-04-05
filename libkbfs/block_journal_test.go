@@ -750,8 +750,10 @@ func TestBlockJournalFlushMDRevMarkerForPendingLocalSquash(t *testing.T) {
 	err = j.markMDRevision(ctx, rev, false)
 	require.NoError(t, err)
 
-	_, err = j.ignoreBlocksAndMDRevMarkers(ctx, []kbfsblock.ID{id2, id3}, rev)
+	ignoredBytes, err := j.ignoreBlocksAndMDRevMarkers(
+		ctx, []kbfsblock.ID{id2, id3}, rev)
 	require.NoError(t, err)
+	require.Equal(t, int64(len(data2)+len(data3)), ignoredBytes)
 
 	blockServer := NewBlockServerMemory(log)
 	tlfID := tlf.FakeID(1, false)
@@ -821,9 +823,10 @@ func TestBlockJournalIgnoreBlocks(t *testing.T) {
 	err = j.markMDRevision(ctx, rev, false)
 	require.NoError(t, err)
 
-	_, err = j.ignoreBlocksAndMDRevMarkers(
+	ignoredBytes, err := j.ignoreBlocksAndMDRevMarkers(
 		ctx, []kbfsblock.ID{bID2, bID3}, firstRev)
 	require.NoError(t, err)
+	require.Equal(t, int64(len(data2)+len(data3)), ignoredBytes)
 
 	blockServer := NewBlockServerMemory(log)
 	tlfID := tlf.FakeID(1, false)
@@ -1125,9 +1128,10 @@ func TestBlockJournalUnflushedBytesIgnore(t *testing.T) {
 	requireCounts(len(data1)+len(data2), len(data1)+len(data2),
 		2*filesPerBlockMax)
 
-	_, err := j.ignoreBlocksAndMDRevMarkers(
+	ignoredBytes, err := j.ignoreBlocksAndMDRevMarkers(
 		ctx, []kbfsblock.ID{bID1}, MetadataRevision(0))
 	require.NoError(t, err)
+	require.Equal(t, int64(len(data1)), ignoredBytes)
 
 	requireCounts(len(data1)+len(data2), len(data2), 2*filesPerBlockMax)
 }
