@@ -469,9 +469,10 @@ func TestBlockJournalFlush(t *testing.T) {
 		return flushedBytes, removedBytes, removedFiles
 	}
 
-	// Flushing all the reference adds should remove the
+	// Flushing all the reference adds should flush and remove the
 	// (now-unreferenced) block.
-	_, removedBytes, removedFiles := flush()
+	flushedBytes, removedBytes, removedFiles := flush()
+	require.Equal(t, int64(len(data)), flushedBytes)
 	require.Equal(t, int64(len(data)), removedBytes)
 	require.Equal(t, int64(filesPerBlockMax), removedFiles)
 
@@ -501,7 +502,8 @@ func TestBlockJournalFlush(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, map[kbfsblock.ID]int{bID: 0}, liveCounts)
 
-	_, removedBytes, removedFiles = flush()
+	flushedBytes, removedBytes, removedFiles = flush()
+	require.Equal(t, int64(0), flushedBytes)
 	require.Equal(t, int64(0), removedBytes)
 	require.Equal(t, int64(0), removedFiles)
 
