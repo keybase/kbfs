@@ -414,18 +414,17 @@ type jtSnapshot struct {
 	count int64
 }
 
-func (jt journalTracker) getByteFileSnapshotsForTest() (
-	byteSnapshot, fileSnapshot jtSnapshot) {
-	return jtSnapshot{jt.byte.used, jt.byte.free,
-			jt.byte.semaphoreMax, jt.byte.semaphore.Count()},
-		jtSnapshot{jt.file.used, jt.file.free,
-			jt.file.semaphoreMax, jt.file.semaphore.Count()}
-}
-
-func (jt journalTracker) getQuotaSnapshotForTest() jtSnapshot {
+func (jt journalTracker) getSnapshotsForTest() (
+	byteSnapshot, fileSnapshot, quotaSnapshot jtSnapshot) {
+	byteSnapshot = jtSnapshot{jt.byte.used, jt.byte.free,
+		jt.byte.semaphoreMax, jt.byte.semaphore.Count()}
+	fileSnapshot = jtSnapshot{jt.file.used, jt.file.free,
+		jt.file.semaphoreMax, jt.file.semaphore.Count()}
 	usedQuotaBytes, quotaBytes := jt.getQuotaInfo()
 	free := quotaBytes - usedQuotaBytes
-	return jtSnapshot{usedQuotaBytes, free, 0, 0}
+	quotaSnapshot = jtSnapshot{usedQuotaBytes, free, 0, 0}
+	return byteSnapshot, fileSnapshot, quotaSnapshot
+
 }
 
 func (jt journalTracker) onEnable(storedBytes, unflushedBytes, files int64) (
@@ -736,17 +735,11 @@ func defaultGetFreeBytesAndFiles(path string) (int64, int64, error) {
 	return int64(freeBytes), int64(freeFiles), nil
 }
 
-func (bdl *backpressureDiskLimiter) getByteFileSnapshotsForTest() (
-	byteSnapshot, fileSnapshot jtSnapshot) {
+func (bdl *backpressureDiskLimiter) getJournalSnapshotsForTest() (
+	byteSnapshot, fileSnapshot, quotaSnapshot jtSnapshot) {
 	bdl.lock.RLock()
 	defer bdl.lock.RUnlock()
-	return bdl.journalTracker.getByteFileSnapshotsForTest()
-}
-
-func (bdl *backpressureDiskLimiter) getQuotaSnapshotForTest() jtSnapshot {
-	bdl.lock.RLock()
-	defer bdl.lock.RUnlock()
-	return bdl.journalTracker.getQuotaSnapshotForTest()
+	return bdl.journalTracker.getSnapshotsForTest()
 }
 
 func (bdl *backpressureDiskLimiter) onJournalEnable(

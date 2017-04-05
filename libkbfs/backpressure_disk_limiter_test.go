@@ -208,7 +208,7 @@ func TestJournalTrackerCounters(t *testing.T) {
 		200)  // freeFiles
 	require.NoError(t, err)
 
-	byteSnapshot, fileSnapshot := jt.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot := jt.getSnapshotsForTest()
 	// max = count = min(k(U+F), L) = min(0.15(0+100), 400) = 15.
 	require.Equal(t, jtSnapshot{
 		used:  0,
@@ -223,8 +223,6 @@ func TestJournalTrackerCounters(t *testing.T) {
 		max:   30,
 		count: 30,
 	}, fileSnapshot)
-
-	quotaSnapshot := jt.getQuotaSnapshotForTest()
 	require.Equal(t, jtSnapshot{
 		used: 0,
 		free: math.MaxInt64,
@@ -239,7 +237,7 @@ func TestJournalTrackerCounters(t *testing.T) {
 	require.Equal(t, int64(6), availBytes)
 	require.Equal(t, int64(13), availFiles)
 
-	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  10,
 		free:  100,
@@ -252,8 +250,6 @@ func TestJournalTrackerCounters(t *testing.T) {
 		max:   33,
 		count: 13,
 	}, fileSnapshot)
-
-	quotaSnapshot = jt.getQuotaSnapshotForTest()
 	require.Equal(t, jtSnapshot{
 		used: 5,
 		free: math.MaxInt64 - 5,
@@ -266,7 +262,7 @@ func TestJournalTrackerCounters(t *testing.T) {
 
 	jt.onDisable(9, 4, 19)
 
-	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  1,
 		free:  100,
@@ -279,8 +275,6 @@ func TestJournalTrackerCounters(t *testing.T) {
 		max:   30,
 		count: 29,
 	}, fileSnapshot)
-
-	quotaSnapshot = jt.getQuotaSnapshotForTest()
 	require.Equal(t, jtSnapshot{
 		used: 1,
 		free: math.MaxInt64 - 1,
@@ -290,7 +284,7 @@ func TestJournalTrackerCounters(t *testing.T) {
 
 	jt.updateFree(200, 40, 100)
 
-	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  1,
 		free:  240,
@@ -303,8 +297,6 @@ func TestJournalTrackerCounters(t *testing.T) {
 		max:   15,
 		count: 14,
 	}, fileSnapshot)
-
-	quotaSnapshot = jt.getQuotaSnapshotForTest()
 	require.Equal(t, jtSnapshot{
 		used: 1,
 		free: math.MaxInt64 - 1,
@@ -314,7 +306,7 @@ func TestJournalTrackerCounters(t *testing.T) {
 
 	jt.updateRemote(10, 100)
 
-	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  1,
 		free:  240,
@@ -327,8 +319,6 @@ func TestJournalTrackerCounters(t *testing.T) {
 		max:   15,
 		count: 14,
 	}, fileSnapshot)
-
-	quotaSnapshot = jt.getQuotaSnapshotForTest()
 	require.Equal(t, jtSnapshot{
 		used: 11,
 		free: 89,
@@ -342,7 +332,7 @@ func TestJournalTrackerCounters(t *testing.T) {
 	require.Equal(t, int64(25), availBytes)
 	require.Equal(t, int64(9), availFiles)
 
-	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  1,
 		free:  240,
@@ -355,8 +345,6 @@ func TestJournalTrackerCounters(t *testing.T) {
 		max:   15,
 		count: 9,
 	}, fileSnapshot)
-
-	quotaSnapshot = jt.getQuotaSnapshotForTest()
 	require.Equal(t, jtSnapshot{
 		used: 11,
 		free: 89,
@@ -364,7 +352,7 @@ func TestJournalTrackerCounters(t *testing.T) {
 
 	jt.afterBlockPut(10, 5, true)
 
-	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
 	// max = min(k(U+F), L) = min(0.15(11+240), 400) = 37.
 	require.Equal(t, jtSnapshot{
 		used:  11,
@@ -379,8 +367,6 @@ func TestJournalTrackerCounters(t *testing.T) {
 		max:   15,
 		count: 9,
 	}, fileSnapshot)
-
-	quotaSnapshot = jt.getQuotaSnapshotForTest()
 	require.Equal(t, jtSnapshot{
 		used: 21,
 		free: 79,
@@ -394,7 +380,7 @@ func TestJournalTrackerCounters(t *testing.T) {
 	require.Equal(t, int64(16), availBytes)
 	require.Equal(t, int64(4), availFiles)
 
-	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  11,
 		free:  240,
@@ -407,8 +393,6 @@ func TestJournalTrackerCounters(t *testing.T) {
 		max:   15,
 		count: 4,
 	}, fileSnapshot)
-
-	quotaSnapshot = jt.getQuotaSnapshotForTest()
 	require.Equal(t, jtSnapshot{
 		used: 21,
 		free: 79,
@@ -416,7 +400,7 @@ func TestJournalTrackerCounters(t *testing.T) {
 
 	jt.afterBlockPut(10, 5, false)
 
-	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  11,
 		free:  240,
@@ -429,8 +413,6 @@ func TestJournalTrackerCounters(t *testing.T) {
 		max:   15,
 		count: 9,
 	}, fileSnapshot)
-
-	quotaSnapshot = jt.getQuotaSnapshotForTest()
 	require.Equal(t, jtSnapshot{
 		used: 21,
 		free: 79,
@@ -440,7 +422,7 @@ func TestJournalTrackerCounters(t *testing.T) {
 
 	jt.onBlocksFlush(10)
 
-	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  11,
 		free:  240,
@@ -453,8 +435,6 @@ func TestJournalTrackerCounters(t *testing.T) {
 		max:   15,
 		count: 9,
 	}, fileSnapshot)
-
-	quotaSnapshot = jt.getQuotaSnapshotForTest()
 	require.Equal(t, jtSnapshot{
 		used: 11,
 		free: 89,
@@ -464,7 +444,7 @@ func TestJournalTrackerCounters(t *testing.T) {
 
 	jt.onBlocksDelete(10, 5)
 
-	byteSnapshot, fileSnapshot = jt.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
 	// max = min(k(U+F), L) = min(0.15(1+240), 400) = 36.
 	require.Equal(t, jtSnapshot{
 		used:  1,
@@ -479,8 +459,6 @@ func TestJournalTrackerCounters(t *testing.T) {
 		max:   15,
 		count: 14,
 	}, fileSnapshot)
-
-	quotaSnapshot = jt.getQuotaSnapshotForTest()
 	require.Equal(t, jtSnapshot{
 		used: 11,
 		free: 89,
@@ -764,7 +742,7 @@ func testBackpressureDiskLimiterLargeDiskDelay(
 	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
-	byteSnapshot, fileSnapshot := bdl.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, _ := bdl.getJournalSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  0,
 		free:  math.MaxInt64,
@@ -784,7 +762,7 @@ func testBackpressureDiskLimiterLargeDiskDelay(
 
 	checkCountersAfterBeforeBlockPut := func(
 		i int, availBytes, availFiles int64) {
-		byteSnapshot, fileSnapshot := bdl.getByteFileSnapshotsForTest()
+		byteSnapshot, fileSnapshot, _ := bdl.getJournalSnapshotsForTest()
 		expectedByteCount := byteLimit - bytesPut - blockBytes
 		expectedFileCount := fileLimit - filesPut - blockFiles
 		require.Equal(t, expectedByteCount, availBytes)
@@ -804,7 +782,7 @@ func testBackpressureDiskLimiterLargeDiskDelay(
 	}
 
 	checkCountersAfterBlockPut := func(i int) {
-		byteSnapshot, fileSnapshot := bdl.getByteFileSnapshotsForTest()
+		byteSnapshot, fileSnapshot, _ := bdl.getJournalSnapshotsForTest()
 		require.Equal(t, jtSnapshot{
 			used:  bytesPut,
 			free:  math.MaxInt64,
@@ -868,7 +846,7 @@ func testBackpressureDiskLimiterLargeDiskDelay(
 	expectedFileCount := fileLimit - filesPut
 	require.Equal(t, expectedByteCount, availBytes)
 	require.Equal(t, expectedFileCount, availFiles)
-	byteSnapshot, fileSnapshot = bdl.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, _ = bdl.getJournalSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  bytesPut,
 		free:  math.MaxInt64,
@@ -927,7 +905,7 @@ func TestBackpressureDiskLimiterJournalAndDiskCache(t *testing.T) {
 	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
-	byteSnapshot, _ := bdl.getByteFileSnapshotsForTest()
+	byteSnapshot, _, _ := bdl.getJournalSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  0,
 		free:  maxFreeBytes,
@@ -942,7 +920,7 @@ func TestBackpressureDiskLimiterJournalAndDiskCache(t *testing.T) {
 
 	checkCountersAfterBeforeBlockPut := func(
 		i int, availBytes int64) {
-		byteSnapshot, _ := bdl.getByteFileSnapshotsForTest()
+		byteSnapshot, _, _ := bdl.getJournalSnapshotsForTest()
 		expectedByteCount := byteLimit - journalBytesPut - blockBytes
 		require.Equal(t, expectedByteCount, availBytes)
 		require.Equal(t, jtSnapshot{
@@ -954,7 +932,7 @@ func TestBackpressureDiskLimiterJournalAndDiskCache(t *testing.T) {
 	}
 
 	checkCountersAfterBlockPut := func(i int) {
-		byteSnapshot, _ := bdl.getByteFileSnapshotsForTest()
+		byteSnapshot, _, _ := bdl.getJournalSnapshotsForTest()
 		require.Equal(t, jtSnapshot{
 			used:  journalBytesPut,
 			free:  maxFreeBytes + diskCacheBytesPut,
@@ -1024,7 +1002,7 @@ func TestBackpressureDiskLimiterJournalAndDiskCache(t *testing.T) {
 	// TestBackpressureDiskLimiterSmallDisk below.
 	expectedByteCount := byteLimit - journalBytesPut
 	require.Equal(t, expectedByteCount, availBytes)
-	byteSnapshot, _ = bdl.getByteFileSnapshotsForTest()
+	byteSnapshot, _, _ = bdl.getJournalSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  journalBytesPut,
 		free:  maxFreeBytes + diskCacheBytesPut,
@@ -1091,7 +1069,7 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
-	byteSnapshot, fileSnapshot := bdl.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, _ := bdl.getJournalSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  0,
 		free:  diskBytes,
@@ -1115,7 +1093,7 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 		expectedFileCount := diskFiles/4 - filesPut - blockFiles
 		require.Equal(t, expectedByteCount, availBytes)
 		require.Equal(t, expectedFileCount, availFiles)
-		byteSnapshot, fileSnapshot := bdl.getByteFileSnapshotsForTest()
+		byteSnapshot, fileSnapshot, _ := bdl.getJournalSnapshotsForTest()
 		require.Equal(t, jtSnapshot{
 			used:  bytesPut,
 			free:  diskBytes - bytesPut,
@@ -1133,7 +1111,7 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 	checkCountersAfterBlockPut := func(i int) {
 		// freeBytes is only updated on beforeBlockPut, so we
 		// have to compensate for that.
-		byteSnapshot, fileSnapshot := bdl.getByteFileSnapshotsForTest()
+		byteSnapshot, fileSnapshot, _ := bdl.getJournalSnapshotsForTest()
 		require.Equal(t, jtSnapshot{
 			used:  bytesPut,
 			free:  diskBytes - bytesPut + blockBytes,
@@ -1194,7 +1172,7 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 	expectedFileCount := diskFiles/4 - filesPut
 	require.Equal(t, expectedByteCount, availBytes)
 	require.Equal(t, expectedFileCount, availFiles)
-	byteSnapshot, fileSnapshot = bdl.getByteFileSnapshotsForTest()
+	byteSnapshot, fileSnapshot, _ = bdl.getJournalSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  bytesPut,
 		free:  diskBytes - bytesPut,
@@ -1244,7 +1222,7 @@ func TestBackpressureDiskLimiterNearQuota(t *testing.T) {
 	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
-	quotaSnapshot := bdl.getQuotaSnapshotForTest()
+	_, _, quotaSnapshot := bdl.getJournalSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used: 0,
 		free: math.MaxInt64,
@@ -1255,7 +1233,7 @@ func TestBackpressureDiskLimiterNearQuota(t *testing.T) {
 	var bytesPut int64
 
 	checkCounters := func(i int) {
-		quotaSnapshot := bdl.getQuotaSnapshotForTest()
+		_, _, quotaSnapshot := bdl.getJournalSnapshotsForTest()
 		used := remoteUsedBytes + bytesPut
 		require.Equal(t, jtSnapshot{
 			used: used,
