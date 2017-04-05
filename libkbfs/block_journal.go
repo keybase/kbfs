@@ -993,7 +993,7 @@ func (j *blockJournal) ignoreBlocksAndMDRevMarkersInJournal(ctx context.Context,
 		// the earliest md marker we care about, we can avoid
 		// iterating through the rest of the journal.
 		if len(idsToIgnore) == ignored && ignoredRev {
-			return totalIgnoredBytes, nil
+			break
 		}
 	}
 
