@@ -433,11 +433,11 @@ func TestBlockJournalFlush(t *testing.T) {
 	bcache := NewBlockCacheStandard(0, 0)
 	reporter := NewReporterSimple(nil, 0)
 
-	flush := func() (int64, int64) {
+	flush := func() (flushedBytes int64, removedBytes int64, removedFiles int64) {
 		end, err := j.end()
 		require.NoError(t, err)
 		if end == 0 {
-			return 0, 0
+			return 0, 0, 0
 		}
 
 		// Test that the end parameter is respected.
@@ -461,15 +461,17 @@ func TestBlockJournalFlush(t *testing.T) {
 			tlfID, CanonicalTlfName("fake TLF"), entries)
 		require.NoError(t, err)
 
-		_, err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
+		flushedBytes, err = j.removeFlushedEntries(
+			ctx, entries, tlfID, reporter)
 		require.NoError(t, err)
 
-		return goGCForTest(t, ctx, j)
+		removedBytes, removedFiles = goGCForTest(t, ctx, j)
+		return flushedBytes, removedBytes, removedFiles
 	}
 
 	// Flushing all the reference adds should remove the
 	// (now-unreferenced) block.
-	removedBytes, removedFiles := flush()
+	_, removedBytes, removedFiles := flush()
 	require.Equal(t, int64(len(data)), removedBytes)
 	require.Equal(t, int64(filesPerBlockMax), removedFiles)
 
@@ -499,7 +501,7 @@ func TestBlockJournalFlush(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, map[kbfsblock.ID]int{bID: 0}, liveCounts)
 
-	removedBytes, removedFiles = flush()
+	_, removedBytes, removedFiles = flush()
 	require.Equal(t, int64(0), removedBytes)
 	require.Equal(t, int64(0), removedFiles)
 
