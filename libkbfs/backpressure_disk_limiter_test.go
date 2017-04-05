@@ -1036,7 +1036,8 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
-	byteSnapshot, fileSnapshot, _ := bdl.getJournalSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot :=
+		bdl.getJournalSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  0,
 		free:  diskBytes,
@@ -1049,6 +1050,10 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 		max:   diskFiles / 4,
 		count: diskFiles / 4,
 	}, fileSnapshot)
+	require.Equal(t, jtSnapshot{
+		used: 0,
+		free: math.MaxInt64,
+	}, quotaSnapshot)
 
 	ctx := context.Background()
 
@@ -1060,7 +1065,8 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 		expectedFileCount := diskFiles/4 - filesPut - blockFiles
 		require.Equal(t, expectedByteCount, availBytes)
 		require.Equal(t, expectedFileCount, availFiles)
-		byteSnapshot, fileSnapshot, _ := bdl.getJournalSnapshotsForTest()
+		byteSnapshot, fileSnapshot, quotaSnapshot :=
+			bdl.getJournalSnapshotsForTest()
 		require.Equal(t, jtSnapshot{
 			used:  bytesPut,
 			free:  diskBytes - bytesPut,
@@ -1073,12 +1079,17 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 			max:   diskFiles / 4,
 			count: expectedFileCount,
 		}, fileSnapshot, "i=%d", i)
+		require.Equal(t, jtSnapshot{
+			used: bytesPut,
+			free: math.MaxInt64 - bytesPut,
+		}, quotaSnapshot, "i=%d", i)
 	}
 
 	checkCountersAfterBlockPut := func(i int) {
 		// freeBytes is only updated on beforeBlockPut, so we
 		// have to compensate for that.
-		byteSnapshot, fileSnapshot, _ := bdl.getJournalSnapshotsForTest()
+		byteSnapshot, fileSnapshot, quotaSnapshot :=
+			bdl.getJournalSnapshotsForTest()
 		require.Equal(t, jtSnapshot{
 			used:  bytesPut,
 			free:  diskBytes - bytesPut + blockBytes,
@@ -1091,6 +1102,10 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 			max:   diskFiles/4 + blockFiles/4,
 			count: diskFiles/4 + blockFiles/4 - filesPut,
 		}, fileSnapshot, "i=%d", i)
+		require.Equal(t, jtSnapshot{
+			used: bytesPut,
+			free: math.MaxInt64 - bytesPut,
+		}, quotaSnapshot, "i=%d", i)
 	}
 
 	// The first two puts shouldn't encounter any backpressure...
@@ -1139,7 +1154,8 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 	expectedFileCount := diskFiles/4 - filesPut
 	require.Equal(t, expectedByteCount, availBytes)
 	require.Equal(t, expectedFileCount, availFiles)
-	byteSnapshot, fileSnapshot, _ = bdl.getJournalSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot =
+		bdl.getJournalSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  bytesPut,
 		free:  diskBytes - bytesPut,
@@ -1152,6 +1168,10 @@ func testBackpressureDiskLimiterSmallDiskDelay(
 		max:   diskFiles / 4,
 		count: expectedFileCount,
 	}, fileSnapshot)
+	require.Equal(t, jtSnapshot{
+		used: bytesPut,
+		free: math.MaxInt64 - bytesPut,
+	}, quotaSnapshot)
 }
 
 func TestBackpressureDiskLimiterSmallDiskDelay(t *testing.T) {
