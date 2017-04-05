@@ -598,10 +598,14 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 
 	// Flush the reference adds.
 
-	flushedBytes, removedBytes, removedFiles = flushOne()
-	require.Equal(t, int64(0), removedBytes)
-	require.Equal(t, int64(0), removedBytes)
-	require.Equal(t, int64(0), removedFiles)
+	flushOneZero := func() {
+		flushedBytes, removedBytes, removedFiles := flushOne()
+		require.Equal(t, int64(0), flushedBytes)
+		require.Equal(t, int64(0), removedBytes)
+		require.Equal(t, int64(0), removedFiles)
+	}
+
+	flushOneZero()
 
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx2)
 	require.NoError(t, err)
@@ -630,10 +634,7 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 
 	// Flush the reference removals.
 
-	flushedBytes, removedBytes, removedFiles = flushOne()
-	require.Equal(t, int64(0), flushedBytes)
-	require.Equal(t, int64(0), removedBytes)
-	require.Equal(t, int64(0), removedFiles)
+	flushOneZero()
 
 	_, _, err = blockServer.Get(ctx, tlfID, bID, bCtx)
 	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
@@ -657,10 +658,7 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 
 	// Flush the reference archival.
 
-	flushedBytes, removedBytes, removedFiles = flushOne()
-	require.Equal(t, int64(0), flushedBytes)
-	require.Equal(t, int64(0), removedBytes)
-	require.Equal(t, int64(0), removedFiles)
+	flushOneZero()
 
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.NoError(t, err)
@@ -669,10 +667,7 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 
 	// Flush the last removal.
 
-	flushedBytes, removedBytes, removedFiles = flushOne()
-	require.Equal(t, int64(0), flushedBytes)
-	require.Equal(t, int64(0), removedBytes)
-	require.Equal(t, int64(0), removedFiles)
+	flushOneZero()
 
 	buf, key, err = blockServer.Get(ctx, tlfID, bID, bCtx3)
 	require.IsType(t, kbfsblock.BServerErrorBlockNonExistent{}, err)
@@ -1069,11 +1064,16 @@ func TestBlockJournalByteCounters(t *testing.T) {
 	requireCounts(0, 0)
 
 	// Flush the first add ref.
-	flushedBytes, removedBytes, removedFiles = flushOne()
-	require.Equal(t, int64(0), flushedBytes)
-	require.Equal(t, int64(0), removedBytes)
-	require.Equal(t, int64(0), removedFiles)
-	requireCounts(0, 0)
+
+	flushOneZero := func() {
+		flushedBytes, removedBytes, removedFiles := flushOne()
+		require.Equal(t, int64(0), flushedBytes)
+		require.Equal(t, int64(0), removedBytes)
+		require.Equal(t, int64(0), removedFiles)
+		requireCounts(0, 0)
+	}
+
+	flushOneZero()
 
 	// Flush the second add ref, but push the block to the server
 	// first.
@@ -1087,32 +1087,16 @@ func TestBlockJournalByteCounters(t *testing.T) {
 		context.Background(), tlfID, bID3, bCtx3, data3, serverHalf3)
 	require.NoError(t, err)
 
-	flushedBytes, removedBytes, removedFiles = flushOne()
-	require.Equal(t, int64(0), flushedBytes)
-	require.Equal(t, int64(0), removedBytes)
-	require.Equal(t, int64(0), removedFiles)
-	requireCounts(0, 0)
+	flushOneZero()
 
 	// Flush the add archive.
-	flushedBytes, removedBytes, removedFiles = flushOne()
-	require.Equal(t, int64(0), flushedBytes)
-	require.Equal(t, int64(0), removedBytes)
-	require.Equal(t, int64(0), removedFiles)
-	requireCounts(0, 0)
+	flushOneZero()
 
 	// Flush the first remove.
-	flushedBytes, removedBytes, removedFiles = flushOne()
-	require.Equal(t, int64(0), flushedBytes)
-	require.Equal(t, int64(0), removedBytes)
-	require.Equal(t, int64(0), removedFiles)
-	requireCounts(0, 0)
+	flushOneZero()
 
 	// Flush the second remove.
-	flushedBytes, removedBytes, removedFiles = flushOne()
-	require.Equal(t, int64(0), flushedBytes)
-	require.Equal(t, int64(0), removedBytes)
-	require.Equal(t, int64(0), removedFiles)
-	requireCounts(0, 0)
+	flushOneZero()
 }
 
 func TestBlockJournalUnflushedBytesIgnore(t *testing.T) {
