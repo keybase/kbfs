@@ -13,11 +13,13 @@ import (
 // semaphoreDiskLimiter is an implementation of diskLimiter that uses
 // semaphores to limit the byte, file, and quota usage.
 type semaphoreDiskLimiter struct {
-	byteLimit      int64
-	byteSemaphore  *kbfssync.Semaphore
-	fileLimit      int64
-	fileSemaphore  *kbfssync.Semaphore
-	quotaLimit     int64
+	byteLimit     int64
+	byteSemaphore *kbfssync.Semaphore
+	fileLimit     int64
+	fileSemaphore *kbfssync.Semaphore
+	quotaLimit    int64
+	// Unlike the semaphores above, quotaSemaphore is used just as
+	// a thread-safe integer.
 	quotaSemaphore *kbfssync.Semaphore
 }
 
