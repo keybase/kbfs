@@ -1054,20 +1054,25 @@ func TestBlockJournalByteCounters(t *testing.T) {
 
 	// Flush the first put. This causes the block to be GCed since
 	// the subsequent ops for that block remove the references.
-	_, removedBytes, removedFiles := flushOne()
+	flushedBytes, removedBytes, removedFiles := flushOne()
+	require.Equal(t, int64(len(data1)), flushedBytes)
 	require.Equal(t, int64(len(data1)), removedBytes)
 	require.Equal(t, int64(filesPerBlockMax), removedFiles)
 	expectedSize = len(data2)
 	requireCounts(expectedSize, filesPerBlockMax)
 
 	// Flush the second put.
-	_, removedBytes, removedFiles = flushOne()
+	flushedBytes, removedBytes, removedFiles = flushOne()
+	require.Equal(t, int64(len(data2)), flushedBytes)
 	require.Equal(t, int64(len(data2)), removedBytes)
+	require.Equal(t, int64(filesPerBlockMax), removedFiles)
 	requireCounts(0, 0)
 
 	// Flush the first add ref.
-	_, removedBytes, removedFiles = flushOne()
+	flushedBytes, removedBytes, removedFiles = flushOne()
+	require.Equal(t, int64(0), flushedBytes)
 	require.Equal(t, int64(0), removedBytes)
+	require.Equal(t, int64(0), removedFiles)
 	requireCounts(0, 0)
 
 	// Flush the second add ref, but push the block to the server
@@ -1082,23 +1087,31 @@ func TestBlockJournalByteCounters(t *testing.T) {
 		context.Background(), tlfID, bID3, bCtx3, data3, serverHalf3)
 	require.NoError(t, err)
 
-	_, removedBytes, removedFiles = flushOne()
+	flushedBytes, removedBytes, removedFiles = flushOne()
+	require.Equal(t, int64(0), flushedBytes)
 	require.Equal(t, int64(0), removedBytes)
+	require.Equal(t, int64(0), removedFiles)
 	requireCounts(0, 0)
 
 	// Flush the add archive.
-	_, removedBytes, removedFiles = flushOne()
+	flushedBytes, removedBytes, removedFiles = flushOne()
+	require.Equal(t, int64(0), flushedBytes)
 	require.Equal(t, int64(0), removedBytes)
+	require.Equal(t, int64(0), removedFiles)
 	requireCounts(0, 0)
 
 	// Flush the first remove.
-	_, removedBytes, removedFiles = flushOne()
+	flushedBytes, removedBytes, removedFiles = flushOne()
+	require.Equal(t, int64(0), flushedBytes)
 	require.Equal(t, int64(0), removedBytes)
+	require.Equal(t, int64(0), removedFiles)
 	requireCounts(0, 0)
 
 	// Flush the second remove.
-	_, removedBytes, removedFiles = flushOne()
+	flushedBytes, removedBytes, removedFiles = flushOne()
+	require.Equal(t, int64(0), flushedBytes)
 	require.Equal(t, int64(0), removedBytes)
+	require.Equal(t, int64(0), removedFiles)
 	requireCounts(0, 0)
 }
 
