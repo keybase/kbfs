@@ -689,7 +689,8 @@ func testBackpressureDiskLimiterLargeDiskDelay(
 	bdl, err := newBackpressureDiskLimiter(log, params)
 	require.NoError(t, err)
 
-	byteSnapshot, fileSnapshot, _ := bdl.getJournalSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot :=
+		bdl.getJournalSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  0,
 		free:  math.MaxInt64,
@@ -702,6 +703,10 @@ func testBackpressureDiskLimiterLargeDiskDelay(
 		max:   fileLimit,
 		count: fileLimit,
 	}, fileSnapshot)
+	require.Equal(t, jtSnapshot{
+		used: 0,
+		free: math.MaxInt64,
+	}, quotaSnapshot)
 
 	ctx := context.Background()
 
@@ -709,7 +714,8 @@ func testBackpressureDiskLimiterLargeDiskDelay(
 
 	checkCountersAfterBeforeBlockPut := func(
 		i int, availBytes, availFiles int64) {
-		byteSnapshot, fileSnapshot, _ := bdl.getJournalSnapshotsForTest()
+		byteSnapshot, fileSnapshot, quotaSnapshot :=
+			bdl.getJournalSnapshotsForTest()
 		expectedByteCount := byteLimit - bytesPut - blockBytes
 		expectedFileCount := fileLimit - filesPut - blockFiles
 		require.Equal(t, expectedByteCount, availBytes)
@@ -726,10 +732,15 @@ func testBackpressureDiskLimiterLargeDiskDelay(
 			max:   fileLimit,
 			count: expectedFileCount,
 		}, fileSnapshot, "i=%d", i)
+		require.Equal(t, jtSnapshot{
+			used: bytesPut,
+			free: math.MaxInt64 - bytesPut,
+		}, quotaSnapshot, "i=%d", i)
 	}
 
 	checkCountersAfterBlockPut := func(i int) {
-		byteSnapshot, fileSnapshot, _ := bdl.getJournalSnapshotsForTest()
+		byteSnapshot, fileSnapshot, quotaSnapshot :=
+			bdl.getJournalSnapshotsForTest()
 		require.Equal(t, jtSnapshot{
 			used:  bytesPut,
 			free:  math.MaxInt64,
@@ -742,6 +753,10 @@ func testBackpressureDiskLimiterLargeDiskDelay(
 			max:   fileLimit,
 			count: fileLimit - filesPut,
 		}, fileSnapshot, "i=%d", i)
+		require.Equal(t, jtSnapshot{
+			used: bytesPut,
+			free: math.MaxInt64 - bytesPut,
+		}, quotaSnapshot, "i=%d", i)
 	}
 
 	// The first two puts shouldn't encounter any backpressure...
@@ -793,7 +808,8 @@ func testBackpressureDiskLimiterLargeDiskDelay(
 	expectedFileCount := fileLimit - filesPut
 	require.Equal(t, expectedByteCount, availBytes)
 	require.Equal(t, expectedFileCount, availFiles)
-	byteSnapshot, fileSnapshot, _ = bdl.getJournalSnapshotsForTest()
+	byteSnapshot, fileSnapshot, quotaSnapshot =
+		bdl.getJournalSnapshotsForTest()
 	require.Equal(t, jtSnapshot{
 		used:  bytesPut,
 		free:  math.MaxInt64,
@@ -806,6 +822,10 @@ func testBackpressureDiskLimiterLargeDiskDelay(
 		max:   fileLimit,
 		count: expectedFileCount,
 	}, fileSnapshot)
+	require.Equal(t, jtSnapshot{
+		used: bytesPut,
+		free: math.MaxInt64 - bytesPut,
+	}, quotaSnapshot)
 }
 
 func TestBackpressureDiskLimiterLargeDiskDelay(t *testing.T) {
