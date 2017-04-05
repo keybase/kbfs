@@ -208,25 +208,34 @@ func TestJournalTrackerCounters(t *testing.T) {
 		200)  // freeFiles
 	require.NoError(t, err)
 
-	byteSnapshot, fileSnapshot, quotaSnapshot := jt.getSnapshotsForTest()
 	// max = count = min(k(U+F), L) = min(0.15(0+100), 400) = 15.
-	require.Equal(t, jtSnapshot{
+	expectedByteSnapshot := jtSnapshot{
 		used:  0,
 		free:  100,
 		max:   15,
 		count: 15,
-	}, byteSnapshot)
+	}
 	// max = count = min(k(U+F), L) = min(0.15(0+200), 800) = 30.
-	require.Equal(t, jtSnapshot{
+	expectedFileSnapshot := jtSnapshot{
 		used:  0,
 		free:  200,
 		max:   30,
 		count: 30,
-	}, fileSnapshot)
-	require.Equal(t, jtSnapshot{
+	}
+	expectedQuotaSnapshot := jtSnapshot{
 		used: 0,
 		free: math.MaxInt64,
-	}, quotaSnapshot)
+	}
+
+	checkSnapshots := func() {
+		byteSnapshot, fileSnapshot, quotaSnapshot :=
+			jt.getSnapshotsForTest()
+		require.Equal(t, expectedByteSnapshot, byteSnapshot)
+		require.Equal(t, expectedFileSnapshot, fileSnapshot)
+		require.Equal(t, expectedQuotaSnapshot, quotaSnapshot)
+	}
+
+	checkSnapshots()
 
 	// For stored bytes, increase U by 10, so that increases max
 	// by 0.15*10 = 1.5, so max is now 16. For files, increase U
@@ -237,23 +246,24 @@ func TestJournalTrackerCounters(t *testing.T) {
 	require.Equal(t, int64(6), availBytes)
 	require.Equal(t, int64(13), availFiles)
 
-	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
-	require.Equal(t, jtSnapshot{
+	expectedByteSnapshot = jtSnapshot{
 		used:  10,
 		free:  100,
 		max:   16,
 		count: 6,
-	}, byteSnapshot)
-	require.Equal(t, jtSnapshot{
+	}
+	expectedFileSnapshot = jtSnapshot{
 		used:  20,
 		free:  200,
 		max:   33,
 		count: 13,
-	}, fileSnapshot)
-	require.Equal(t, jtSnapshot{
+	}
+	expectedQuotaSnapshot = jtSnapshot{
 		used: 5,
 		free: math.MaxInt64 - 5,
-	}, quotaSnapshot)
+	}
+
+	checkSnapshots()
 
 	// For stored bytes, decrease U by 9, so that decreases max by
 	// 0.15*9 = 1.35, so max is back to 15. For files, decrease U
@@ -262,67 +272,54 @@ func TestJournalTrackerCounters(t *testing.T) {
 
 	jt.onDisable(9, 4, 19)
 
-	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
-	require.Equal(t, jtSnapshot{
+	expectedByteSnapshot = jtSnapshot{
 		used:  1,
 		free:  100,
 		max:   15,
 		count: 14,
-	}, byteSnapshot)
-	require.Equal(t, jtSnapshot{
+	}
+	expectedFileSnapshot = jtSnapshot{
 		used:  1,
 		free:  200,
 		max:   30,
 		count: 29,
-	}, fileSnapshot)
-	require.Equal(t, jtSnapshot{
+	}
+	expectedQuotaSnapshot = jtSnapshot{
 		used: 1,
 		free: math.MaxInt64 - 1,
-	}, quotaSnapshot)
+	}
+
+	checkSnapshots()
 
 	// Update free resources.
 
 	jt.updateFree(200, 40, 100)
 
-	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
-	require.Equal(t, jtSnapshot{
+	expectedByteSnapshot = jtSnapshot{
 		used:  1,
 		free:  240,
 		max:   36,
 		count: 35,
-	}, byteSnapshot)
-	require.Equal(t, jtSnapshot{
+	}
+	expectedFileSnapshot = jtSnapshot{
 		used:  1,
 		free:  100,
 		max:   15,
 		count: 14,
-	}, fileSnapshot)
-	require.Equal(t, jtSnapshot{
-		used: 1,
-		free: math.MaxInt64 - 1,
-	}, quotaSnapshot)
+	}
+
+	checkSnapshots()
 
 	// Update remote resources.
 
 	jt.updateRemote(10, 100)
 
-	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
-	require.Equal(t, jtSnapshot{
-		used:  1,
-		free:  240,
-		max:   36,
-		count: 35,
-	}, byteSnapshot)
-	require.Equal(t, jtSnapshot{
-		used:  1,
-		free:  100,
-		max:   15,
-		count: 14,
-	}, fileSnapshot)
-	require.Equal(t, jtSnapshot{
+	expectedQuotaSnapshot = jtSnapshot{
 		used: 11,
 		free: 89,
-	}, quotaSnapshot)
+	}
+
+	checkSnapshots()
 
 	// Put a block successfully.
 
@@ -332,45 +329,35 @@ func TestJournalTrackerCounters(t *testing.T) {
 	require.Equal(t, int64(25), availBytes)
 	require.Equal(t, int64(9), availFiles)
 
-	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
-	require.Equal(t, jtSnapshot{
-		used:  1,
-		free:  240,
-		max:   36,
-		count: 25,
-	}, byteSnapshot)
-	require.Equal(t, jtSnapshot{
-		used:  1,
-		free:  100,
-		max:   15,
-		count: 9,
-	}, fileSnapshot)
-	require.Equal(t, jtSnapshot{
-		used: 11,
-		free: 89,
-	}, quotaSnapshot)
+	expectedByteSnapshot.count -= 10
+	expectedFileSnapshot.count -= 5
+
+	checkSnapshots()
 
 	jt.afterBlockPut(10, 5, true)
 
-	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
 	// max = min(k(U+F), L) = min(0.15(11+240), 400) = 37.
-	require.Equal(t, jtSnapshot{
+	expectedByteSnapshot = jtSnapshot{
 		used:  11,
 		free:  240,
 		max:   37,
 		count: 26,
-	}, byteSnapshot)
+	}
+
 	// max = min(k(U+F), L) = min(0.15(6+100), 800) = 15.
-	require.Equal(t, jtSnapshot{
+	expectedFileSnapshot = jtSnapshot{
 		used:  6,
 		free:  100,
 		max:   15,
 		count: 9,
-	}, fileSnapshot)
-	require.Equal(t, jtSnapshot{
+	}
+
+	expectedQuotaSnapshot = jtSnapshot{
 		used: 21,
 		free: 79,
-	}, quotaSnapshot)
+	}
+
+	checkSnapshots()
 
 	// Then try to put a block but fail it.
 
@@ -380,89 +367,49 @@ func TestJournalTrackerCounters(t *testing.T) {
 	require.Equal(t, int64(16), availBytes)
 	require.Equal(t, int64(4), availFiles)
 
-	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
-	require.Equal(t, jtSnapshot{
-		used:  11,
-		free:  240,
-		max:   37,
-		count: 16,
-	}, byteSnapshot)
-	require.Equal(t, jtSnapshot{
-		used:  6,
-		free:  100,
-		max:   15,
-		count: 4,
-	}, fileSnapshot)
-	require.Equal(t, jtSnapshot{
-		used: 21,
-		free: 79,
-	}, quotaSnapshot)
+	expectedByteSnapshot.count -= 10
+	expectedFileSnapshot.count -= 5
+
+	checkSnapshots()
 
 	jt.afterBlockPut(10, 5, false)
 
-	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
-	require.Equal(t, jtSnapshot{
-		used:  11,
-		free:  240,
-		max:   37,
-		count: 26,
-	}, byteSnapshot)
-	require.Equal(t, jtSnapshot{
-		used:  6,
-		free:  100,
-		max:   15,
-		count: 9,
-	}, fileSnapshot)
-	require.Equal(t, jtSnapshot{
-		used: 21,
-		free: 79,
-	}, quotaSnapshot)
+	expectedByteSnapshot.count += 10
+	expectedFileSnapshot.count += 5
+
+	checkSnapshots()
 
 	// Now flush a block...
 
 	jt.onBlocksFlush(10)
 
-	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
-	require.Equal(t, jtSnapshot{
-		used:  11,
-		free:  240,
-		max:   37,
-		count: 26,
-	}, byteSnapshot)
-	require.Equal(t, jtSnapshot{
-		used:  6,
-		free:  100,
-		max:   15,
-		count: 9,
-	}, fileSnapshot)
-	require.Equal(t, jtSnapshot{
+	expectedQuotaSnapshot = jtSnapshot{
 		used: 11,
 		free: 89,
-	}, quotaSnapshot)
+	}
+
+	checkSnapshots()
 
 	// ...and, finally, delete it.
 
 	jt.onBlocksDelete(10, 5)
 
-	byteSnapshot, fileSnapshot, quotaSnapshot = jt.getSnapshotsForTest()
 	// max = min(k(U+F), L) = min(0.15(1+240), 400) = 36.
-	require.Equal(t, jtSnapshot{
+	expectedByteSnapshot = jtSnapshot{
 		used:  1,
 		free:  240,
 		max:   36,
 		count: 35,
-	}, byteSnapshot)
+	}
 	// max = min(k(U+F), L) = min(0.15(1+100), 800) = 15.
-	require.Equal(t, jtSnapshot{
+	expectedFileSnapshot = jtSnapshot{
 		used:  1,
 		free:  100,
 		max:   15,
 		count: 14,
-	}, fileSnapshot)
-	require.Equal(t, jtSnapshot{
-		used: 11,
-		free: 89,
-	}, quotaSnapshot)
+	}
+
+	checkSnapshots()
 }
 
 // TestDefaultDoDelayCancel checks that defaultDoDelay respects
