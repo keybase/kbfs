@@ -919,7 +919,9 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 		require.NoError(t, err)
 		return flushedBytes
 	}
-	_ = flushAll()
+	flushedBytes := flushAll()
+	require.Equal(t, int64(len(data1)+len(data2)+len(data3)+len(data4)),
+		flushedBytes)
 
 	// The blocks can still be fetched from the journal.
 	for _, bid := range savedBlocks {
@@ -943,7 +945,8 @@ func TestBlockJournalSaveUntilMDFlush(t *testing.T) {
 	data6 := []byte{21, 22, 23, 24}
 	bID6, _, _ := putBlockData(ctx, t, j, data6)
 	savedBlocks = append(savedBlocks, bID5, bID6)
-	_ = flushAll()
+	flushedBytes = flushAll()
+	require.Equal(t, int64(len(data5)+len(data6)), flushedBytes)
 
 	// Make sure all the blocks still exist, including both the old
 	// and the new ones.
