@@ -536,8 +536,10 @@ func flushBlockJournalOne(ctx context.Context, t *testing.T,
 		bcache, reporter, tlfID, CanonicalTlfName("fake TLF"),
 		entries)
 	require.NoError(t, err)
-	flushedBytes, err = j.removeFlushedEntries(ctx, entries, tlfID, reporter)
+	flushedBytes, err = j.removeFlushedEntries(
+		ctx, entries, tlfID, reporter)
 	require.NoError(t, err)
+
 	removedBytes, removedFiles = goGCForTest(t, ctx, j)
 	require.NoError(t, err)
 
@@ -575,7 +577,8 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 			ctx, t, j, blockServer, bcache, reporter, tlfID)
 	}
 
-	_, removedBytes, removedFiles := flushOne()
+	flushedBytes, removedBytes, removedFiles := flushOne()
+	require.Equal(t, int64(len(data)), flushedBytes)
 	require.Equal(t, int64(0), removedBytes)
 	require.Equal(t, int64(0), removedFiles)
 
@@ -595,7 +598,8 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 
 	// Flush the reference adds.
 
-	_, removedBytes, removedFiles = flushOne()
+	flushedBytes, removedBytes, removedFiles = flushOne()
+	require.Equal(t, int64(0), removedBytes)
 	require.Equal(t, int64(0), removedBytes)
 	require.Equal(t, int64(0), removedFiles)
 
@@ -606,7 +610,8 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 
 	// Flushing the last reference add should remove the
 	// (now-unreferenced) block.
-	_, removedBytes, removedFiles = flushOne()
+	flushedBytes, removedBytes, removedFiles = flushOne()
+	require.Equal(t, int64(0), flushedBytes)
 	require.Equal(t, int64(len(data)), removedBytes)
 	require.Equal(t, int64(filesPerBlockMax), removedFiles)
 
@@ -625,7 +630,8 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 
 	// Flush the reference removals.
 
-	_, removedBytes, removedFiles = flushOne()
+	flushedBytes, removedBytes, removedFiles = flushOne()
+	require.Equal(t, int64(0), flushedBytes)
 	require.Equal(t, int64(0), removedBytes)
 	require.Equal(t, int64(0), removedFiles)
 
@@ -651,7 +657,8 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 
 	// Flush the reference archival.
 
-	_, removedBytes, removedFiles = flushOne()
+	flushedBytes, removedBytes, removedFiles = flushOne()
+	require.Equal(t, int64(0), flushedBytes)
 	require.Equal(t, int64(0), removedBytes)
 	require.Equal(t, int64(0), removedFiles)
 
@@ -662,7 +669,8 @@ func TestBlockJournalFlushInterleaved(t *testing.T) {
 
 	// Flush the last removal.
 
-	_, removedBytes, removedFiles = flushOne()
+	flushedBytes, removedBytes, removedFiles = flushOne()
+	require.Equal(t, int64(0), flushedBytes)
 	require.Equal(t, int64(0), removedBytes)
 	require.Equal(t, int64(0), removedFiles)
 
