@@ -132,13 +132,9 @@ func (e BServerErrorOverQuota) ToStatus() (s keybase1.Status) {
 
 // Error implements the Error interface for BServerErrorOverQuota.
 func (e BServerErrorOverQuota) Error() string {
-	msg := e.Msg
-	if msg == "" {
-		msg = "BServer: user has exceeded quota"
-	}
 	return fmt.Sprintf(
-		"BServerErrorOverQuota{Msg: %s, Usage: %d, Limit: %d, Throttled: %t}",
-		msg, e.Usage, e.Limit, e.Throttled)
+		"BServerErrorOverQuota{Msg: %q, Usage: %d, Limit: %d, Throttled: %t}",
+		e.Msg, e.Usage, e.Limit, e.Throttled)
 }
 
 //BServerErrorBlockNonExistent is an exportable error from bserver
