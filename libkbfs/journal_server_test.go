@@ -103,6 +103,7 @@ func (qbs *quotaBlockServer) GetUserQuotaInfo(ctx context.Context) (
 	infoCopy := qbs.quotaInfo
 	return &infoCopy, nil
 }
+
 func TestJournalServerOverQuotaError(t *testing.T) {
 	tempdir, ctx, cancel, config, quotaUsage, jServer :=
 		setupJournalServerTest(t)
