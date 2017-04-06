@@ -310,6 +310,13 @@ func (qbt quotaBackpressureTracker) delayScale() float64 {
 	return math.Min(1.0, math.Max(0.0, (usedFrac-m)/(M-m)))
 }
 
+func (qbt quotaBackpressureTracker) getQuotaInfo() (
+	usedQuotaBytes, quotaBytes int64) {
+	usedQuotaBytes = qbt.unflushedBytes + qbt.remoteUsedBytes
+	quotaBytes = qbt.quotaBytes
+	return usedQuotaBytes, quotaBytes
+}
+
 func (qbt *quotaBackpressureTracker) onJournalEnable(unflushedBytes int64) {
 	qbt.unflushedBytes += unflushedBytes
 }
@@ -420,7 +427,7 @@ func (jt journalTracker) getSnapshotsForTest() (
 		jt.byte.semaphoreMax, jt.byte.semaphore.Count()}
 	fileSnapshot = jtSnapshot{jt.file.used, jt.file.free,
 		jt.file.semaphoreMax, jt.file.semaphore.Count()}
-	usedQuotaBytes, quotaBytes := jt.getQuotaInfo()
+	usedQuotaBytes, quotaBytes := jt.quota.getQuotaInfo()
 	free := quotaBytes - usedQuotaBytes
 	quotaSnapshot = jtSnapshot{usedQuotaBytes, free, 0, 0}
 	return byteSnapshot, fileSnapshot, quotaSnapshot
@@ -528,9 +535,7 @@ func (jt journalTracker) getStatusLine() string {
 }
 
 func (jt journalTracker) getQuotaInfo() (usedQuotaBytes, quotaBytes int64) {
-	usedQuotaBytes = jt.quota.unflushedBytes + jt.quota.remoteUsedBytes
-	quotaBytes = jt.quota.quotaBytes
-	return usedQuotaBytes, quotaBytes
+	return jt.quota.getQuotaInfo()
 }
 
 type journalTrackerStatus struct {
