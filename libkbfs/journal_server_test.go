@@ -22,7 +22,8 @@ import (
 
 func setupJournalServerTest(t *testing.T) (
 	tempdir string, ctx context.Context, cancel context.CancelFunc,
-	config *ConfigLocal, jServer *JournalServer) {
+	config *ConfigLocal, quotaUsage *EventuallyConsistentQuotaUsage,
+	jServer *JournalServer) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "journal_server")
 	require.NoError(t, err)
 
@@ -55,7 +56,7 @@ func setupJournalServerTest(t *testing.T) (
 		}
 	}()
 
-	_, err = config.MakeDiskLimiter(tempdir)
+	quotaUsage, err = config.MakeDiskLimiter(tempdir)
 	require.NoError(t, err)
 	err = config.EnableJournaling(
 		ctx, tempdir, TLFJournalBackgroundWorkEnabled)
@@ -64,7 +65,7 @@ func setupJournalServerTest(t *testing.T) (
 	require.NoError(t, err)
 
 	setupSucceeded = true
-	return tempdir, ctx, cancel, config, jServer
+	return tempdir, ctx, cancel, config, quotaUsage, jServer
 }
 
 func teardownJournalServerTest(
@@ -102,9 +103,9 @@ func (qbs *quotaBlockServer) GetUserQuotaInfo(ctx context.Context) (
 	infoCopy := qbs.quotaInfo
 	return &infoCopy, nil
 }
-
 func TestJournalServerOverQuotaError(t *testing.T) {
-	tempdir, ctx, cancel, config, jServer := setupJournalServerTest(t)
+	tempdir, ctx, cancel, config, quotaUsage, jServer :=
+		setupJournalServerTest(t)
 	defer teardownJournalServerTest(t, tempdir, ctx, cancel, config)
 
 	qbs := &quotaBlockServer{BlockServer: config.BlockServer()}
@@ -113,11 +114,13 @@ func TestJournalServerOverQuotaError(t *testing.T) {
 	clock := newTestClockNow()
 	config.SetClock(clock)
 
-	// Set initial quota usage.
+	// Set initial quota usage and refresh quotaUsage's cache.
 	qbs.setUserQuotaInfo(1010, 1000)
+	_, _, _, err := quotaUsage.Get(ctx, 0, 0)
+	require.NoError(t, err)
 
 	tlfID1 := tlf.FakeID(1, false)
-	err := jServer.Enable(ctx, tlfID1, TLFJournalBackgroundWorkPaused)
+	err = jServer.Enable(ctx, tlfID1, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 
 	blockServer := config.BlockServer()
@@ -160,7 +163,7 @@ func TestJournalServerOverQuotaError(t *testing.T) {
 }
 
 func TestJournalServerRestart(t *testing.T) {
-	tempdir, ctx, cancel, config, jServer := setupJournalServerTest(t)
+	tempdir, ctx, cancel, config, _, jServer := setupJournalServerTest(t)
 	defer teardownJournalServerTest(t, tempdir, ctx, cancel, config)
 
 	// Use a shutdown-only BlockServer so that it errors if the
@@ -230,7 +233,7 @@ func TestJournalServerRestart(t *testing.T) {
 }
 
 func TestJournalServerLogOutLogIn(t *testing.T) {
-	tempdir, ctx, cancel, config, jServer := setupJournalServerTest(t)
+	tempdir, ctx, cancel, config, _, jServer := setupJournalServerTest(t)
 	defer teardownJournalServerTest(t, tempdir, ctx, cancel, config)
 
 	// Use a shutdown-only BlockServer so that it errors if the
@@ -303,7 +306,7 @@ func TestJournalServerLogOutLogIn(t *testing.T) {
 }
 
 func TestJournalServerLogOutDirtyOp(t *testing.T) {
-	tempdir, ctx, cancel, config, jServer := setupJournalServerTest(t)
+	tempdir, ctx, cancel, config, _, jServer := setupJournalServerTest(t)
 	defer teardownJournalServerTest(t, tempdir, ctx, cancel, config)
 
 	tlfID := tlf.FakeID(2, false)
@@ -332,7 +335,7 @@ func TestJournalServerLogOutDirtyOp(t *testing.T) {
 }
 
 func TestJournalServerMultiUser(t *testing.T) {
-	tempdir, ctx, cancel, config, jServer := setupJournalServerTest(t)
+	tempdir, ctx, cancel, config, _, jServer := setupJournalServerTest(t)
 	defer teardownJournalServerTest(t, tempdir, ctx, cancel, config)
 
 	// Use a shutdown-only BlockServer so that it errors if the
@@ -485,7 +488,7 @@ func TestJournalServerMultiUser(t *testing.T) {
 }
 
 func TestJournalServerEnableAuto(t *testing.T) {
-	tempdir, ctx, cancel, config, jServer := setupJournalServerTest(t)
+	tempdir, ctx, cancel, config, _, jServer := setupJournalServerTest(t)
 	defer teardownJournalServerTest(t, tempdir, ctx, cancel, config)
 
 	tlfID := tlf.FakeID(2, false)
