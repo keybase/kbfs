@@ -556,7 +556,8 @@ func testTLFJournalBlockOpDiskQuotaLimit(t *testing.T, ver MetadataVer) {
 	putBlock(ctx, t, config, tlfJournal, data1)
 
 	usedQuotaBytes, quotaBytes := tlfJournal.diskLimiter.getQuotaInfo()
-	require.Equal(t, int64(math.MaxInt64-6+len(data1)), usedQuotaBytes)
+	require.Equal(t,
+		int64(math.MaxInt64-6)+int64(len(data1)), usedQuotaBytes)
 	require.Equal(t, int64(math.MaxInt64), quotaBytes)
 
 	data2 := []byte{5, 6, 7}
@@ -582,7 +583,8 @@ func testTLFJournalBlockOpDiskQuotaLimit(t *testing.T, ver MetadataVer) {
 	}
 
 	usedQuotaBytes, quotaBytes = tlfJournal.diskLimiter.getQuotaInfo()
-	require.Equal(t, int64(math.MaxInt64-6+len(data2)), usedQuotaBytes)
+	require.Equal(t,
+		int64(math.MaxInt64-6)+int64(len(data2)), usedQuotaBytes)
 	require.Equal(t, int64(math.MaxInt64), quotaBytes)
 }
 
@@ -600,7 +602,8 @@ func testTLFJournalBlockOpDiskQuotaLimitResolve(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 
 	usedQuotaBytes, quotaBytes := tlfJournal.diskLimiter.getQuotaInfo()
-	require.Equal(t, int64(math.MaxInt64-6+len(data1)), usedQuotaBytes)
+	require.Equal(t,
+		int64(math.MaxInt64-6)+int64(len(data1)), usedQuotaBytes)
 	require.Equal(t, int64(math.MaxInt64), quotaBytes)
 
 	data2 := []byte{5, 6, 7}
@@ -637,7 +640,8 @@ func testTLFJournalBlockOpDiskQuotaLimitResolve(t *testing.T, ver MetadataVer) {
 	}
 
 	usedQuotaBytes, quotaBytes = tlfJournal.diskLimiter.getQuotaInfo()
-	require.Equal(t, int64(math.MaxInt64-6+len(data2)), usedQuotaBytes)
+	require.Equal(t,
+		int64(math.MaxInt64-6)+int64(len(data2)), usedQuotaBytes)
 	require.Equal(t, int64(math.MaxInt64), quotaBytes)
 }
 
