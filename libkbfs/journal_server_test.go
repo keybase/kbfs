@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"math"
 	"os"
 	"sync"
 	"testing"
@@ -104,62 +103,6 @@ func (qbs *quotaBlockServer) GetUserQuotaInfo(ctx context.Context) (
 	return &infoCopy, nil
 }
 
-func TestJournalServerEstimateQuotaUsage(t *testing.T) {
-	tempdir, ctx, cancel, config, jServer := setupJournalServerTest(t)
-	defer teardownJournalServerTest(t, tempdir, ctx, cancel, config)
-
-	qbs := &quotaBlockServer{BlockServer: config.BlockServer()}
-	config.SetBlockServer(qbs)
-
-	// Check initial state.
-	localUsageBytes, remoteUsageBytes, limitBytes :=
-		jServer.estimateQuotaUsage(ctx)
-	require.Equal(t, int64(0), localUsageBytes)
-	require.Equal(t, int64(0), remoteUsageBytes)
-	require.Equal(t, int64(math.MaxInt64), limitBytes)
-
-	// Set quota usage since there's a background task to retrieve
-	// the quota usage, which will return 0 for the limit.
-	qbs.setUserQuotaInfo(100, 1000)
-	// Force quotaUsage to update.
-	_, _, _, err := jServer.quotaUsage.Get(ctx, 0, 0)
-	require.NoError(t, err)
-
-	tlfID1 := tlf.FakeID(1, false)
-	err = jServer.Enable(ctx, tlfID1, TLFJournalBackgroundWorkPaused)
-	require.NoError(t, err)
-
-	tlfID2 := tlf.FakeID(2, false)
-	err = jServer.Enable(ctx, tlfID2, TLFJournalBackgroundWorkPaused)
-	require.NoError(t, err)
-
-	blockServer := config.BlockServer()
-
-	h, err := ParseTlfHandle(
-		ctx, config.KBPKI(), "test_user1,test_user2", false)
-	require.NoError(t, err)
-	uid1 := h.ResolvedWriters()[0]
-
-	// Put blocks to TLFs 1 and 2.
-
-	bCtx := kbfsblock.MakeFirstContext(uid1, keybase1.BlockType_DATA)
-	data := []byte{1, 2, 3, 4}
-	bID, err := kbfsblock.MakePermanentID(data)
-	require.NoError(t, err)
-	serverHalf, err := kbfscrypto.MakeRandomBlockCryptKeyServerHalf()
-	require.NoError(t, err)
-	err = blockServer.Put(ctx, tlfID1, bID, bCtx, data, serverHalf)
-	require.NoError(t, err)
-	err = blockServer.Put(ctx, tlfID2, bID, bCtx, data, serverHalf)
-	require.NoError(t, err)
-
-	localUsageBytes, remoteUsageBytes, limitBytes =
-		jServer.estimateQuotaUsage(ctx)
-	require.Equal(t, int64(len(data)*2), localUsageBytes)
-	require.Equal(t, int64(100), remoteUsageBytes)
-	require.Equal(t, int64(1000), limitBytes)
-}
-
 func TestJournalServerOverQuotaError(t *testing.T) {
 	tempdir, ctx, cancel, config, jServer := setupJournalServerTest(t)
 	defer teardownJournalServerTest(t, tempdir, ctx, cancel, config)
@@ -172,11 +115,9 @@ func TestJournalServerOverQuotaError(t *testing.T) {
 
 	// Set initial quota usage.
 	qbs.setUserQuotaInfo(1010, 1000)
-	_, _, _, err := jServer.quotaUsage.Get(ctx, 0, 0)
-	require.NoError(t, err)
 
 	tlfID1 := tlf.FakeID(1, false)
-	err = jServer.Enable(ctx, tlfID1, TLFJournalBackgroundWorkPaused)
+	err := jServer.Enable(ctx, tlfID1, TLFJournalBackgroundWorkPaused)
 	require.NoError(t, err)
 
 	blockServer := config.BlockServer()
@@ -196,7 +137,6 @@ func TestJournalServerOverQuotaError(t *testing.T) {
 	require.NoError(t, err)
 	err = blockServer.Put(ctx, tlfID1, bID, bCtx, data, serverHalf)
 	expectedQuotaError := kbfsblock.BServerErrorOverQuota{
-		Msg:       "Over quota: local usage bytes = 4",
 		Usage:     1014,
 		Limit:     1000,
 		Throttled: false,
