@@ -554,6 +554,10 @@ func testTLFJournalBlockOpDiskQuotaLimit(t *testing.T, ver MetadataVer) {
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
+	usedQuotaBytes, quotaBytes := tlfJournal.diskLimiter.getQuotaInfo()
+	require.Equal(t, int64(4), usedQuotaBytes)
+	require.Equal(t, int64(math.MaxInt64), quotaBytes)
+
 	errCh := make(chan error, 1)
 	go func() {
 		data2 := []byte{5, 6, 7}
@@ -576,7 +580,7 @@ func testTLFJournalBlockOpDiskQuotaLimit(t *testing.T, ver MetadataVer) {
 		t.Fatal(ctx.Err())
 	}
 
-	usedQuotaBytes, quotaBytes := tlfJournal.diskLimiter.getQuotaInfo()
+	usedQuotaBytes, quotaBytes = tlfJournal.diskLimiter.getQuotaInfo()
 	require.Equal(t, int64(3), usedQuotaBytes)
 	require.Equal(t, int64(math.MaxInt64), quotaBytes)
 }
@@ -593,6 +597,10 @@ func testTLFJournalBlockOpDiskQuotaLimitResolve(t *testing.T, ver MetadataVer) {
 	id1, bCtx1, serverHalf1 := config.makeBlock(data1)
 	err := tlfJournal.putBlockData(ctx, id1, bCtx1, data1, serverHalf1)
 	require.NoError(t, err)
+
+	usedQuotaBytes, quotaBytes := tlfJournal.diskLimiter.getQuotaInfo()
+	require.Equal(t, int64(4), usedQuotaBytes)
+	require.Equal(t, int64(math.MaxInt64), quotaBytes)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -626,6 +634,10 @@ func testTLFJournalBlockOpDiskQuotaLimitResolve(t *testing.T, ver MetadataVer) {
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
+
+	usedQuotaBytes, quotaBytes = tlfJournal.diskLimiter.getQuotaInfo()
+	require.Equal(t, int64(3), usedQuotaBytes)
+	require.Equal(t, int64(math.MaxInt64), quotaBytes)
 }
 
 func testTLFJournalBlockOpDiskLimitDuplicate(t *testing.T, ver MetadataVer) {
