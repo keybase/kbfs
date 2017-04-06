@@ -552,15 +552,16 @@ func testTLFJournalBlockOpDiskQuotaLimit(t *testing.T, ver MetadataVer) {
 
 	tlfJournal.diskLimiter.onJournalEnable(ctx, 0, math.MaxInt64-6, 0)
 
-	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
+	data1 := []byte{1, 2, 3, 4}
+	putBlock(ctx, t, config, tlfJournal, data1)
 
 	usedQuotaBytes, quotaBytes := tlfJournal.diskLimiter.getQuotaInfo()
-	require.Equal(t, int64(4), usedQuotaBytes)
+	require.Equal(t, int64(math.MaxInt64-6+len(data1)), usedQuotaBytes)
 	require.Equal(t, int64(math.MaxInt64), quotaBytes)
 
+	data2 := []byte{5, 6, 7}
 	errCh := make(chan error, 1)
 	go func() {
-		data2 := []byte{5, 6, 7}
 		id, bCtx, serverHalf := config.makeBlock(data2)
 		errCh <- tlfJournal.putBlockData(
 			ctx, id, bCtx, data2, serverHalf)
@@ -581,7 +582,7 @@ func testTLFJournalBlockOpDiskQuotaLimit(t *testing.T, ver MetadataVer) {
 	}
 
 	usedQuotaBytes, quotaBytes = tlfJournal.diskLimiter.getQuotaInfo()
-	require.Equal(t, int64(3), usedQuotaBytes)
+	require.Equal(t, int64(math.MaxInt64-6+len(data2)), usedQuotaBytes)
 	require.Equal(t, int64(math.MaxInt64), quotaBytes)
 }
 
@@ -599,12 +600,12 @@ func testTLFJournalBlockOpDiskQuotaLimitResolve(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 
 	usedQuotaBytes, quotaBytes := tlfJournal.diskLimiter.getQuotaInfo()
-	require.Equal(t, int64(4), usedQuotaBytes)
+	require.Equal(t, int64(math.MaxInt64-6+len(data1)), usedQuotaBytes)
 	require.Equal(t, int64(math.MaxInt64), quotaBytes)
 
+	data2 := []byte{5, 6, 7}
 	errCh := make(chan error, 1)
 	go func() {
-		data2 := []byte{5, 6, 7}
 		id2, bCtx2, serverHalf2 := config.makeBlock(data2)
 		errCh <- tlfJournal.putBlockData(
 			ctx, id2, bCtx2, data2, serverHalf2)
@@ -636,7 +637,7 @@ func testTLFJournalBlockOpDiskQuotaLimitResolve(t *testing.T, ver MetadataVer) {
 	}
 
 	usedQuotaBytes, quotaBytes = tlfJournal.diskLimiter.getQuotaInfo()
-	require.Equal(t, int64(3), usedQuotaBytes)
+	require.Equal(t, int64(math.MaxInt64-6+len(data2)), usedQuotaBytes)
 	require.Equal(t, int64(math.MaxInt64), quotaBytes)
 }
 
