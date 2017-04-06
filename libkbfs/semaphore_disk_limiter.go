@@ -122,7 +122,7 @@ func (sdl semaphoreDiskLimiter) beforeBlockPut(
 func (sdl semaphoreDiskLimiter) afterBlockPut(
 	ctx context.Context, blockBytes, blockFiles int64, putData bool) {
 	if putData {
-		sdl.quotaSemaphore.Acquire(ctx, blockBytes)
+		sdl.quotaSemaphore.ForceAcquire(blockBytes)
 	} else {
 		sdl.byteSemaphore.Release(blockBytes)
 		sdl.fileSemaphore.Release(blockFiles)
@@ -168,7 +168,9 @@ func (sdl semaphoreDiskLimiter) afterDiskBlockCachePut(ctx context.Context,
 }
 
 func (sdl semaphoreDiskLimiter) getQuotaInfo() (usedQuotaBytes, quotaBytes int64) {
-	return sdl.quotaSemaphore.Count(), sdl.quotaLimit
+	usedQuotaBytes = sdl.quotaLimit - sdl.quotaSemaphore.Count()
+	quotaBytes = sdl.quotaLimit
+	return usedQuotaBytes, quotaBytes
 }
 
 type semaphoreDiskLimiterStatus struct {
