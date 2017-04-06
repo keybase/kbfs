@@ -575,6 +575,10 @@ func testTLFJournalBlockOpDiskQuotaLimit(t *testing.T, ver MetadataVer) {
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
+
+	usedQuotaBytes, quotaBytes := tlfJournal.diskLimiter.getQuotaInfo()
+	require.Equal(t, int64(3), usedQuotaBytes)
+	require.Equal(t, int64(math.MaxInt64), quotaBytes)
 }
 
 func testTLFJournalBlockOpDiskQuotaLimitResolve(t *testing.T, ver MetadataVer) {
