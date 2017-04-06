@@ -56,7 +56,7 @@ func setupJournalServerTest(t *testing.T) (
 		}
 	}()
 
-	quotaUsage, err = config.MakeDiskLimiter(tempdir)
+	quotaUsage, err = config.EnableDiskLimiter(tempdir)
 	require.NoError(t, err)
 	err = config.EnableJournaling(
 		ctx, tempdir, TLFJournalBackgroundWorkEnabled)

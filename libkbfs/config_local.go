@@ -947,9 +947,15 @@ func (c *ConfigLocal) journalizeBcaches(jServer *JournalServer) error {
 	return nil
 }
 
-// MakeDiskLimiter makes a DiskLimiter for use in journaling and disk caching.
-func (c *ConfigLocal) MakeDiskLimiter(configRoot string) (
+// EnableDiskLimiter fills in c.ciskLimiter for use in journaling and
+// disk caching. It returns the EventuallyConsistentQuotaUsage object
+// used by the disk limiter.
+func (c *ConfigLocal) EnableDiskLimiter(configRoot string) (
 	*EventuallyConsistentQuotaUsage, error) {
+	if c.diskLimiter != nil {
+		return nil, errors.New("c.diskLimiter is already non-nil")
+	}
+
 	// TODO: Ideally, we'd have a shared instance in the Config.
 	quotaUsage := NewEventuallyConsistentQuotaUsage(c, "BDL")
 	params := makeDefaultBackpressureDiskLimiterParams(
