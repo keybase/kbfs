@@ -199,7 +199,7 @@ func TestJournalTrackerCounters(t *testing.T) {
 	jt, err := newJournalTracker(
 		0.1,  // minThreshold
 		0.9,  // maxThreshold
-		0.8,  // quotaMinThreshold
+		1.0,  // quotaMinThreshold
 		1.2,  // quotaMaxThreshold
 		0.15, // journalFrac
 		400,  // byteLimit
