@@ -35,7 +35,7 @@ type FS struct {
 	errLog logger.Logger
 
 	// Protects debugServerListener and debugServer.addr.
-	debugServerLock     sync.Mutex
+	debugServerLock     sync.RWMutex
 	debugServerListener net.Listener
 	// An HTTP server used for debugging. Normally off unless
 	// turned on via enableDebugServer().
@@ -147,7 +147,7 @@ func (tkal tcpKeepAliveListener) Accept() (c net.Conn, err error) {
 	return tc, nil
 }
 
-func (f *FS) debugServerEnabledLocked() error {
+func (f *FS) debugServerEnabledLocked() bool {
 	return len(f.debugServer.Addr) > 0
 }
 
@@ -285,8 +285,18 @@ func (f *FS) WithContext(ctx context.Context) context.Context {
 
 func (f *FS) maybeStartTrace(
 	ctx context.Context, family, title string) context.Context {
-	// TODO: Add options to enable/disable tracing, or adjust
-	// trace detail.
+	f.debugServerLock.RLock()
+	defer f.debugServerLock.RUnlock()
+	if !f.debugServerEnabledLocked() {
+		// Debug server isn't enabled, so no need to trace
+		// anything.
+		//
+		// TODO: Perhaps enable turning on tracing
+		// independently from the debug server, and maybe a
+		// add a way to adjust trace detail.
+		return ctx
+	}
+
 	tr := trace.New(family, title)
 	ctx = trace.NewContext(ctx, tr)
 	return ctx
