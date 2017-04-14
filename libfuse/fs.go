@@ -147,11 +147,15 @@ func (tkal tcpKeepAliveListener) Accept() (c net.Conn, err error) {
 	return tc, nil
 }
 
+func (f *FS) debugServerEnabledLocked() error {
+	return len(f.debugServer.Addr) > 0
+}
+
 func (f *FS) enableDebugServer(ctx context.Context, port uint16) error {
 	f.debugServerLock.Lock()
 	defer f.debugServerLock.Unlock()
 
-	if f.debugServer.Addr != "" {
+	if f.debugServerEnabledLocked() {
 		return errors.Errorf("Debug server already enabled at %s",
 			f.debugServer.Addr)
 	}
@@ -189,7 +193,7 @@ func (f *FS) disableDebugServer(ctx context.Context) error {
 	f.debugServerLock.Lock()
 	defer f.debugServerLock.Unlock()
 
-	if f.debugServer.Addr == "" {
+	if !f.debugServerEnabledLocked() {
 		return errors.New("Debug server already disabled")
 	}
 
