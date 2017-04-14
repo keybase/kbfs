@@ -69,7 +69,8 @@ func makeTraceHandler(renderFn func(http.ResponseWriter, *http.Request, bool)) f
 	}
 }
 
-// NewFS creates an FS
+// NewFS creates an FS. Note that this isn't the only constructor; see
+// makeFS in libfuse/mount_test.go.
 func NewFS(config libkbfs.Config, conn *fuse.Conn, debug bool, platformParams PlatformParams) *FS {
 	log := config.MakeLogger("kbfsfuse")
 	// We need extra depth for errors, so that we can report the line
@@ -148,6 +149,12 @@ func (tkal tcpKeepAliveListener) Accept() (c net.Conn, err error) {
 }
 
 func (f *FS) debugServerEnabledLocked() bool {
+	// This can happen in libfuse tests; see makeFS in
+	// libfuse/mount_test.go.
+	if f.debugServer == nil {
+		return false
+	}
+
 	return len(f.debugServer.Addr) > 0
 }
 
