@@ -1488,8 +1488,15 @@ type ConflictRenamer interface {
 		string, error)
 }
 
+// Tracer maybe adds traces to contexts.
 type Tracer interface {
+	// MaybeStartTrace, if tracing is on, returns a new context
+	// based on the given one with an attached trace made with the
+	// given family and title. Otherwise, it returns the given
+	// context unchanged.
 	MaybeStartTrace(ctx context.Context, family, title string) context.Context
+	// MaybeFinishTrace, finishes the trace attached to the given
+	// context, if any.
 	MaybeFinishTrace(ctx context.Context, err error)
 }
 
