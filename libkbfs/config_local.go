@@ -843,6 +843,7 @@ func (c *ConfigLocal) SetTraceOptions(enabled bool) {
 	c.traceEnabled = enabled
 }
 
+// MaybeStartTrace implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) MaybeStartTrace(
 	ctx context.Context, family, title string) context.Context {
 	traceEnabled := func() bool {
@@ -859,6 +860,7 @@ func (c *ConfigLocal) MaybeStartTrace(
 	return ctx
 }
 
+// MaybeFinishTrace implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) MaybeFinishTrace(ctx context.Context, err error) {
 	if tr, ok := trace.FromContext(ctx); ok {
 		if err != nil {
