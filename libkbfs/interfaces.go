@@ -1611,6 +1611,12 @@ type Config interface {
 	// objects, which is to use the default registry.
 	MetricsRegistry() metrics.Registry
 	SetMetricsRegistry(metrics.Registry)
+
+	// TraceOptions gets the options for tracing (via x/net/trace).
+	TraceOptions() (enabled bool)
+	// SetTraceOptions set the options for tracing (via x/net/trace).
+	SetTraceOptions(enabled bool)
+
 	// TLFValidDuration is the time TLFs are valid before identification needs to be redone.
 	TLFValidDuration() time.Duration
 	// SetTLFValidDuration sets TLFValidDuration.

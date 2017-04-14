@@ -83,6 +83,9 @@ type ConfigLocal struct {
 	rekeyQueue   RekeyQueue
 	storageRoot  string
 
+	traceLock    sync.RWMutex
+	traceEnabled bool
+
 	qrPeriod                       time.Duration
 	qrUnrefAge                     time.Duration
 	qrMinHeadAge                   time.Duration
@@ -830,6 +833,20 @@ func (c *ConfigLocal) RekeyQueue() RekeyQueue {
 // SetMetricsRegistry implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) SetMetricsRegistry(r metrics.Registry) {
 	c.registry = r
+}
+
+// SetTraceOptions implements the Config interface for ConfigLocal.
+func (c *ConfigLocal) SetTraceOptions(enabled bool) {
+	c.traceLock.Lock()
+	defer c.traceLock.Unlock()
+	c.traceEnabled = enabled
+}
+
+// TraceOptions implements the Config interface for ConfigLocal.
+func (c *ConfigLocal) TraceOptions() (enabled bool) {
+	c.traceLock.RLock()
+	defer c.traceLock.RUnlock()
+	return c.traceEnabled
 }
 
 // SetTLFValidDuration implements the Config interface for ConfigLocal.

@@ -4963,6 +4963,24 @@ func (_mr *_MockConfigRecorder) SetMetricsRegistry(arg0 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetMetricsRegistry", arg0)
 }
 
+func (_m *MockConfig) TraceOptions() bool {
+	ret := _m.ctrl.Call(_m, "TraceOptions")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+func (_mr *_MockConfigRecorder) TraceOptions() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "TraceOptions")
+}
+
+func (_m *MockConfig) SetTraceOptions(enabled bool) {
+	_m.ctrl.Call(_m, "SetTraceOptions", enabled)
+}
+
+func (_mr *_MockConfigRecorder) SetTraceOptions(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetTraceOptions", arg0)
+}
+
 func (_m *MockConfig) TLFValidDuration() time.Duration {
 	ret := _m.ctrl.Call(_m, "TLFValidDuration")
 	ret0, _ := ret[0].(time.Duration)
