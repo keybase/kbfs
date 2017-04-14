@@ -153,8 +153,8 @@ func (f *FS) enableDebugServer(ctx context.Context, port uint16) error {
 	defer f.debugServerLock.Unlock()
 
 	// Note that f.debugServer may be nil if f was created via
-	// makeFS. But we shouldn't be calling this function then
-	// anyway.
+	// makeFS. But in that case we shouldn't be calling this
+	// function then anyway.
 	if f.debugServer.Addr != "" {
 		return errors.Errorf("Debug server already enabled at %s",
 			f.debugServer.Addr)
@@ -198,8 +198,8 @@ func (f *FS) disableDebugServer(ctx context.Context) error {
 	defer f.debugServerLock.Unlock()
 
 	// Note that f.debugServer may be nil if f was created via
-	// makeFS. But we shouldn't be calling this function then
-	// anyway.
+	// makeFS. But in that case we shouldn't be calling this
+	// function then anyway.
 	if f.debugServer.Addr == "" {
 		return errors.New("Debug server already disabled")
 	}
