@@ -35,7 +35,7 @@ type FS struct {
 	errLog logger.Logger
 
 	// Protects debugServerListener and debugServer.addr.
-	debugServerLock     sync.RWMutex
+	debugServerLock     sync.Mutex
 	debugServerListener net.Listener
 	// An HTTP server used for debugging. Normally off unless
 	// turned on via enableDebugServer().
@@ -148,21 +148,14 @@ func (tkal tcpKeepAliveListener) Accept() (c net.Conn, err error) {
 	return tc, nil
 }
 
-func (f *FS) debugServerEnabledLocked() bool {
-	// This can happen in libfuse tests; see makeFS in
-	// libfuse/mount_test.go.
-	if f.debugServer == nil {
-		return false
-	}
-
-	return len(f.debugServer.Addr) > 0
-}
-
 func (f *FS) enableDebugServer(ctx context.Context, port uint16) error {
 	f.debugServerLock.Lock()
 	defer f.debugServerLock.Unlock()
 
-	if f.debugServerEnabledLocked() {
+	// Note that f.debugServer may be nil if f was created via
+	// makeFS. But we shouldn't be calling this function then
+	// anyway.
+	if f.debugServer.Addr != "" {
 		return errors.Errorf("Debug server already enabled at %s",
 			f.debugServer.Addr)
 	}
@@ -193,6 +186,8 @@ func (f *FS) enableDebugServer(ctx context.Context, port uint16) error {
 		f.log.Debug("Debug http server ended with %+v", err)
 	}(f.debugServer, f.debugServerListener)
 
+	// TODO: Perhaps enable turning tracing on and off
+	// independently from the debug server.
 	f.config.SetTraceOptions(true)
 
 	return nil
@@ -202,7 +197,10 @@ func (f *FS) disableDebugServer(ctx context.Context) error {
 	f.debugServerLock.Lock()
 	defer f.debugServerLock.Unlock()
 
-	if !f.debugServerEnabledLocked() {
+	// Note that f.debugServer may be nil if f was created via
+	// makeFS. But we shouldn't be calling this function then
+	// anyway.
+	if f.debugServer.Addr == "" {
 		return errors.New("Debug server already disabled")
 	}
 
