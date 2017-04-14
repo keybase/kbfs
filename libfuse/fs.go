@@ -193,6 +193,8 @@ func (f *FS) enableDebugServer(ctx context.Context, port uint16) error {
 		f.log.Debug("Debug http server ended with %+v", err)
 	}(f.debugServer, f.debugServerListener)
 
+	f.config.SetTraceOptions(true)
+
 	return nil
 }
 
@@ -215,6 +217,8 @@ func (f *FS) disableDebugServer(ctx context.Context) error {
 	// it returns an error.
 	f.debugServer.Addr = ""
 	f.debugServerListener = nil
+
+	f.config.SetTraceOptions(false)
 
 	return err
 }
