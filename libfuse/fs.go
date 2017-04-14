@@ -292,35 +292,6 @@ func (f *FS) WithContext(ctx context.Context) context.Context {
 	return ctx
 }
 
-func (f *FS) maybeStartTrace(
-	ctx context.Context, family, title string) context.Context {
-	f.debugServerLock.RLock()
-	defer f.debugServerLock.RUnlock()
-	if !f.debugServerEnabledLocked() {
-		// Debug server isn't enabled, so no need to trace
-		// anything.
-		//
-		// TODO: Perhaps enable turning on tracing
-		// independently from the debug server, and maybe a
-		// add a way to adjust trace detail.
-		return ctx
-	}
-
-	tr := trace.New(family, title)
-	ctx = trace.NewContext(ctx, tr)
-	return ctx
-}
-
-func (f *FS) maybeFinishTrace(ctx context.Context, err error) {
-	if tr, ok := trace.FromContext(ctx); ok {
-		if err != nil {
-			tr.LazyPrintf("err=%+v", err)
-			tr.SetError()
-		}
-		tr.Finish()
-	}
-}
-
 // Serve FS. Will block.
 func (f *FS) Serve(ctx context.Context) error {
 	srv := fs.New(f.conn, &fs.Config{

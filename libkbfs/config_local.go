@@ -19,6 +19,7 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/shirou/gopsutil/mem"
 	"golang.org/x/net/context"
+	"golang.org/x/net/trace"
 )
 
 const (
@@ -842,11 +843,30 @@ func (c *ConfigLocal) SetTraceOptions(enabled bool) {
 	c.traceEnabled = enabled
 }
 
-// TraceOptions implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) TraceOptions() (enabled bool) {
-	c.traceLock.RLock()
-	defer c.traceLock.RUnlock()
-	return c.traceEnabled
+func (c *ConfigLocal) MaybeStartTrace(
+	ctx context.Context, family, title string) context.Context {
+	traceEnabled := func() bool {
+		c.traceLock.RLock()
+		defer c.traceLock.RUnlock()
+		return c.traceEnabled
+	}()
+	if !traceEnabled {
+		return ctx
+	}
+
+	tr := trace.New(family, title)
+	ctx = trace.NewContext(ctx, tr)
+	return ctx
+}
+
+func (c *ConfigLocal) MaybeFinishTrace(ctx context.Context, err error) {
+	if tr, ok := trace.FromContext(ctx); ok {
+		if err != nil {
+			tr.LazyPrintf("err=%+v", err)
+			tr.SetError()
+		}
+		tr.Finish()
+	}
 }
 
 // SetTLFValidDuration implements the Config interface for ConfigLocal.

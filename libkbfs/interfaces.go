@@ -1488,6 +1488,11 @@ type ConflictRenamer interface {
 		string, error)
 }
 
+type Tracer interface {
+	MaybeStartTrace(ctx context.Context, family, title string) context.Context
+	MaybeFinishTrace(ctx context.Context, err error)
+}
+
 // Config collects all the singleton instance instantiations needed to
 // run KBFS in one place.  The methods below are self-explanatory and
 // do not require comments.
@@ -1506,6 +1511,7 @@ type Config interface {
 	diskBlockCacheSetter
 	clockGetter
 	diskLimiterGetter
+	Tracer
 	KBFSOps() KBFSOps
 	SetKBFSOps(KBFSOps)
 	KBPKI() KBPKI
@@ -1612,8 +1618,6 @@ type Config interface {
 	MetricsRegistry() metrics.Registry
 	SetMetricsRegistry(metrics.Registry)
 
-	// TraceOptions gets the options for tracing (via x/net/trace).
-	TraceOptions() (enabled bool)
 	// SetTraceOptions set the options for tracing (via x/net/trace).
 	SetTraceOptions(enabled bool)
 
