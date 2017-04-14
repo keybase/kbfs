@@ -150,7 +150,11 @@ func (cr *ConflictResolver) cancelExistingLocked(ci conflictInput) bool {
 
 func (cr *ConflictResolver) maybeStartTrace(
 	ctx context.Context, family, title string) context.Context {
-	// TODO: Obey tracing options when we add them.
+	traceEnabled := cr.config.TraceOptions()
+	if !traceEnabled {
+		return ctx
+	}
+
 	tr := trace.New(family, title)
 	ctx = trace.NewContext(ctx, tr)
 	return ctx
