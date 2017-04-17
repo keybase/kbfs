@@ -269,7 +269,7 @@ func (k *KeybaseServiceBase) KeyfamilyChanged(ctx context.Context,
 	return nil
 }
 
-// ReachabilityChanged implements keybase1.ReachabiltyInterface
+// ReachabilityChanged implements keybase1.ReachabiltyInterface.
 func (k *KeybaseServiceBase) ReachabilityChanged(ctx context.Context,
 	reachability keybase1.Reachability) error {
 	k.log.CDebugf(ctx, "CheckReachability invoked: %v", reachability)
@@ -277,12 +277,12 @@ func (k *KeybaseServiceBase) ReachabilityChanged(ctx context.Context,
 	return nil
 }
 
-// StartReachability implements keybase1.ReachabilityInterface
+// StartReachability implements keybase1.ReachabilityInterface.
 func (k *KeybaseServiceBase) StartReachability(ctx context.Context) (res keybase1.Reachability, err error) {
 	return k.CheckReachability(ctx)
 }
 
-// CheckReachability implements keybase1.ReachabilityInterface
+// CheckReachability implements keybase1.ReachabilityInterface.
 func (k *KeybaseServiceBase) CheckReachability(ctx context.Context) (res keybase1.Reachability, err error) {
 	res.Reachable = keybase1.Reachable_NO
 	if k.config.MDServer().IsConnected() {
