@@ -272,6 +272,7 @@ func (k *KeybaseServiceBase) KeyfamilyChanged(ctx context.Context,
 // ReachabilityChanged implements keybase1.ReachabiltyInterface
 func (k *KeybaseServiceBase) ReachabilityChanged(ctx context.Context,
 	reachability keybase1.Reachability) error {
+	k.log.CDebugf(ctx, "CheckReachability invoked: %v", reachability)
 	k.config.MDServer().CheckReachability(ctx)
 	return nil
 }
