@@ -391,14 +391,13 @@ func (md *MDServerRemote) ShouldRetryOnConnect(err error) bool {
 // CheckReachability implements the MDServer interface.
 func (md *MDServerRemote) CheckReachability(ctx context.Context) {
 	conn, err := net.DialTimeout("tcp", md.mdSrvAddr, MdServerPingTimeout)
-	if conn != nil {
-		conn.Close()
-		return
-	}
 	if err != nil {
 		md.log.CDebugf(ctx,
 			"MDServerRemote: CheckReachability(): failed to connect, reconnecting: %s", err.Error())
 		md.initNewConnection()
+	}
+	if conn != nil {
+		conn.Close()
 	}
 }
 
