@@ -360,12 +360,16 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 		Namelen: ^uint32(0),
 		Frsize:  fuseBlockSize,
 	}
+	if _, err := libkbfs.GetCurrentSessionIfPossible(
+		ctx, f.config.KBPKI(), false); err != nil {
+		// If user is not logged in, don't bother getting quota info. Otherwise
+		// reading a public TLF while logged out can fail on macOS.
+		return nil
+	}
 	usageBytes, limitBytes, err := f.quotaUsage.Get(ctx, quotaUsageStaleTolerance)
 	if err != nil {
 		f.log.CDebugf(ctx, "Getting quota usage error: %v", err)
-		// Ignore the error here so Statfs() can succeeded. Otherwise reading a
-		// public TLF while logged out fails on macOS.
-		return nil
+		return err
 	}
 
 	total := getNumBlocksFromSize(uint64(limitBytes))
