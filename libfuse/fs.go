@@ -363,7 +363,9 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 	usageBytes, limitBytes, err := f.quotaUsage.Get(ctx, quotaUsageStaleTolerance)
 	if err != nil {
 		f.log.CDebugf(ctx, "Getting quota usage error: %v", err)
-		return err
+		// Ignore the error here so Statfs() can succeeded. Otherwise reading a
+		// public TLF while logged out fails on macOS.
+		return nil
 	}
 
 	total := getNumBlocksFromSize(uint64(limitBytes))
