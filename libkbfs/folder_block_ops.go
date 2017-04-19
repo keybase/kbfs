@@ -123,6 +123,19 @@ func (si *syncInfo) mergeUnrefCache(md *RootMetadata) {
 	}
 }
 
+type deCacheEntry struct {
+	// dirEntry is the dirty directory entry corresponding to the
+	// BlockPointer that maps to this struct.
+	dirEntry DirEntry
+	// adds is a map of the pointers for new entry names that have
+	// been added to the DirBlock for the BlockPointer that maps to
+	// this struct.
+	adds map[string]BlockPointer
+	// dels is a set of the names that have been removed from the
+	// DirBlock for the BlockPointer that maps to this struct.
+	dels map[string]bool
+}
+
 // folderBlockOps contains all the fields that must be synchronized by
 // blockLock. It will eventually also contain all the methods that
 // must be synchronized by blockLock, so that folderBranchOps will
@@ -202,7 +215,7 @@ type folderBlockOps struct {
 	// For writes and truncates, track the modified (but not yet
 	// committed) directory entries. Maps the entry BlockRef to a
 	// modified entry.
-	deCache map[BlockRef]DirEntry
+	deCache map[BlockRef]deCacheEntry
 
 	// Writes and truncates for blocks that were being sync'd, and
 	// need to be replayed after the sync finishes on top of the new
@@ -803,13 +816,166 @@ func (fbo *folderBlockOps) GetDir(
 	return fbo.getDirLocked(ctx, lState, kmd, dir, rtype)
 }
 
+func (fbo *folderBlockOps) addDirEntryInCacheLocked(lState *lockState, dir path,
+	newName string, newDe DirEntry) {
+	fbo.blockLock.AssertLocked(lState)
+	cacheEntry := fbo.deCache[dir.tailPointer().Ref()]
+	if cacheEntry.adds == nil {
+		cacheEntry.adds = make(map[string]BlockPointer)
+	}
+	cacheEntry.adds[newName] = newDe.BlockPointer
+	// In case it was removed in the cache but not flushed yet.
+	delete(cacheEntry.dels, newName)
+	fbo.deCache[dir.tailPointer().Ref()] = cacheEntry
+}
+
+// AddDirEntryInCache adds a brand new entry to the given directory in
+// the cache, which will get applied to the dirty block on subsequent
+// fetches for the directory.  The new entry must not yet have a cache
+// entry itself.
+func (fbo *folderBlockOps) AddDirEntryInCache(lState *lockState, dir path,
+	newName string, newDe DirEntry) {
+	fbo.blockLock.Lock(lState)
+	defer fbo.blockLock.Unlock(lState)
+	fbo.addDirEntryInCacheLocked(lState, dir, newName, newDe)
+	// Add target dir entry as well.
+	if newDe.IsInitialized() {
+		cacheEntry, ok := fbo.deCache[newDe.Ref()]
+		if ok {
+			panic("New entry shouldn't already exist")
+		}
+		cacheEntry.dirEntry = newDe
+		fbo.deCache[newDe.Ref()] = cacheEntry
+	}
+}
+
+func (fbo *folderBlockOps) removeDirEntryInCacheLocked(lState *lockState,
+	dir path, oldName string) {
+	fbo.blockLock.AssertLocked(lState)
+	cacheEntry := fbo.deCache[dir.tailPointer().Ref()]
+	if cacheEntry.dels == nil {
+		cacheEntry.dels = make(map[string]bool)
+	}
+	cacheEntry.dels[oldName] = true
+	// In case it was added in the cache but not flushed yet.
+	delete(cacheEntry.adds, oldName)
+	fbo.deCache[dir.tailPointer().Ref()] = cacheEntry
+}
+
+// RemoveDirEntryInCache removes an entry from the given directory in
+// the cache, which will get applied to the dirty block on subsequent
+// fetches for the directory.
+func (fbo *folderBlockOps) RemoveDirEntryInCache(lState *lockState, dir path,
+	oldName string) {
+	fbo.blockLock.Lock(lState)
+	defer fbo.blockLock.Unlock(lState)
+	fbo.removeDirEntryInCacheLocked(lState, dir, oldName)
+}
+
+// RenameDirEntryInCache updates the entries of both the old and new
+// parent dirs for the given target dir atomically (with respect to
+// blockLock).  It also updates the cache entry for the target, which
+// would have its Ctime changed. The updates will get applied to the
+// dirty blocks on subsequent fetches.
+//
+// The returned bool indicates whether or not the caller should clean
+// up the target cache entry when the effects of the operation are no
+// longer needed.
+func (fbo *folderBlockOps) RenameDirEntryInCache(lState *lockState,
+	oldParent path, oldName string, newParent path, newName string,
+	newDe DirEntry) (deleteTargetDirEntry bool) {
+	fbo.blockLock.Lock(lState)
+	defer fbo.blockLock.Unlock(lState)
+	fbo.addDirEntryInCacheLocked(lState, newParent, newName, newDe)
+	fbo.removeDirEntryInCacheLocked(lState, oldParent, oldName)
+	// If there's already an entry for the target, only update the
+	// Ctime on a rename.
+	cacheEntry, ok := fbo.deCache[newDe.Ref()]
+	if ok && cacheEntry.dirEntry.IsInitialized() {
+		cacheEntry.dirEntry.Ctime = newDe.Ctime
+	} else {
+		cacheEntry.dirEntry = newDe
+		deleteTargetDirEntry = true
+	}
+	fbo.deCache[newDe.Ref()] = cacheEntry
+	return deleteTargetDirEntry
+}
+
+func (fbo *folderBlockOps) setCachedAttrLocked(
+	lState *lockState, ref BlockRef, attr attrChange, realEntry *DirEntry,
+	doCreate bool) {
+	fbo.blockLock.AssertLocked(lState)
+	fileEntry, ok := fbo.deCache[ref]
+	if !ok {
+		if !doCreate {
+			return
+		}
+		fileEntry.dirEntry = *realEntry
+	}
+
+	switch attr {
+	case exAttr:
+		fileEntry.dirEntry.Type = realEntry.Type
+	case mtimeAttr:
+		fileEntry.dirEntry.Mtime = realEntry.Mtime
+	}
+	fileEntry.dirEntry.Ctime = realEntry.Ctime
+	fbo.deCache[ref] = fileEntry
+}
+
+// SetAttrInDirEntryInCache removes an entry from the given directory
+// in the cache, which will get applied to the dirty block on
+// subsequent fetches for the directory.
+//
+// The returned bool indicates whether or not the caller should clean
+// up the cache entry when the effects of the operation are no longer
+// needed.
+func (fbo *folderBlockOps) SetAttrInDirEntryInCache(lState *lockState,
+	newDe DirEntry, attr attrChange) (deleteTargetDirEntry bool) {
+	fbo.blockLock.Lock(lState)
+	defer fbo.blockLock.Unlock(lState)
+	// If there's already an entry for the target, only update the
+	// Ctime on a rename.
+	_, ok := fbo.deCache[newDe.Ref()]
+	if !ok {
+		deleteTargetDirEntry = true
+	}
+	fbo.setCachedAttrLocked(
+		lState, newDe.Ref(), attr, &newDe,
+		true /* create the deCache entry if it doesn't exist yet */)
+	return deleteTargetDirEntry
+}
+
+// ClearCachedAddsAndRemoves clears out any cached directory entry
+// adds and removes for the given dir.
+func (fbo *folderBlockOps) ClearCachedAddsAndRemoves(
+	lState *lockState, dir path) {
+	fbo.blockLock.Lock(lState)
+	defer fbo.blockLock.Unlock(lState)
+	cacheEntry, ok := fbo.deCache[dir.tailPointer().Ref()]
+	if !ok {
+		return
+	}
+
+	// If there's no dirEntry, we can just delete the whole thing.
+	if !cacheEntry.dirEntry.IsInitialized() {
+		delete(fbo.deCache, dir.tailPointer().Ref())
+		return
+	}
+
+	// Otherwise just nil out the adds and dels.
+	cacheEntry.adds = nil
+	cacheEntry.dels = nil
+	fbo.deCache[dir.tailPointer().Ref()] = cacheEntry
+}
+
 // updateWithDirtyEntriesLocked checks if the given DirBlock has any
 // entries that are in deCache (i.e., entries pointing to dirty
 // files). If so, it makes a copy with all such entries replaced with
 // the ones in deCache and returns it. If not, it just returns the
 // given one.
 func (fbo *folderBlockOps) updateWithDirtyEntriesLocked(ctx context.Context,
-	lState *lockState, block *DirBlock) (*DirBlock, error) {
+	lState *lockState, dir path, dblock *DirBlock) (*DirBlock, error) {
 	fbo.blockLock.AssertAnyLocked(lState)
 	// see if this directory has any outstanding writes/truncates that
 	// require an updated DirEntry
@@ -817,25 +983,69 @@ func (fbo *folderBlockOps) updateWithDirtyEntriesLocked(ctx context.Context,
 	// Save some time for the common case of having no dirty
 	// files.
 	if len(fbo.deCache) == 0 {
-		return block, nil
+		return dblock, nil
 	}
 
 	var dblockCopy *DirBlock
-	for k, v := range block.Children {
+	dirCacheEntry := fbo.deCache[dir.tailPointer().Ref()]
+
+	// TODO: We should get rid of deCache completely and use only
+	// DirtyBlockCache to store the dirtied version of the DirBlock.
+	// We can't do that yet, because there might be multiple
+	// outstanding dirty files in one directory, and the KBFSOps API
+	// allows for syncing one at a time, so keeping a single dirtied
+	// DirBlock would accidentally sync the DirEntry of file A when a
+	// sync of file B is requested.
+	//
+	// Soon a sync will sync everything that's dirty at once, and so
+	// we can remove deCache at that point.  Until then, we must
+	// incrementally build it up each time.
+
+	// Add cached additions to the copy.
+	for k, ptr := range dirCacheEntry.adds {
+		de, ok := fbo.deCache[ptr.Ref()]
+		if !ok {
+			return nil, fmt.Errorf("No cached dir entry found for new entry "+
+				"%s in dir %s (%v)", k, dir, dir.tailPointer())
+		}
+
+		if dblockCopy == nil {
+			dblockCopy = dblock.DeepCopy()
+		}
+
+		dblockCopy.Children[k] = de.dirEntry
+	}
+
+	// Remove cached removals from the copy.
+	for k := range dirCacheEntry.adds {
+		_, ok := dblock.Children[k]
+		if !ok {
+			continue
+		}
+
+		if dblockCopy == nil {
+			dblockCopy = dblock.DeepCopy()
+		}
+
+		delete(dblockCopy.Children, k)
+	}
+
+	// Update dir entries for any modified files.
+	for k, v := range dblock.Children {
 		de, ok := fbo.deCache[v.Ref()]
 		if !ok {
 			continue
 		}
 
 		if dblockCopy == nil {
-			dblockCopy = block.DeepCopy()
+			dblockCopy = dblock.DeepCopy()
 		}
 
-		dblockCopy.Children[k] = de
+		dblockCopy.Children[k] = de.dirEntry
 	}
 
 	if dblockCopy == nil {
-		return block, nil
+		return dblock, nil
 	}
 
 	return dblockCopy, nil
@@ -855,7 +1065,7 @@ func (fbo *folderBlockOps) getDirtyDirLocked(ctx context.Context,
 		return nil, err
 	}
 
-	return fbo.updateWithDirtyEntriesLocked(ctx, lState, dblock)
+	return fbo.updateWithDirtyEntriesLocked(ctx, lState, dir, dblock)
 }
 
 // GetDirtyDirChildren returns a map of EntryInfos for the (possibly
@@ -866,12 +1076,7 @@ func (fbo *folderBlockOps) GetDirtyDirChildren(
 	dblock, err := func() (*DirBlock, error) {
 		fbo.blockLock.RLock(lState)
 		defer fbo.blockLock.RUnlock(lState)
-		dblock, err := fbo.getDirtyDirLocked(
-			ctx, lState, kmd, dir, blockRead)
-		if err != nil {
-			return nil, err
-		}
-		return dblock, nil
+		return fbo.getDirtyDirLocked(ctx, lState, kmd, dir, blockRead)
 	}()
 	if err != nil {
 		return nil, err
@@ -1417,7 +1622,9 @@ func (fbo *folderBlockOps) writeDataLocked(
 	// the `deCache` is used to determine whether there are any dirty
 	// files.  TODO: combine `deCache` with `dirtyFiles` and
 	// `unrefCache`.
-	fbo.deCache[file.tailPointer().Ref()] = newDe
+	cacheEntry := fbo.deCache[file.tailPointer().Ref()]
+	cacheEntry.dirEntry = newDe
+	fbo.deCache[file.tailPointer().Ref()] = cacheEntry
 
 	if fbo.doDeferWrite {
 		df.addDeferredNewBytes(bytesExtended)
@@ -1526,7 +1733,9 @@ func (fbo *folderBlockOps) truncateExtendLocked(
 	if err != nil {
 		return WriteRange{}, nil, err
 	}
-	fbo.deCache[file.tailPointer().Ref()] = newDe
+	cacheEntry := fbo.deCache[file.tailPointer().Ref()]
+	cacheEntry.dirEntry = newDe
+	fbo.deCache[file.tailPointer().Ref()] = cacheEntry
 
 	si, err := fbo.getOrCreateSyncInfoLocked(lState, de)
 	if err != nil {
@@ -1624,7 +1833,9 @@ func (fbo *folderBlockOps) truncateLocked(
 	df.updateNotYetSyncingBytes(newlyDirtiedChildBytes)
 
 	latestWrite := si.op.addTruncate(size)
-	fbo.deCache[file.tailPointer().Ref()] = newDe
+	cacheEntry := fbo.deCache[file.tailPointer().Ref()]
+	cacheEntry.dirEntry = newDe
+	fbo.deCache[file.tailPointer().Ref()] = cacheEntry
 
 	return &latestWrite, dirtyPtrs, newlyDirtiedChildBytes, nil
 }
@@ -2020,7 +2231,7 @@ func (fbo *folderBlockOps) startSyncWrite(ctx context.Context,
 	// Capture the current de before we release the block lock, so
 	// other deferred writes don't slip in.
 	if de, ok := fbo.deCache[fileRef]; ok {
-		dirtyDe = &de
+		dirtyDe = &de.dirEntry
 	}
 
 	// Leave a copy of the syncOp in `unrefCache`, since it may be
@@ -2665,27 +2876,11 @@ func (fbo *folderBlockOps) getUndirtiedEntry(
 }
 
 func (fbo *folderBlockOps) setCachedAttr(
-	ctx context.Context, lState *lockState,
-	ref BlockRef, op *setAttrOp, realEntry *DirEntry, doCreate bool) {
+	lState *lockState, ref BlockRef, attr attrChange, realEntry *DirEntry,
+	doCreate bool) {
 	fbo.blockLock.Lock(lState)
 	defer fbo.blockLock.Unlock(lState)
-
-	fileEntry, ok := fbo.deCache[ref]
-	if !ok {
-		if !doCreate {
-			return
-		}
-		fileEntry = *realEntry
-	}
-
-	switch op.Attr {
-	case exAttr:
-		fileEntry.Type = realEntry.Type
-	case mtimeAttr:
-		fileEntry.Mtime = realEntry.Mtime
-	}
-	fileEntry.Ctime = realEntry.Ctime
-	fbo.deCache[ref] = fileEntry
+	fbo.setCachedAttrLocked(lState, ref, attr, realEntry, doCreate)
 }
 
 // UpdateCachedEntryAttributes updates any cached entry for the given
@@ -2720,7 +2915,7 @@ func (fbo *folderBlockOps) UpdateCachedEntryAttributes(
 	}
 
 	if cleanEntry != nil {
-		fbo.setCachedAttr(ctx, lState, de.Ref(), op, cleanEntry, false)
+		fbo.setCachedAttr(lState, de.Ref(), op.Attr, cleanEntry, false)
 	}
 
 	return childNode, nil
@@ -2733,7 +2928,7 @@ func (fbo *folderBlockOps) UpdateCachedEntryAttributes(
 // file handle, which will clear out the entry.
 func (fbo *folderBlockOps) UpdateCachedEntryAttributesOnRemovedFile(
 	ctx context.Context, lState *lockState, op *setAttrOp, de DirEntry) {
-	fbo.setCachedAttr(ctx, lState, de.Ref(), op, &de, true)
+	fbo.setCachedAttr(lState, de.Ref(), op.Attr, &de, true)
 }
 
 func (fbo *folderBlockOps) getDeferredWriteCountForTest(lState *lockState) int {

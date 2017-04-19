@@ -20,6 +20,7 @@ import (
 	"github.com/keybase/kbfs/kbfshash"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
+	metrics "github.com/rcrowley/go-metrics"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/syndtr/goleveldb/leveldb/util"
@@ -61,6 +62,15 @@ type DiskBlockCacheStandard struct {
 	// Track the aggregate size of blocks in the cache per TLF and overall.
 	tlfSizes  map[tlf.ID]uint64
 	currBytes uint64
+	// Track the cache hit rate and eviction rate
+	hitMeter         metrics.Meter
+	missMeter        metrics.Meter
+	putMeter         metrics.Meter
+	updateMeter      metrics.Meter
+	evictCountMeter  metrics.Meter
+	evictSizeMeter   metrics.Meter
+	deleteCountMeter metrics.Meter
+	deleteSizeMeter  metrics.Meter
 	// This protects the disk caches from being shutdown while they're being
 	// accessed.
 	lock    sync.RWMutex
@@ -68,13 +78,45 @@ type DiskBlockCacheStandard struct {
 	metaDb  *leveldb.DB
 	tlfDb   *leveldb.DB
 
-	compactCh  chan struct{}
 	startedCh  chan struct{}
 	startErrCh chan struct{}
 	shutdownCh chan struct{}
 }
 
 var _ DiskBlockCache = (*DiskBlockCacheStandard)(nil)
+
+// MeterStatus represents the status of a rate meter.
+type MeterStatus struct {
+	Minutes1  float64
+	Minutes5  float64
+	Minutes15 float64
+	Mean      float64
+}
+
+func rateMeterToStatus(m metrics.Meter) MeterStatus {
+	return MeterStatus{
+		m.Rate1(),
+		m.Rate5(),
+		m.Rate15(),
+		m.RateMean(),
+	}
+}
+
+// DiskBlockCacheStatus represents the status of the disk cache.
+type DiskBlockCacheStatus struct {
+	IsStarting      bool
+	NumBlocks       uint64
+	BlockBytes      uint64
+	CurrByteLimit   uint64
+	Hits            MeterStatus
+	Misses          MeterStatus
+	Puts            MeterStatus
+	MetadataUpdates MeterStatus
+	NumEvicted      MeterStatus
+	SizeEvicted     MeterStatus
+	NumDeleted      MeterStatus
+	SizeDeleted     MeterStatus
+}
 
 // openLevelDB opens or recovers a leveldb.DB with a passed-in storage.Storage
 // as its underlying storage layer.
@@ -136,22 +178,28 @@ func newDiskBlockCacheStandardFromStorage(config diskBlockCacheConfig,
 	if err != nil {
 		return nil, err
 	}
-	compactCh := make(chan struct{}, 1)
 	startedCh := make(chan struct{})
 	startErrCh := make(chan struct{})
 	cache = &DiskBlockCacheStandard{
-		config:     config,
-		maxBlockID: maxBlockID.Bytes(),
-		tlfCounts:  map[tlf.ID]int{},
-		tlfSizes:   map[tlf.ID]uint64{},
-		log:        log,
-		blockDb:    blockDb,
-		metaDb:     metaDb,
-		tlfDb:      tlfDb,
-		compactCh:  compactCh,
-		startedCh:  startedCh,
-		startErrCh: startErrCh,
-		shutdownCh: make(chan struct{}),
+		config:           config,
+		maxBlockID:       maxBlockID.Bytes(),
+		tlfCounts:        map[tlf.ID]int{},
+		tlfSizes:         map[tlf.ID]uint64{},
+		hitMeter:         metrics.NewMeter(),
+		missMeter:        metrics.NewMeter(),
+		putMeter:         metrics.NewMeter(),
+		updateMeter:      metrics.NewMeter(),
+		evictCountMeter:  metrics.NewMeter(),
+		evictSizeMeter:   metrics.NewMeter(),
+		deleteCountMeter: metrics.NewMeter(),
+		deleteSizeMeter:  metrics.NewMeter(),
+		log:              log,
+		blockDb:          blockDb,
+		metaDb:           metaDb,
+		tlfDb:            tlfDb,
+		startedCh:        startedCh,
+		startErrCh:       startErrCh,
+		shutdownCh:       make(chan struct{}),
 	}
 	// Sync the block counts asynchronously so syncing doesn't block init.
 	// Since this method blocks, any Get or Put requests to the disk block
@@ -165,8 +213,14 @@ func newDiskBlockCacheStandardFromStorage(config diskBlockCacheConfig,
 				"block counts from DB: %+v", err)
 			return
 		}
-		// Only enable compaction after the block counts have been synced.
-		compactCh <- struct{}{}
+		diskLimiter := cache.config.DiskLimiter()
+		if diskLimiter != nil {
+			// Notify the disk limiter of the disk cache's size once we've
+			// determined it.
+			ctx := context.Background()
+			cache.config.DiskLimiter().onDiskBlockCacheEnable(ctx,
+				int64(cache.currBytes))
+		}
 		close(startedCh)
 	}()
 	return cache, nil
@@ -311,11 +365,12 @@ func (*DiskBlockCacheStandard) tlfKey(tlfID tlf.ID, blockKey []byte) []byte {
 // updateMetadataLocked updates the LRU time of a block in the LRU cache to
 // the current time.
 func (cache *DiskBlockCacheStandard) updateMetadataLocked(ctx context.Context,
-	tlfID tlf.ID, blockKey []byte, encodeLen int) error {
+	tlfID tlf.ID, blockKey []byte, encodeLen int, hasPrefetched bool) error {
 	metadata := diskBlockCacheMetadata{
-		TlfID:     tlfID,
-		LRUTime:   cache.config.Clock().Now(),
-		BlockSize: uint32(encodeLen),
+		TlfID:         tlfID,
+		LRUTime:       cache.config.Clock().Now(),
+		BlockSize:     uint32(encodeLen),
+		HasPrefetched: hasPrefetched,
 	}
 	encodedMetadata, err := cache.config.Codec().Encode(&metadata)
 	if err != nil {
@@ -378,12 +433,13 @@ func (cache *DiskBlockCacheStandard) encodeBlockCacheEntry(buf []byte,
 // Get implements the DiskBlockCache interface for DiskBlockCacheStandard.
 func (cache *DiskBlockCacheStandard) Get(ctx context.Context, tlfID tlf.ID,
 	blockID kbfsblock.ID) (buf []byte,
-	serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
+	serverHalf kbfscrypto.BlockCryptKeyServerHalf, hasPrefetched bool,
+	err error) {
 	select {
 	case <-cache.startedCh:
 	default:
 		// If the cache hasn't started yet, pretend like no blocks exist.
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, false,
 			DiskCacheStartingError{"Get"}
 	}
 	cache.lock.RLock()
@@ -391,29 +447,40 @@ func (cache *DiskBlockCacheStandard) Get(ctx context.Context, tlfID tlf.ID,
 	// shutdownCh has to be checked under lock, otherwise we can race.
 	select {
 	case <-cache.shutdownCh:
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, false,
 			DiskCacheClosedError{"Get"}
 	default:
 	}
 	if cache.blockDb == nil {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, false,
 			errors.WithStack(DiskCacheClosedError{"Get"})
 	}
 	defer func() {
 		cache.log.CDebugf(ctx, "Cache Get id=%s tlf=%s bSize=%d err=%+v",
 			blockID, tlfID, len(buf), err)
+		if err == nil {
+			cache.hitMeter.Mark(1)
+		} else {
+			cache.missMeter.Mark(1)
+		}
 	}()
 	blockKey := blockID.Bytes()
 	entry, err := cache.blockDb.Get(blockKey, nil)
 	if err != nil {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{},
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, false,
 			NoSuchBlockError{blockID}
 	}
-	err = cache.updateMetadataLocked(ctx, tlfID, blockKey, len(entry))
+	md, err := cache.getMetadata(blockID)
 	if err != nil {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, false, err
 	}
-	return cache.decodeBlockCacheEntry(entry)
+	err = cache.updateMetadataLocked(ctx, tlfID, blockKey, len(entry),
+		md.HasPrefetched)
+	if err != nil {
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, false, err
+	}
+	buf, serverHalf, err = cache.decodeBlockCacheEntry(entry)
+	return buf, serverHalf, md.HasPrefetched, err
 }
 
 // Put implements the DiskBlockCache interface for DiskBlockCacheStandard.
@@ -446,6 +513,9 @@ func (cache *DiskBlockCacheStandard) Put(ctx context.Context, tlfID tlf.ID,
 	defer func() {
 		cache.log.CDebugf(ctx, "Cache Put id=%s tlf=%s bSize=%d entrySize=%d "+
 			"err=%+v", blockID, tlfID, blockLen, encodedLen, err)
+		if err == nil {
+			cache.putMeter.Mark(1)
+		}
 	}()
 	blockKey := blockID.Bytes()
 	hasKey, err := cache.blockDb.Has(blockKey, nil)
@@ -511,13 +581,15 @@ func (cache *DiskBlockCacheStandard) Put(ctx context.Context, tlfID tlf.ID,
 				"Error writing to TLF cache database: %+v", err)
 		}
 	}
-	return cache.updateMetadataLocked(ctx, tlfID, blockKey, int(encodedLen))
+	// Initially set HasPrefetched to false; rely on UpdateMetadata to fix it.
+	return cache.updateMetadataLocked(ctx, tlfID, blockKey, int(encodedLen),
+		false)
 }
 
-// UpdateLRUTime implements the DiskBlockCache interface for
+// UpdateMetadata implements the DiskBlockCache interface for
 // DiskBlockCacheStandard.
-func (cache *DiskBlockCacheStandard) UpdateLRUTime(ctx context.Context,
-	blockID kbfsblock.ID) (err error) {
+func (cache *DiskBlockCacheStandard) UpdateMetadata(ctx context.Context,
+	blockID kbfsblock.ID, hasPrefetched bool) (err error) {
 	select {
 	case <-cache.startedCh:
 	default:
@@ -525,10 +597,6 @@ func (cache *DiskBlockCacheStandard) UpdateLRUTime(ctx context.Context,
 		return DiskCacheStartingError{"UpdateLRUTime"}
 	}
 	var md diskBlockCacheMetadata
-	defer func() {
-		cache.log.CDebugf(ctx, "Cache UpdateLRUTime id=%s entrySize=%d "+
-			"err=%+v", blockID, md.BlockSize, err)
-	}()
 	// Only obtain a read lock because this happens on Get, not on Put.
 	cache.lock.RLock()
 	defer cache.lock.RUnlock()
@@ -538,12 +606,17 @@ func (cache *DiskBlockCacheStandard) UpdateLRUTime(ctx context.Context,
 		return DiskCacheClosedError{"UpdateLRUTime"}
 	default:
 	}
+	defer func() {
+		if err == nil {
+			cache.updateMeter.Mark(1)
+		}
+	}()
 	md, err = cache.getMetadata(blockID)
 	if err != nil {
 		return NoSuchBlockError{blockID}
 	}
 	return cache.updateMetadataLocked(ctx, md.TlfID, blockID.Bytes(),
-		int(md.BlockSize))
+		int(md.BlockSize), hasPrefetched)
 }
 
 // Size implements the DiskBlockCache interface for DiskBlockCacheStandard.
@@ -572,6 +645,12 @@ func (cache *DiskBlockCacheStandard) deleteLocked(ctx context.Context,
 	if len(blockEntries) == 0 {
 		return 0, 0, nil
 	}
+	defer func() {
+		if err == nil {
+			cache.deleteCountMeter.Mark(int64(numRemoved))
+			cache.deleteSizeMeter.Mark(sizeRemoved)
+		}
+	}()
 	blockBatch := new(leveldb.Batch)
 	metadataBatch := new(leveldb.Batch)
 	tlfBatch := new(leveldb.Batch)
@@ -667,9 +746,17 @@ func (*DiskBlockCacheStandard) getRandomBlockID(numElements,
 	return kbfsblock.MakeRandomIDInRange(0, pivot)
 }
 
+// evictSomeBlocks tries to evict `numBlocks` blocks from the cache. If
+// `blockIDs` doesn't have enough blocks, we evict them all and report how many
+// we evicted.
 func (cache *DiskBlockCacheStandard) evictSomeBlocks(ctx context.Context,
 	numBlocks int, blockIDs blockIDsByTime) (numRemoved int, sizeRemoved int64,
 	err error) {
+	defer func() {
+		cache.log.CDebugf(ctx, "Cache evictSomeBlocks numBlocksRequested=%d "+
+			"numBlocksEvicted=%d sizeBlocksEvicted=%d err=%+v", numBlocks,
+			numRemoved, sizeRemoved, err)
+	}()
 	if len(blockIDs) <= numBlocks {
 		numBlocks = len(blockIDs)
 	} else {
@@ -736,6 +823,12 @@ func (cache *DiskBlockCacheStandard) evictFromTLFLocked(ctx context.Context,
 // on that list of block IDs.
 func (cache *DiskBlockCacheStandard) evictLocked(ctx context.Context,
 	numBlocks int) (numRemoved int, sizeRemoved int64, err error) {
+	defer func() {
+		if err == nil {
+			cache.evictCountMeter.Mark(int64(numRemoved))
+			cache.evictSizeMeter.Mark(sizeRemoved)
+		}
+	}()
 	numElements := numBlocks * evictionConsiderationFactor
 	blockID, err := cache.getRandomBlockID(numElements, cache.numBlocks)
 	if err != nil {
@@ -771,6 +864,32 @@ func (cache *DiskBlockCacheStandard) evictLocked(ctx context.Context,
 	return cache.evictSomeBlocks(ctx, numBlocks, blockIDs)
 }
 
+// Status implements the DiskBlockCache interface for DiskBlockCacheStandard.
+func (cache *DiskBlockCacheStandard) Status() *DiskBlockCacheStatus {
+	select {
+	case <-cache.startedCh:
+	default:
+		return &DiskBlockCacheStatus{IsStarting: true}
+	}
+	cache.lock.RLock()
+	defer cache.lock.RUnlock()
+	limiterStatus :=
+		cache.config.DiskLimiter().getStatus().(backpressureDiskLimiterStatus)
+	return &DiskBlockCacheStatus{
+		NumBlocks:       uint64(cache.numBlocks),
+		BlockBytes:      cache.currBytes,
+		CurrByteLimit:   uint64(limiterStatus.DiskCacheByteStatus.Max),
+		Hits:            rateMeterToStatus(cache.hitMeter),
+		Misses:          rateMeterToStatus(cache.missMeter),
+		Puts:            rateMeterToStatus(cache.putMeter),
+		MetadataUpdates: rateMeterToStatus(cache.updateMeter),
+		NumEvicted:      rateMeterToStatus(cache.evictCountMeter),
+		SizeEvicted:     rateMeterToStatus(cache.evictSizeMeter),
+		NumDeleted:      rateMeterToStatus(cache.deleteCountMeter),
+		SizeDeleted:     rateMeterToStatus(cache.deleteSizeMeter),
+	}
+}
+
 // Shutdown implements the DiskBlockCache interface for DiskBlockCacheStandard.
 func (cache *DiskBlockCacheStandard) Shutdown(ctx context.Context) {
 	// Wait for the cache to either finish starting or error.
@@ -779,8 +898,6 @@ func (cache *DiskBlockCacheStandard) Shutdown(ctx context.Context) {
 	case <-cache.startErrCh:
 		return
 	}
-	// Receive from the compactCh sentinel to wait for pending compactions.
-	<-cache.compactCh
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 	// shutdownCh has to be checked under lock, otherwise we can race.
@@ -800,9 +917,14 @@ func (cache *DiskBlockCacheStandard) Shutdown(ctx context.Context) {
 	cache.blockDb = nil
 	err = cache.metaDb.Close()
 	if err != nil {
-		cache.log.CWarningf(ctx, "Error closing blockDb: %+v", err)
+		cache.log.CWarningf(ctx, "Error closing metaDb: %+v", err)
 	}
 	cache.metaDb = nil
+	err = cache.tlfDb.Close()
+	if err != nil {
+		cache.log.CWarningf(ctx, "Error closing tlfDb: %+v", err)
+	}
+	cache.tlfDb = nil
 	cache.config.DiskLimiter().onDiskBlockCacheDisable(ctx,
 		int64(cache.currBytes))
 }

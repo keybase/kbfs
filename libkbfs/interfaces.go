@@ -836,17 +836,21 @@ type DirtyBlockCache interface {
 type DiskBlockCache interface {
 	// Get gets a block from the disk cache.
 	Get(ctx context.Context, tlfID tlf.ID, blockID kbfsblock.ID) (
-		[]byte, kbfscrypto.BlockCryptKeyServerHalf, error)
+		buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf,
+		hasPrefetched bool, err error)
 	// Put puts a block to the disk cache.
 	Put(ctx context.Context, tlfID tlf.ID, blockID kbfsblock.ID, buf []byte,
 		serverHalf kbfscrypto.BlockCryptKeyServerHalf) error
 	// Delete deletes some blocks from the disk cache.
 	Delete(ctx context.Context, blockIDs []kbfsblock.ID) (numRemoved int,
 		sizeRemoved int64, err error)
-	// UpdateLRUTime updates the LRU time to Now() for a given block.
-	UpdateLRUTime(ctx context.Context, blockID kbfsblock.ID) error
+	// UpdateMetadata updates the LRU time to Now() for a given block.
+	UpdateMetadata(ctx context.Context, blockID kbfsblock.ID,
+		hasPrefetched bool) error
 	// Size returns the size in bytes of the disk cache.
 	Size() int64
+	// Status returns the current status of the disk cache.
+	Status() *DiskBlockCacheStatus
 	// Shutdown cleanly shuts down the disk block cache.
 	Shutdown(ctx context.Context)
 }
@@ -1274,6 +1278,10 @@ type MDServer interface {
 	GetKeyBundles(ctx context.Context, tlfID tlf.ID,
 		wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 		*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error)
+
+	// CheckReachability is called when the Keybase service sends a notification
+	// that network connectivity has changed.
+	CheckReachability(ctx context.Context)
 }
 
 type mdServerLocal interface {
@@ -1488,6 +1496,18 @@ type ConflictRenamer interface {
 		string, error)
 }
 
+// Tracer maybe adds traces to contexts.
+type Tracer interface {
+	// MaybeStartTrace, if tracing is on, returns a new context
+	// based on the given one with an attached trace made with the
+	// given family and title. Otherwise, it returns the given
+	// context unchanged.
+	MaybeStartTrace(ctx context.Context, family, title string) context.Context
+	// MaybeFinishTrace, finishes the trace attached to the given
+	// context, if any.
+	MaybeFinishTrace(ctx context.Context, err error)
+}
+
 // Config collects all the singleton instance instantiations needed to
 // run KBFS in one place.  The methods below are self-explanatory and
 // do not require comments.
@@ -1506,6 +1526,7 @@ type Config interface {
 	diskBlockCacheSetter
 	clockGetter
 	diskLimiterGetter
+	Tracer
 	KBFSOps() KBFSOps
 	SetKBFSOps(KBFSOps)
 	KBPKI() KBPKI
@@ -1611,6 +1632,10 @@ type Config interface {
 	// objects, which is to use the default registry.
 	MetricsRegistry() metrics.Registry
 	SetMetricsRegistry(metrics.Registry)
+
+	// SetTraceOptions set the options for tracing (via x/net/trace).
+	SetTraceOptions(enabled bool)
+
 	// TLFValidDuration is the time TLFs are valid before identification needs to be redone.
 	TLFValidDuration() time.Duration
 	// SetTLFValidDuration sets TLFValidDuration.

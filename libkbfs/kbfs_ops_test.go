@@ -1416,10 +1416,16 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 	var err error
 	switch entryType {
 	case File:
+		id := kbfsblock.FakeID(100)
+		config.mockCrypto.EXPECT().MakeTemporaryBlockID().Return(id, nil)
 		newN, _, err = config.KBFSOps().CreateFile(ctx, n, "b", false, NoExcl)
 	case Exec:
+		id := kbfsblock.FakeID(100)
+		config.mockCrypto.EXPECT().MakeTemporaryBlockID().Return(id, nil)
 		newN, _, err = config.KBFSOps().CreateFile(ctx, n, "b", true, NoExcl)
 	case Dir:
+		id := kbfsblock.FakeID(100)
+		config.mockCrypto.EXPECT().MakeTemporaryBlockID().Return(id, nil)
 		newN, _, err = config.KBFSOps().CreateDir(ctx, n, "b")
 	case Sym:
 		_, err = config.KBFSOps().CreateLink(ctx, n, "b", "c")
@@ -3155,10 +3161,10 @@ func checkSyncOpInCache(t *testing.T, codec kbfscodec.Codec,
 }
 
 func updateWithDirtyEntries(ctx context.Context, ops *folderBranchOps,
-	lState *lockState, block *DirBlock) (*DirBlock, error) {
+	lState *lockState, dir path, block *DirBlock) (*DirBlock, error) {
 	ops.blocks.blockLock.RLock(lState)
 	defer ops.blocks.blockLock.RUnlock(lState)
-	return ops.blocks.updateWithDirtyEntriesLocked(ctx, lState, block)
+	return ops.blocks.updateWithDirtyEntriesLocked(ctx, lState, dir, block)
 }
 
 func TestKBFSOpsWriteNewBlockSuccess(t *testing.T) {
@@ -3204,7 +3210,8 @@ func TestKBFSOpsWriteNewBlockSuccess(t *testing.T) {
 	newRootBlock := getDirBlockFromCache(
 		t, config, id, node.BlockPointer, p.Branch)
 	lState := makeFBOLockState()
-	newRootBlock, err := updateWithDirtyEntries(ctx, ops, lState, newRootBlock)
+	newRootBlock, err := updateWithDirtyEntries(
+		ctx, ops, lState, *p.parentPath(), newRootBlock)
 	require.NoError(t, err)
 
 	if len(ops.nodeCache.PathFromNode(config.observer.localChange).path) !=
@@ -3412,7 +3419,8 @@ func TestKBFSOpsWriteCauseSplit(t *testing.T) {
 	b, _ := config.BlockCache().Get(node.BlockPointer)
 	newRootBlock := b.(*DirBlock)
 	lState := makeFBOLockState()
-	newRootBlock, err := updateWithDirtyEntries(ctx, ops, lState, newRootBlock)
+	newRootBlock, err := updateWithDirtyEntries(
+		ctx, ops, lState, *p.parentPath(), newRootBlock)
 	require.NoError(t, err)
 
 	b, _ = config.DirtyBlockCache().Get(id, fileNode.BlockPointer, p.Branch)
@@ -3617,7 +3625,8 @@ func TestKBFSOpsTruncateToZeroSuccess(t *testing.T) {
 	newRootBlock := getDirBlockFromCache(
 		t, config, id, node.BlockPointer, p.Branch)
 	lState := makeFBOLockState()
-	newRootBlock, err := updateWithDirtyEntries(ctx, ops, lState, newRootBlock)
+	newRootBlock, err := updateWithDirtyEntries(
+		ctx, ops, lState, *p.parentPath(), newRootBlock)
 	require.NoError(t, err)
 
 	if len(ops.nodeCache.PathFromNode(config.observer.localChange).path) !=
@@ -5298,7 +5307,11 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 	go ops.backgroundFlusher(1 * time.Millisecond)
 
 	// Make sure we get the notification
-	<-c
+	select {
+	case <-c:
+	case <-ctx.Done():
+		t.Fatalf("Timeout waiting for signal")
+	}
 
 	// Make sure we get a sync even if we overwrite (not extend) the file
 	data[1] = 0
@@ -5360,7 +5373,9 @@ func TestKBFSOpsWriteRenameStat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't stat file: %+v", err)
 	}
-	if ei != newEi {
+	// CTime is allowed to change after a rename, but nothing else.
+	if ei.Type != newEi.Type || ei.Size != newEi.Size ||
+		ei.Mtime != newEi.Mtime {
 		t.Errorf("Entry info unexpectedly changed from %+v to %+v", ei, newEi)
 	}
 }
@@ -5406,7 +5421,9 @@ func TestKBFSOpsWriteRenameGetDirChildren(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Couldn't stat file: %+v", err)
 	}
-	if ei != eis["b"] {
+	// CTime is allowed to change after a rename, but nothing else.
+	if newEi := eis["b"]; ei.Type != newEi.Type || ei.Size != newEi.Size ||
+		ei.Mtime != newEi.Mtime {
 		t.Errorf("Entry info unexpectedly changed from %+v to %+v",
 			ei, eis["b"])
 	}

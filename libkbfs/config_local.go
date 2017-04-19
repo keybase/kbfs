@@ -19,6 +19,7 @@ import (
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/shirou/gopsutil/mem"
 	"golang.org/x/net/context"
+	"golang.org/x/net/trace"
 )
 
 const (
@@ -82,6 +83,9 @@ type ConfigLocal struct {
 	maxDirBytes  uint64
 	rekeyQueue   RekeyQueue
 	storageRoot  string
+
+	traceLock    sync.RWMutex
+	traceEnabled bool
 
 	qrPeriod                       time.Duration
 	qrUnrefAge                     time.Duration
@@ -213,12 +217,13 @@ func MakeLocalUsers(users []libkb.NormalizedUsername) []LocalUser {
 	return localUsers
 }
 
-// getDefaultCleanBlockCacheCapacity returns the default clean block cache
-// capacity. If we can get total RAM of the system, we cap at the smaller of
-// <1/4 of available memory> and <MaxBlockSizeBytesDefault * 1024>; otherwise,
+// getDefaultCleanBlockCacheCapacity returns the default clean block
+// cache capacity. If we can get total RAM of the system, we cap at
+// the smaller of <1/4 of available memory> and
+// <MaxBlockSizeBytesDefault * DefaultBlocksInMemCache>; otherwise,
 // fallback to latter.
 func getDefaultCleanBlockCacheCapacity() uint64 {
-	capacity := uint64(MaxBlockSizeBytesDefault) * 1024
+	capacity := uint64(MaxBlockSizeBytesDefault) * DefaultBlocksInMemCache
 	vmstat, err := mem.VirtualMemory()
 	if err == nil {
 		ramBased := vmstat.Total / 8
@@ -831,6 +836,41 @@ func (c *ConfigLocal) SetMetricsRegistry(r metrics.Registry) {
 	c.registry = r
 }
 
+// SetTraceOptions implements the Config interface for ConfigLocal.
+func (c *ConfigLocal) SetTraceOptions(enabled bool) {
+	c.traceLock.Lock()
+	defer c.traceLock.Unlock()
+	c.traceEnabled = enabled
+}
+
+// MaybeStartTrace implements the Config interface for ConfigLocal.
+func (c *ConfigLocal) MaybeStartTrace(
+	ctx context.Context, family, title string) context.Context {
+	traceEnabled := func() bool {
+		c.traceLock.RLock()
+		defer c.traceLock.RUnlock()
+		return c.traceEnabled
+	}()
+	if !traceEnabled {
+		return ctx
+	}
+
+	tr := trace.New(family, title)
+	ctx = trace.NewContext(ctx, tr)
+	return ctx
+}
+
+// MaybeFinishTrace implements the Config interface for ConfigLocal.
+func (c *ConfigLocal) MaybeFinishTrace(ctx context.Context, err error) {
+	if tr, ok := trace.FromContext(ctx); ok {
+		if err != nil {
+			tr.LazyPrintf("err=%+v", err)
+			tr.SetError()
+		}
+		tr.Finish()
+	}
+}
+
 // SetTLFValidDuration implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) SetTLFValidDuration(r time.Duration) {
 	c.tlfValidDuration = r
@@ -947,16 +987,30 @@ func (c *ConfigLocal) journalizeBcaches(jServer *JournalServer) error {
 	return nil
 }
 
-// MakeDiskLimiter makes a DiskLimiter for use in journaling and disk caching.
-func (c *ConfigLocal) MakeDiskLimiter(configRoot string) (DiskLimiter, error) {
-	params := makeDefaultBackpressureDiskLimiterParams(configRoot)
+// EnableDiskLimiter fills in c.ciskLimiter for use in journaling and
+// disk caching. It returns the EventuallyConsistentQuotaUsage object
+// used by the disk limiter.
+func (c *ConfigLocal) EnableDiskLimiter(configRoot string) (
+	*EventuallyConsistentQuotaUsage, error) {
+	if c.diskLimiter != nil {
+		return nil, errors.New("c.diskLimiter is already non-nil")
+	}
+
+	// TODO: Ideally, we'd have a shared instance in the Config.
+	quotaUsage := NewEventuallyConsistentQuotaUsage(c, "BDL")
+	params := makeDefaultBackpressureDiskLimiterParams(
+		configRoot, quotaUsage)
 	log := c.MakeLogger("")
 	log.Debug("Setting disk storage byte limit to %d and file limit to %d",
 		params.byteLimit, params.fileLimit)
 	os.MkdirAll(configRoot, 0700)
-	var err error
-	c.diskLimiter, err = newBackpressureDiskLimiter(log, params)
-	return c.diskLimiter, err
+
+	diskLimiter, err := newBackpressureDiskLimiter(log, params)
+	if err != nil {
+		return nil, err
+	}
+	c.diskLimiter = diskLimiter
+	return quotaUsage, err
 }
 
 // EnableJournaling creates a JournalServer and attaches it to
@@ -1030,5 +1084,4 @@ func (c *ConfigLocal) SetDiskBlockCache(dbc DiskBlockCache) {
 		c.diskBlockCache.Shutdown(ctx)
 	}
 	c.diskBlockCache = dbc
-	c.diskLimiter.onDiskBlockCacheEnable(ctx, dbc.Size())
 }

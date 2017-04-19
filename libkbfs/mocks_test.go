@@ -4,6 +4,8 @@
 package libkbfs
 
 import (
+	time "time"
+
 	gomock "github.com/golang/mock/gomock"
 	libkb "github.com/keybase/client/go/libkb"
 	logger "github.com/keybase/client/go/logger"
@@ -14,7 +16,6 @@ import (
 	tlf "github.com/keybase/kbfs/tlf"
 	go_metrics "github.com/rcrowley/go-metrics"
 	context "golang.org/x/net/context"
-	time "time"
 )
 
 // Mock of dataVersioner interface
@@ -2275,12 +2276,13 @@ func (_m *MockDiskBlockCache) EXPECT() *_MockDiskBlockCacheRecorder {
 	return _m.recorder
 }
 
-func (_m *MockDiskBlockCache) Get(ctx context.Context, tlfID tlf.ID, blockID kbfsblock.ID) ([]byte, kbfscrypto.BlockCryptKeyServerHalf, error) {
+func (_m *MockDiskBlockCache) Get(ctx context.Context, tlfID tlf.ID, blockID kbfsblock.ID) ([]byte, kbfscrypto.BlockCryptKeyServerHalf, bool, error) {
 	ret := _m.ctrl.Call(_m, "Get", ctx, tlfID, blockID)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(kbfscrypto.BlockCryptKeyServerHalf)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret2, _ := ret[2].(bool)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
 }
 
 func (_mr *_MockDiskBlockCacheRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.Call {
@@ -2309,14 +2311,14 @@ func (_mr *_MockDiskBlockCacheRecorder) Delete(arg0, arg1 interface{}) *gomock.C
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Delete", arg0, arg1)
 }
 
-func (_m *MockDiskBlockCache) UpdateLRUTime(ctx context.Context, blockID kbfsblock.ID) error {
-	ret := _m.ctrl.Call(_m, "UpdateLRUTime", ctx, blockID)
+func (_m *MockDiskBlockCache) UpdateMetadata(ctx context.Context, blockID kbfsblock.ID, hasPrefetched bool) error {
+	ret := _m.ctrl.Call(_m, "UpdateMetadata", ctx, blockID, hasPrefetched)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockDiskBlockCacheRecorder) UpdateLRUTime(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdateLRUTime", arg0, arg1)
+func (_mr *_MockDiskBlockCacheRecorder) UpdateMetadata(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdateMetadata", arg0, arg1, arg2)
 }
 
 func (_m *MockDiskBlockCache) Size() int64 {
@@ -2327,6 +2329,16 @@ func (_m *MockDiskBlockCache) Size() int64 {
 
 func (_mr *_MockDiskBlockCacheRecorder) Size() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Size")
+}
+
+func (_m *MockDiskBlockCache) Status() *DiskBlockCacheStatus {
+	ret := _m.ctrl.Call(_m, "Status")
+	ret0, _ := ret[0].(*DiskBlockCacheStatus)
+	return ret0
+}
+
+func (_mr *_MockDiskBlockCacheRecorder) Status() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Status")
 }
 
 func (_m *MockDiskBlockCache) Shutdown(ctx context.Context) {
@@ -3436,8 +3448,16 @@ func (_m *MockMDServer) CheckForRekeys(ctx context.Context) <-chan error {
 	return ret0
 }
 
+func (_m *MockMDServer) CheckReachability(ctx context.Context) {
+
+}
+
 func (_mr *_MockMDServerRecorder) CheckForRekeys(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "CheckForRekeys", arg0)
+}
+
+func (_m *_MockMDServerRecorder) CheckReachability(ctx context.Context) {
+
 }
 
 func (_m *MockMDServer) TruncateLock(ctx context.Context, id tlf.ID) (bool, error) {
@@ -3632,6 +3652,10 @@ func (_m *MockmdServerLocal) CheckForRekeys(ctx context.Context) <-chan error {
 
 func (_mr *_MockmdServerLocalRecorder) CheckForRekeys(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "CheckForRekeys", arg0)
+}
+
+func (_m *_MockmdServerLocalRecorder) CheckReachability(ctx context.Context) {
+
 }
 
 func (_m *MockmdServerLocal) TruncateLock(ctx context.Context, id tlf.ID) (bool, error) {
@@ -4262,6 +4286,45 @@ func (_mr *_MockConflictRenamerRecorder) ConflictRename(arg0, arg1, arg2 interfa
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ConflictRename", arg0, arg1, arg2)
 }
 
+// Mock of Tracer interface
+type MockTracer struct {
+	ctrl     *gomock.Controller
+	recorder *_MockTracerRecorder
+}
+
+// Recorder for MockTracer (not exported)
+type _MockTracerRecorder struct {
+	mock *MockTracer
+}
+
+func NewMockTracer(ctrl *gomock.Controller) *MockTracer {
+	mock := &MockTracer{ctrl: ctrl}
+	mock.recorder = &_MockTracerRecorder{mock}
+	return mock
+}
+
+func (_m *MockTracer) EXPECT() *_MockTracerRecorder {
+	return _m.recorder
+}
+
+func (_m *MockTracer) MaybeStartTrace(ctx context.Context, family string, title string) context.Context {
+	ret := _m.ctrl.Call(_m, "MaybeStartTrace", ctx, family, title)
+	ret0, _ := ret[0].(context.Context)
+	return ret0
+}
+
+func (_mr *_MockTracerRecorder) MaybeStartTrace(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaybeStartTrace", arg0, arg1, arg2)
+}
+
+func (_m *MockTracer) MaybeFinishTrace(ctx context.Context, err error) {
+	_m.ctrl.Call(_m, "MaybeFinishTrace", ctx, err)
+}
+
+func (_mr *_MockTracerRecorder) MaybeFinishTrace(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaybeFinishTrace", arg0, arg1)
+}
+
 // Mock of Config interface
 type MockConfig struct {
 	ctrl     *gomock.Controller
@@ -4419,6 +4482,24 @@ func (_m *MockConfig) DiskLimiter() DiskLimiter {
 
 func (_mr *_MockConfigRecorder) DiskLimiter() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "DiskLimiter")
+}
+
+func (_m *MockConfig) MaybeStartTrace(ctx context.Context, family string, title string) context.Context {
+	ret := _m.ctrl.Call(_m, "MaybeStartTrace", ctx, family, title)
+	ret0, _ := ret[0].(context.Context)
+	return ret0
+}
+
+func (_mr *_MockConfigRecorder) MaybeStartTrace(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaybeStartTrace", arg0, arg1, arg2)
+}
+
+func (_m *MockConfig) MaybeFinishTrace(ctx context.Context, err error) {
+	_m.ctrl.Call(_m, "MaybeFinishTrace", ctx, err)
+}
+
+func (_mr *_MockConfigRecorder) MaybeFinishTrace(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "MaybeFinishTrace", arg0, arg1)
 }
 
 func (_m *MockConfig) KBFSOps() KBFSOps {
@@ -4961,6 +5042,14 @@ func (_m *MockConfig) SetMetricsRegistry(_param0 go_metrics.Registry) {
 
 func (_mr *_MockConfigRecorder) SetMetricsRegistry(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetMetricsRegistry", arg0)
+}
+
+func (_m *MockConfig) SetTraceOptions(enabled bool) {
+	_m.ctrl.Call(_m, "SetTraceOptions", enabled)
+}
+
+func (_mr *_MockConfigRecorder) SetTraceOptions(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetTraceOptions", arg0)
 }
 
 func (_m *MockConfig) TLFValidDuration() time.Duration {

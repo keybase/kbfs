@@ -660,7 +660,7 @@ func (fs *KBFSOpsStandard) Status(ctx context.Context) (
 	// requests at once.
 	if err == nil && fs.config.MDServer().IsConnected() {
 		var quErr error
-		usageBytes, limitBytes, quErr = fs.quotaUsage.Get(ctx, 0)
+		_, usageBytes, limitBytes, quErr = fs.quotaUsage.Get(ctx, 0, 0)
 		if quErr != nil {
 			// The error is ignored here so that other fields can still be populated
 			// even if this fails.
@@ -678,6 +678,15 @@ func (fs *KBFSOpsStandard) Status(ctx context.Context) (
 		if err != nil {
 			return KBFSStatus{}, nil, err
 		}
+		if usageBytes >= 0 {
+			usageBytes += status.UnflushedBytes
+		}
+	}
+
+	dbc := fs.config.DiskBlockCache()
+	var dbcStatus *DiskBlockCacheStatus
+	if dbc != nil {
+		dbcStatus = dbc.Status()
 	}
 
 	return KBFSStatus{
@@ -687,6 +696,7 @@ func (fs *KBFSOpsStandard) Status(ctx context.Context) (
 		LimitBytes:      limitBytes,
 		FailingServices: failures,
 		JournalServer:   jServerStatus,
+		DiskCacheStatus: dbcStatus,
 	}, ch, err
 }
 

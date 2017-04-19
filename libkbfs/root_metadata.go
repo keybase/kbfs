@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
@@ -437,7 +438,7 @@ func (md *RootMetadata) updateFromTlfHandle(newHandle *TlfHandle) error {
 // future local accesses to this MD (from the cache) can directly
 // access the ops without needing to re-embed the block changes.
 func (md *RootMetadata) loadCachedBlockChanges(
-	ctx context.Context, bps *blockPutState) {
+	ctx context.Context, bps *blockPutState, log logger.Logger) {
 	if md.data.Changes.Ops != nil {
 		return
 	}
@@ -470,7 +471,7 @@ func (md *RootMetadata) loadCachedBlockChanges(
 		}
 	}
 
-	// uid, crypto, bsplitter and log aren't used for simply getting the
+	// uid, crypto and bsplitter aren't used for simply getting the
 	// indirect pointers, so set them to nil.
 	var uid keybase1.UID
 	file := path{
@@ -492,7 +493,7 @@ func (md *RootMetadata) loadCachedBlockChanges(
 		},
 		func(ptr BlockPointer, block Block) error {
 			return nil
-		}, nil)
+		}, log)
 
 	infos, err := fd.getIndirectFileBlockInfos(ctx)
 	if err != nil {
@@ -920,7 +921,7 @@ func MakeImmutableRootMetadata(
 	if mdID == (MdID{}) {
 		panic("zero mdID passed to MakeImmutableRootMetadata")
 	}
-	if localTimestamp == (time.Time{}) {
+	if localTimestamp.IsZero() {
 		panic("zero localTimestamp passed to MakeImmutableRootMetadata")
 	}
 	if bareMDV2, ok := rmd.bareMd.(*BareRootMetadataV2); ok {
