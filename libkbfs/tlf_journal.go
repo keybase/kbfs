@@ -2069,6 +2069,10 @@ func (j *tlfJournal) resolveBranch(ctx context.Context,
 }
 
 func (j *tlfJournal) wait(ctx context.Context) error {
+	// Debugging
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	workLeft, err := j.wg.WaitUnlessPaused(ctx)
 	if err != nil {
 		return err
