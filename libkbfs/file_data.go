@@ -131,6 +131,97 @@ func (fd *fileData) getFileBlockAtOffset(ctx context.Context,
 	return ptr, parentBlocks, block, nextBlockStartOff, startOff, wasDirty, nil
 }
 
+// getNextDirtyFileBlockAtOffsetAtLevel does the same thing as
+// `getNextDirtyFileBlockAtOffset` (see the comments on that function)
+// on a subsection of the file tree (not necessarily starting from the
+// top block of the file).
+func (fd *fileData) getNextDirtyFileBlockAtOffsetAtLevel(ctx context.Context,
+	pblock *FileBlock, off int64, rtype blockReqType,
+	dirtyBcache DirtyBlockCache, parentBlocks []parentBlockAndChildIndex) (
+	ptr BlockPointer, newParentBlocks []parentBlockAndChildIndex,
+	block *FileBlock, nextBlockStartOff, startOff int64, err error) {
+	// Search along paths of dirty blocks until we find a dirty leaf
+	// block with an offset equal or greater than `off`.
+	checkedPrevBlock := false
+	for i := 0; i < len(pblock.IPtrs); i++ {
+		iptr := pblock.IPtrs[i]
+		if iptr.Off < off && i != len(pblock.IPtrs)-1 {
+			continue
+		}
+
+		// No need to check the previous block if we align exactly
+		// with `off`, or this is the right-most leaf block.
+		if iptr.Off <= off {
+			checkedPrevBlock = true
+		}
+
+		// If we haven't checked the previous block yet, do so now
+		// since it contains `off`.
+		index := -1
+		nextBlockStartOff = -1
+		startOff = 0
+		if !checkedPrevBlock && i > 0 && dirtyBcache.IsDirty(
+			fd.file.Tlf, pblock.IPtrs[i-1].BlockPointer, fd.file.Branch) {
+			// Since we checked the previous block, stay on this
+			// index for the next iteration.
+			i--
+			index = i
+		} else {
+			// Now check the current block.
+			if dirtyBcache.IsDirty(
+				fd.file.Tlf, pblock.IPtrs[i].BlockPointer, fd.file.Branch) {
+				index = i
+			}
+		}
+		checkedPrevBlock = true
+
+		// Try the next child.
+		if index == -1 {
+			continue
+		}
+
+		iptr = pblock.IPtrs[index]
+		ptr = iptr.BlockPointer
+		block, _, err = fd.getter(ctx, fd.kmd, ptr, fd.file, rtype)
+		if err != nil {
+			return zeroPtr, nil, nil, 0, 0, err
+		}
+
+		newParentBlocks = append(parentBlocks,
+			parentBlockAndChildIndex{pblock, index})
+		// If this is a leaf block, we're done.
+		if !block.IsInd {
+			// There is more to read if we ever took a path through a
+			// ptr that wasn't the final ptr in its respective list.
+			if index != len(pblock.IPtrs)-1 {
+				nextBlockStartOff = pblock.IPtrs[index+1].Off
+			}
+			return ptr, newParentBlocks, block, nextBlockStartOff, iptr.Off, nil
+		}
+
+		// Recurse to the next lower level.
+		ptr, newParentBlocks, block, nextBlockStartOff, startOff, err =
+			fd.getNextDirtyFileBlockAtOffsetAtLevel(
+				ctx, block, off, rtype, dirtyBcache, newParentBlocks)
+		if err != nil {
+			return zeroPtr, nil, nil, 0, 0, err
+		}
+		// If we found a block, we're done.
+		if block != nil {
+			// If the block didn't have an immediate sibling to the
+			// right, set the next offset to the parent block's
+			// sibling's offset.
+			if nextBlockStartOff == -1 && index != len(pblock.IPtrs)-1 {
+				nextBlockStartOff = pblock.IPtrs[index+1].Off
+			}
+			return ptr, newParentBlocks, block, nextBlockStartOff, startOff, nil
+		}
+	}
+
+	// There's no dirty block at or after `off`.
+	return zeroPtr, nil, nil, 0, 0, nil
+}
+
 // getNextDirtyFileBlockAtOffset returns the next dirty leaf block
 // with a starting offset that is equal or greater than the given
 // `off`.  This assumes that any code that dirties a leaf block also
@@ -151,63 +242,19 @@ func (fd *fileData) getNextDirtyFileBlockAtOffset(ctx context.Context,
 		// The top block isn't dirty, so we know none of the leaves
 		// are dirty.
 		return zeroPtr, nil, nil, 0, 0, nil
+	} else if !topBlock.IsInd {
+		// A dirty, direct block.
+		return fd.rootBlockPointer(), nil, topBlock, -1, 0, nil
 	}
 
-	block = topBlock
-	nextBlockStartOff = -1
-	startOff = 0
-	// Search along paths of dirty blocks until we find a dirty leaf
-	// block with an offset equal or greater than `off`.
-	for block.IsInd {
-		index := -1
-		checkedPrevBlock := false
-		for i, iptr := range block.IPtrs {
-			if iptr.Off < off && i != len(block.IPtrs)-1 {
-				continue
-			}
-
-			// No need to check the previous block if we align exactly
-			// with `off`, or this is the right-most leaf block.
-			if iptr.Off <= off {
-				checkedPrevBlock = true
-			}
-
-			// If we haven't checked the previous block yet, do so now
-			// since it contains `off`.
-			if !checkedPrevBlock && i > 0 && dirtyBcache.IsDirty(
-				fd.file.Tlf, block.IPtrs[i-1].BlockPointer, fd.file.Branch) {
-				index = i - 1
-				break
-			}
-			checkedPrevBlock = true
-
-			// Now check the current block.
-			if dirtyBcache.IsDirty(
-				fd.file.Tlf, block.IPtrs[i].BlockPointer, fd.file.Branch) {
-				index = i
-				break
-			}
-		}
-
-		if index == -1 {
-			// There's no dirty block at or after `off`.
-			return zeroPtr, nil, nil, 0, 0, nil
-		}
-
-		iptr := block.IPtrs[index]
-		parentBlocks = append(parentBlocks,
-			parentBlockAndChildIndex{block, index})
-		startOff = iptr.Off
-		// There is more to read if we ever took a path through a
-		// ptr that wasn't the final ptr in its respective list.
-		if index != len(block.IPtrs)-1 {
-			nextBlockStartOff = block.IPtrs[index+1].Off
-		}
-		ptr = iptr.BlockPointer
-		block, _, err = fd.getter(ctx, fd.kmd, ptr, fd.file, rtype)
-		if err != nil {
-			return zeroPtr, nil, nil, 0, 0, err
-		}
+	ptr, parentBlocks, block, nextBlockStartOff, startOff, err =
+		fd.getNextDirtyFileBlockAtOffsetAtLevel(
+			ctx, topBlock, off, rtype, dirtyBcache, nil)
+	if err != nil {
+		return zeroPtr, nil, nil, 0, 0, err
+	}
+	if block == nil {
+		return zeroPtr, nil, nil, 0, 0, nil
 	}
 
 	// The leaf block doesn't cover this index.  (If the contents
@@ -492,7 +539,7 @@ func (fd *fileData) getByteSlicesInOffsetRange(ctx context.Context,
 	// Grab the relevant byte slices from each block described by the
 	// indirect pointer, filling in holes as needed.
 	var bytes [][]byte
-	for _, iptr := range iptrs {
+	for i, iptr := range iptrs {
 		block := blockMap[iptr.BlockPointer]
 		blockLen := int64(len(block.Contents))
 		nextByte := nRead + startOff
@@ -500,9 +547,14 @@ func (fd *fileData) getByteSlicesInOffsetRange(ctx context.Context,
 		blockOff := iptr.Off
 		lastByteInBlock := blockOff + blockLen
 
+		nextIPtrOff := nextBlockOff
+		if i < len(iptrs)-1 {
+			nextIPtrOff = iptrs[i+1].Off
+		}
+
 		if nextByte >= lastByteInBlock {
-			if nextBlockOff > 0 {
-				fill := nextBlockOff - nextByte
+			if nextIPtrOff > 0 {
+				fill := nextIPtrOff - nextByte
 				if fill > toRead {
 					fill = toRead
 				}
@@ -812,8 +864,8 @@ func (fd *fileData) newRightBlock(
 func (fd *fileData) shiftBlocksToFillHole(
 	ctx context.Context, newTopBlock *FileBlock,
 	parents []parentBlockAndChildIndex) (
-	newDirtyPtrs []BlockPointer, err error) {
-
+	newDirtyPtrs []BlockPointer, newUnrefs []BlockInfo,
+	newlyDirtiedChildBytes int64, err error) {
 	// `parents` should represent the right side of the tree down to
 	// the new rightmost indirect pointer, the offset of which should
 	// match `newHoleStartOff`.  Keep swapping it with its sibling on
@@ -858,7 +910,7 @@ func (fd *fileData) shiftBlocksToFillHole(
 
 			if level < 0 {
 				// We are already all the way on the left, we're done!
-				return newDirtyPtrs, nil
+				return newDirtyPtrs, newUnrefs, newlyDirtiedChildBytes, nil
 			}
 			newParents[level].childIndex--
 
@@ -868,7 +920,7 @@ func (fd *fileData) shiftBlocksToFillHole(
 				childBlock, _, err := fd.getter(
 					ctx, fd.kmd, nextChildPtr.BlockPointer, fd.file, blockWrite)
 				if err != nil {
-					return nil, err
+					return nil, nil, 0, err
 				}
 
 				newParents[level+1].pblock = childBlock
@@ -879,7 +931,7 @@ func (fd *fileData) shiftBlocksToFillHole(
 
 		// We're done!
 		if leftOff < newBlockStartOff {
-			return newDirtyPtrs, nil
+			return newDirtyPtrs, newUnrefs, newlyDirtiedChildBytes, nil
 		}
 
 		// Otherwise, we need to swap the indirect file pointers.
@@ -901,15 +953,46 @@ func (fd *fileData) shiftBlocksToFillHole(
 			immedParent.pblock.IPtrs[currIndex],
 			newImmedParent.pblock.IPtrs[newCurrIndex]
 
-		// Cache the new immediate parent as dirty.
+		// Cache the new immediate parent as dirty.  Also cache the
+		// old immediate parent's right-most leaf child as dirty, to
+		// make sure this path is captured in
+		// getNextDirtyFileBlockAtOffset calls.  TODO: this is
+		// inefficient since it might end up re-encoding and
+		// re-uploading a leaf block that wasn't actually dirty; we
+		// should find a better way to make sure ready() sees these
+		// parent blocks.
 		if len(newParents) > 1 {
 			i := len(newParents) - 2
 			iptr := newParents[i].childIPtr()
 			if err := fd.cacher(
 				iptr.BlockPointer, newImmedParent.pblock); err != nil {
-				return nil, err
+				return nil, nil, 0, err
 			}
 			newDirtyPtrs = append(newDirtyPtrs, iptr.BlockPointer)
+
+			// Fetch the old parent's right leaf for writing, and mark
+			// it as dirty.
+			rightLeafIPtr :=
+				immedParent.pblock.IPtrs[len(immedParent.pblock.IPtrs)-1]
+			fd.log.CDebugf(ctx, "Forcing %v to be dirty",
+				rightLeafIPtr.BlockPointer)
+			leafBlock, _, err := fd.getter(
+				ctx, fd.kmd, rightLeafIPtr.BlockPointer, fd.file, blockWrite)
+			if err != nil {
+				return nil, nil, 0, err
+			}
+			if err := fd.cacher(
+				rightLeafIPtr.BlockPointer, leafBlock); err != nil {
+				return nil, nil, 0, err
+			}
+			newDirtyPtrs = append(newDirtyPtrs, rightLeafIPtr.BlockPointer)
+			// Remember the size of the dirtied leaf.
+			if rightLeafIPtr.EncodedSize != 0 {
+				newlyDirtiedChildBytes += int64(len(leafBlock.Contents))
+				newUnrefs = append(newUnrefs, rightLeafIPtr.BlockInfo)
+				immedParent.pblock.IPtrs[len(immedParent.pblock.IPtrs)-1].
+					EncodedSize = 0
+			}
 		}
 
 		// Now we need to update the parent offsets on the right side,
@@ -926,9 +1009,15 @@ func (fd *fileData) shiftBlocksToFillHole(
 			childPtr := parents[level].childIPtr()
 			if err := fd.cacher(childPtr.BlockPointer,
 				parents[level+1].pblock); err != nil {
-				return nil, err
+				return nil, nil, 0, err
 			}
 			newDirtyPtrs = append(newDirtyPtrs, childPtr.BlockPointer)
+			// Remember the size of the dirtied child.
+			index := parents[level].childIndex
+			if childPtr.EncodedSize != 0 {
+				newUnrefs = append(newUnrefs, childPtr.BlockInfo)
+				parents[level].pblock.IPtrs[index].EncodedSize = 0
+			}
 
 			// If we've reached a level where the child indirect
 			// offset wasn't affected, we're done.  If not, update the
@@ -936,7 +1025,6 @@ func (fd *fileData) shiftBlocksToFillHole(
 			if parents[level+1].childIndex > 0 {
 				break
 			}
-			index := parents[level].childIndex
 			parents[level].pblock.IPtrs[index].Off = newRightOff
 		}
 		immedParent = newImmedParent
@@ -1076,7 +1164,7 @@ func (fd *fileData) write(ctx context.Context, data []byte, off int64,
 			// If we're filling a hole, swap the new right block into
 			// the hole and shift everything else over.
 			if needFillHole {
-				newDirtyPtrs, err := fd.shiftBlocksToFillHole(
+				newDirtyPtrs, newUnrefs, bytes, err := fd.shiftBlocksToFillHole(
 					ctx, topBlock, rightParents)
 				if err != nil {
 					return newDe, nil, unrefs, newlyDirtiedChildBytes, 0, err
@@ -1084,6 +1172,8 @@ func (fd *fileData) write(ctx context.Context, data []byte, off int64,
 				for _, p := range newDirtyPtrs {
 					dirtyMap[p] = true
 				}
+				unrefs = append(unrefs, newUnrefs...)
+				newlyDirtiedChildBytes += bytes
 				if oldSizeWithoutHoles == oldDe.Size {
 					// For the purposes of calculating the newly-dirtied
 					// bytes for the deferral calculation, disregard the
