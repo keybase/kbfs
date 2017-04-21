@@ -354,8 +354,10 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 		Namelen: ^uint32(0),
 		Frsize:  fuseBlockSize,
 	}
-	if _, err := libkbfs.GetCurrentSessionIfPossible(
-		ctx, f.config.KBPKI(), false); err != nil {
+	if session, err := libkbfs.GetCurrentSessionIfPossible(
+		ctx, f.config.KBPKI(), true); err != nil {
+		return err
+	} else if session == (libkbfs.SessionInfo{}) {
 		// If user is not logged in, don't bother getting quota info. Otherwise
 		// reading a public TLF while logged out can fail on macOS.
 		return nil
