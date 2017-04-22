@@ -141,13 +141,13 @@ helpers.rootLinuxNode(env, {
                             sh "rm private.txt"
                         }
                         parallel (
-                            test_linux: {
-                                withEnv([
-                                    "PATH=${env.PATH}:${env.GOPATH}/bin",
-                                ]) {
-                                    runNixTest('linux_')
-                                }
-                            },
+                            //test_linux: {
+                            //    withEnv([
+                            //        "PATH=${env.PATH}:${env.GOPATH}/bin",
+                            //    ]) {
+                            //        runNixTest('linux_')
+                            //    }
+                            //},
                             //test_windows: {
                             //    helpers.nodeWithCleanup('windows', {}, {}) {
                             //    withEnv([
@@ -167,7 +167,7 @@ helpers.rootLinuxNode(env, {
                             //    }}}
                             //},
                             test_osx: {
-                                helpers.nodeWithCleanup('osx', {}, {}) {
+                                helpers.nodeWithCleanup('osx-test', {}, {}) {
                                     def BASEDIR=pwd()
                                     def GOPATH="${BASEDIR}/go"
                                     withEnv([
@@ -188,41 +188,41 @@ helpers.rootLinuxNode(env, {
                             },
                         )
                     },
-                    integrate: {
-                        build([
-                            job: "/kbfs-server/master",
-                            parameters: [
-                                [$class: 'StringParameterValue',
-                                    name: 'kbfsProjectName',
-                                    value: env.JOB_NAME,
-                                ],
-                            ]
-                        ])
-                    },
+                    //integrate: {
+                    //    build([
+                    //        job: "/kbfs-server/master",
+                    //        parameters: [
+                    //            [$class: 'StringParameterValue',
+                    //                name: 'kbfsProjectName',
+                    //                value: env.JOB_NAME,
+                    //            ],
+                    //        ]
+                    //    ])
+                    //},
                 )
             } catch (ex) {
-                println "Gregor logs:"
-                sh "docker-compose logs gregor.local"
-                println "MySQL logs:"
-                sh "docker-compose logs mysql.local"
-                println "KBweb logs:"
-                sh "docker-compose logs kbweb.local"
+                //println "Gregor logs:"
+                //sh "docker-compose logs gregor.local"
+                //println "MySQL logs:"
+                //sh "docker-compose logs mysql.local"
+                //println "KBweb logs:"
+                //sh "docker-compose logs kbweb.local"
                 throw ex
             } finally {
                 sh "docker-compose down"
             }
         }
 
-        stage("Push") {
-            def isUpstreamMaster = clientProjectName == "client/master"
-            if (env.BRANCH_NAME == "master" && (cause != "upstream" || isUpstreamMaster)) {
-                docker.withRegistry("", "docker-hub-creds") {
-                    kbfsImage.push()
-                }
-            } else {
-                println "Not pushing docker. Branch: \"${env.BRANCH_NAME}\", Cause: \"${cause}\", Client project: \"${clientProjectName}\""
-            }
-        }
+        //stage("Push") {
+        //    def isUpstreamMaster = clientProjectName == "client/master"
+        //    if (env.BRANCH_NAME == "master" && (cause != "upstream" || isUpstreamMaster)) {
+        //        docker.withRegistry("", "docker-hub-creds") {
+        //            kbfsImage.push()
+        //        }
+        //    } else {
+        //        println "Not pushing docker. Branch: \"${env.BRANCH_NAME}\", Cause: \"${cause}\", Client project: \"${clientProjectName}\""
+        //    }
+        //}
     }
 }
 
