@@ -41,6 +41,7 @@ const (
 type MDServerRemote struct {
 	config        Config
 	log           traceLogger
+	deferLog      traceLogger
 	mdSrvAddr     string
 	connOpts      rpc.ConnectionOpts
 	rpcLogFactory *libkb.RPCLogFactory
@@ -86,10 +87,13 @@ var _ rpc.ConnectionHandler = (*MDServerRemote)(nil)
 // NewMDServerRemote returns a new instance of MDServerRemote.
 func NewMDServerRemote(config Config, srvAddr string,
 	rpcLogFactory *libkb.RPCLogFactory) *MDServerRemote {
+	log := config.MakeLogger("")
+	deferLog := log.CloneWithAddedDepth(1)
 	mdServer := &MDServerRemote{
 		config:        config,
 		observers:     make(map[tlf.ID]chan<- error),
-		log:           traceLogger{config.MakeLogger("")},
+		log:           traceLogger{log},
+		deferLog:      traceLogger{deferLog},
 		mdSrvAddr:     srvAddr,
 		rpcLogFactory: rpcLogFactory,
 		rekeyTimer:    time.NewTimer(MdServerBackgroundRekeyPeriod),
@@ -463,7 +467,7 @@ func (md *MDServerRemote) get(ctx context.Context, id tlf.ID,
 	ioh := idOrHandle{id, handle}
 	md.log.LazyTrace(ctx, "MDServer: get %s %s %d-%d", ioh, bid, start, stop)
 	defer func() {
-		md.log.LazyTrace(ctx, "MDServer: get %s %s %d-%d done (err=%v)", ioh, bid, start, stop, err)
+		md.deferLog.LazyTrace(ctx, "MDServer: get %s %s %d-%d done (err=%v)", ioh, bid, start, stop, err)
 	}()
 
 	arg := keybase1.GetMetadataArg{
@@ -553,7 +557,7 @@ func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned,
 	extra ExtraMetadata) (err error) {
 	md.log.LazyTrace(ctx, "MDServer: put %s %d", rmds.MD.TlfID(), rmds.MD.RevisionNumber())
 	defer func() {
-		md.log.LazyTrace(ctx, "MDServer: put %s %d done (err=%v)", rmds.MD.TlfID(), rmds.MD.RevisionNumber(), err)
+		md.deferLog.LazyTrace(ctx, "MDServer: put %s %d done (err=%v)", rmds.MD.TlfID(), rmds.MD.RevisionNumber(), err)
 	}()
 
 	// encode MD block
@@ -614,7 +618,7 @@ func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned,
 func (md *MDServerRemote) PruneBranch(ctx context.Context, id tlf.ID, bid BranchID) (err error) {
 	md.log.LazyTrace(ctx, "MDServer: prune %s %s", id, bid)
 	defer func() {
-		md.log.LazyTrace(ctx, "MDServer: prune %s %s (err=%v)", id, bid, err)
+		md.deferLog.LazyTrace(ctx, "MDServer: prune %s %s (err=%v)", id, bid, err)
 	}()
 	arg := keybase1.PruneBranchArg{
 		FolderID: id.String(),
@@ -767,7 +771,7 @@ func (md *MDServerRemote) TruncateLock(ctx context.Context, id tlf.ID) (
 	locked bool, err error) {
 	md.log.LazyTrace(ctx, "MDServer: TruncateLock %s", id)
 	defer func() {
-		md.log.LazyTrace(ctx, "MDServer: TruncateLock %s (err=%v)", id, err)
+		md.deferLog.LazyTrace(ctx, "MDServer: TruncateLock %s (err=%v)", id, err)
 	}()
 	return md.getClient().TruncateLock(ctx, id.String())
 }
@@ -777,7 +781,7 @@ func (md *MDServerRemote) TruncateUnlock(ctx context.Context, id tlf.ID) (
 	unlocked bool, err error) {
 	md.log.LazyTrace(ctx, "MDServer: TruncateLock %s", id)
 	defer func() {
-		md.log.LazyTrace(ctx, "MDServer: TruncateLock %s (err=%v)", id, err)
+		md.deferLog.LazyTrace(ctx, "MDServer: TruncateLock %s (err=%v)", id, err)
 	}()
 	return md.getClient().TruncateUnlock(ctx, id.String())
 }
@@ -787,7 +791,7 @@ func (md *MDServerRemote) GetLatestHandleForTLF(ctx context.Context, id tlf.ID) 
 	handle tlf.Handle, err error) {
 	md.log.LazyTrace(ctx, "MDServer: GetLatestHandle %s", id)
 	defer func() {
-		md.log.LazyTrace(ctx, "MDServer: GetLatestHandle %s (err=%v)", id, err)
+		md.deferLog.LazyTrace(ctx, "MDServer: GetLatestHandle %s (err=%v)", id, err)
 	}()
 	buf, err := md.getClient().GetLatestFolderHandle(ctx, id.String())
 	if err != nil {
@@ -885,7 +889,7 @@ func (md *MDServerRemote) GetTLFCryptKeyServerHalf(ctx context.Context,
 	serverHalf kbfscrypto.TLFCryptKeyServerHalf, err error) {
 	md.log.LazyTrace(ctx, "KeyServer: GetTLFCryptKeyServerHalf %s", serverHalfID)
 	defer func() {
-		md.log.LazyTrace(ctx, "KeyServer: GetTLFCryptKeyServerHalf %s (err=%v)", serverHalfID, err)
+		md.deferLog.LazyTrace(ctx, "KeyServer: GetTLFCryptKeyServerHalf %s (err=%v)", serverHalfID, err)
 	}()
 
 	// encode the ID
@@ -919,7 +923,7 @@ func (md *MDServerRemote) PutTLFCryptKeyServerHalves(ctx context.Context,
 	keyServerHalves UserDeviceKeyServerHalves) (err error) {
 	md.log.LazyTrace(ctx, "KeyServer: PutTLFCryptKeyServerHalves %v", keyServerHalves)
 	defer func() {
-		md.log.LazyTrace(ctx, "KeyServer: PutTLFCryptKeyServerHalves %v (err=%v)", keyServerHalves, err)
+		md.deferLog.LazyTrace(ctx, "KeyServer: PutTLFCryptKeyServerHalves %v (err=%v)", keyServerHalves, err)
 	}()
 
 	// flatten out the map into an array
@@ -952,7 +956,7 @@ func (md *MDServerRemote) DeleteTLFCryptKeyServerHalf(ctx context.Context,
 	serverHalfID TLFCryptKeyServerHalfID) (err error) {
 	md.log.LazyTrace(ctx, "KeyServer: DeleteTLFCryptKeyServerHalf %s %s", uid, serverHalfID)
 	defer func() {
-		md.log.LazyTrace(ctx, "KeyServer: DeleteTLFCryptKeyServerHalf %s %s done (err=%v)", uid, serverHalfID, err)
+		md.deferLog.LazyTrace(ctx, "KeyServer: DeleteTLFCryptKeyServerHalf %s %s done (err=%v)", uid, serverHalfID, err)
 	}()
 
 	// encode the ID
@@ -1026,7 +1030,7 @@ func (md *MDServerRemote) GetKeyBundles(ctx context.Context,
 	wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3, err error) {
 	md.log.LazyTrace(ctx, "KeyServer: GetKeyBundles %s %s %s", tlf, wkbID, rkbID)
 	defer func() {
-		md.log.LazyTrace(ctx, "KeyServer: GetKeyBundles %s %s %s done (err=%v)", tlf, wkbID, rkbID, err)
+		md.deferLog.LazyTrace(ctx, "KeyServer: GetKeyBundles %s %s %s done (err=%v)", tlf, wkbID, rkbID, err)
 	}()
 
 	arg := keybase1.GetKeyBundlesArg{
