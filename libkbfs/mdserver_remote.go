@@ -437,6 +437,21 @@ func (md *MDServerRemote) signalObserverLocked(observerChan chan<- error, id tlf
 	delete(md.observers, id)
 }
 
+// idOrHandle is a helper struct to pass into LazyTrace, so that the
+// stringification isn't done unless needed.
+type idOrHandle struct {
+	id     tlf.ID
+	handle *tlf.Handle
+}
+
+func (ioh idOrHandle) String() string {
+	if ioh.id != tlf.NullID {
+		return ioh.id.String()
+	}
+	// TODO: Ideally, *tlf.Handle would have a nicer String() function.
+	return fmt.Sprintf("%+v", ioh.handle)
+}
+
 // Helper used to retrieve metadata blocks from the MD server.
 func (md *MDServerRemote) get(ctx context.Context, id tlf.ID,
 	handle *tlf.Handle, bid BranchID, mStatus MergeStatus,
@@ -445,15 +460,10 @@ func (md *MDServerRemote) get(ctx context.Context, id tlf.ID,
 	if id == tlf.NullID && handle == nil {
 		panic("nil tlf.ID and handle passed into MDServerRemote.get")
 	}
-	var reqStr string
-	if id != tlf.NullID {
-		reqStr = fmt.Sprintf("%s", id)
-	} else {
-		reqStr = fmt.Sprintf("%s", handle)
-	}
-	md.log.LazyTrace(ctx, "MDServer: get %s %s %d-%d", reqStr, bid, start, stop)
+	ioh := idOrHandle{id, handle}
+	md.log.LazyTrace(ctx, "MDServer: get %s %s %d-%d", ioh, bid, start, stop)
 	defer func() {
-		md.log.LazyTrace(ctx, "MDServer: get %s %s %d-%d done (err=%v)", reqStr, bid, start, stop, err)
+		md.log.LazyTrace(ctx, "MDServer: get %s %s %d-%d done (err=%v)", ioh, bid, start, stop, err)
 	}()
 
 	arg := keybase1.GetMetadataArg{
