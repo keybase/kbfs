@@ -246,7 +246,7 @@ func (md *MDServerRemote) resetAuth(
 			if err := md.getFoldersForRekey(ctx, c); err != nil {
 				md.log.CWarningf(ctx, "getFoldersForRekey failed with %v", err)
 			}
-			md.log.CDebugf(ctx,
+			md.deferLog.CDebugf(ctx,
 				"requested list of folders for rekey")
 		}()
 	}
