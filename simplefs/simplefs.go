@@ -420,16 +420,25 @@ func (k *SimpleFS) SimpleFSSetStat(ctx context.Context, arg keybase1.SimpleFSSet
 	return nil
 }
 
-func (k *SimpleFS) addReadWriteDesc(opid keybase1.OpID, desc keybase1.OpDescription) {
+func (k *SimpleFS) startReadWriteOp(ctx context.Context, opid keybase1.OpID, desc keybase1.OpDescription) (context.Context, error) {
+	ctx, err := k.startSyncOp(ctx, desc.AsyncOp__.String(), desc)
+	if err != nil {
+		return nil, err
+	}
 	k.lock.RLock()
 	k.inProgress[opid] = &inprogress{desc, func() {}, make(chan error, 1)}
 	k.lock.RUnlock()
+	return ctx, err
 }
 
-func (k *SimpleFS) clearReadWriteDesc(opID keybase1.OpID) {
+func (k *SimpleFS) doneReadWriteOp(ctx context.Context, opID keybase1.OpID, err error) {
 	k.lock.RLock()
 	delete(k.inProgress, opID)
 	k.lock.RUnlock()
+	k.log.CDebugf(ctx, "doneReadWriteOp, status=%v", err)
+	if ctx != nil {
+		libkbfs.CleanupCancellationDelayer(ctx)
+	}
 }
 
 // SimpleFSRead - Read (possibly partial) contents of open file,
@@ -451,13 +460,12 @@ func (k *SimpleFS) SimpleFSRead(ctx context.Context,
 			Offset: arg.Offset,
 			Size:   arg.Size,
 		})
-	ctx, err = k.startSyncOp(ctx, "Read", opDesc)
+	ctx, err = k.startReadWriteOp(ctx, arg.OpID, opDesc)
 	if err != nil {
 		return keybase1.FileContent{}, err
 	}
-	k.addReadWriteDesc(arg.OpID, opDesc)
-	defer k.clearReadWriteDesc(arg.OpID)
-	defer func() { k.doneSyncOp(ctx, err) }()
+
+	defer func() { k.doneReadWriteOp(ctx, arg.OpID, err) }()
 
 	bs := make([]byte, arg.Size)
 	n, err := k.config.KBFSOps().Read(ctx, h.node, bs, arg.Offset)
@@ -482,13 +490,11 @@ func (k *SimpleFS) SimpleFSWrite(ctx context.Context, arg keybase1.SimpleFSWrite
 			OpID: arg.OpID, Path: h.path, Offset: arg.Offset,
 		})
 
-	ctx, err := k.startSyncOp(ctx, "Write", opDesc)
+	ctx, err := k.startReadWriteOp(ctx, arg.OpID, opDesc)
 	if err != nil {
 		return err
 	}
-	k.addReadWriteDesc(arg.OpID, opDesc)
-	defer k.clearReadWriteDesc(arg.OpID)
-	defer func() { k.doneSyncOp(ctx, err) }()
+	defer func() { k.doneReadWriteOp(ctx, arg.OpID, err) }()
 
 	err = k.config.KBFSOps().Write(ctx, h.node, arg.Content, arg.Offset)
 	return err
