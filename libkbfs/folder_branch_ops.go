@@ -1306,7 +1306,7 @@ func (fbo *folderBranchOps) maybeUnembedAndPutBlocks(ctx context.Context,
 	}()
 
 	ptrsToDelete, err := doBlockPuts(ctx, fbo.config.BlockServer(),
-		fbo.config.BlockCache(), fbo.config.Reporter(), fbo.log, md.TlfID(),
+		fbo.config.BlockCache(), fbo.config.Reporter(), fbo.log, fbo.deferLog, md.TlfID(),
 		md.GetTlfHandle().GetCanonicalName(), *bps)
 	if err != nil {
 		return nil, err
@@ -4031,7 +4031,7 @@ func (fbo *folderBranchOps) syncAllLocked(
 
 	// Put all the blocks.
 	blocksToRemove, err = doBlockPuts(ctx, fbo.config.BlockServer(),
-		fbo.config.BlockCache(), fbo.config.Reporter(), fbo.log, md.TlfID(),
+		fbo.config.BlockCache(), fbo.config.Reporter(), fbo.log, fbo.deferLog, md.TlfID(),
 		md.GetTlfHandle().GetCanonicalName(), *bps)
 	if err != nil {
 		return err

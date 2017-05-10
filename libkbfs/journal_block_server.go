@@ -91,10 +91,9 @@ func (j journalBlockServer) Get(
 func (j journalBlockServer) Put(
 	ctx context.Context, tlfID tlf.ID, id kbfsblock.ID, context kbfsblock.Context,
 	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) (err error) {
-	j.jServer.log.LazyTrace(ctx, "jBServer: Put %s", id)
-	defer func() {
-		j.jServer.deferLog.LazyTrace(ctx, "jBServer: Put %s done (err=%v)", id, err)
-	}()
+	// Don't trace this function, as it gets too verbose and is
+	// called in parallel anyway. Rely on caller (usually
+	// doBlockPuts) to do the tracing.
 
 	if tlfJournal, ok := j.jServer.getTLFJournal(tlfID); ok {
 		defer func() {
