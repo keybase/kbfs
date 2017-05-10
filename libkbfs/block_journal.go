@@ -61,8 +61,8 @@ type blockJournal struct {
 	codec kbfscodec.Codec
 	dir   string
 
-	log      logger.Logger
-	deferLog logger.Logger
+	log      traceLogger
+	deferLog traceLogger
 
 	// j is the main journal.
 	j *diskJournal
@@ -196,8 +196,8 @@ func makeBlockJournal(
 	journal := &blockJournal{
 		codec:      codec,
 		dir:        dir,
-		log:        log,
-		deferLog:   deferLog,
+		log:        traceLogger{log},
+		deferLog:   traceLogger{deferLog},
 		j:          j,
 		deferredGC: gcj,
 		s:          s,
