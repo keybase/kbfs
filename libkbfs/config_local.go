@@ -873,7 +873,7 @@ func (c *ConfigLocal) MaybeStartTrace(
 	}
 
 	tr := trace.New(family, title)
-	tr.SetMaxEvents(100)
+	tr.SetMaxEvents(25)
 	ctx = trace.NewContext(ctx, tr)
 	return ctx
 }
