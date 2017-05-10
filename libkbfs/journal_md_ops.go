@@ -216,7 +216,13 @@ func (j journalMDOps) getRangeFromJournal(
 
 func (j journalMDOps) GetForHandle(
 	ctx context.Context, handle *TlfHandle, mStatus MergeStatus) (
-	tlf.ID, ImmutableRootMetadata, error) {
+	tlfID tlf.ID, rmd ImmutableRootMetadata, err error) {
+	// TODO: Ideally, *TlfHandle would have a nicer String() function.
+	j.jServer.log.LazyTrace(ctx, "jMDOps: get %+v %s", handle, mStatus)
+	defer func() {
+		j.jServer.deferLog.LazyTrace(ctx, "jMDOps: get %+v %s done (err=%v)", handle, mStatus, err)
+	}()
+
 	// Need to always consult the server to get the tlfID. No need to
 	// optimize this, since all subsequent lookups will be by
 	// TLF. Although if we did want to, we could store a handle -> TLF
@@ -227,7 +233,7 @@ func (j journalMDOps) GetForHandle(
 	if mStatus == Unmerged {
 		remoteMStatus = Merged
 	}
-	tlfID, rmd, err := j.MDOps.GetForHandle(ctx, handle, remoteMStatus)
+	tlfID, rmd, err = j.MDOps.GetForHandle(ctx, handle, remoteMStatus)
 	if err != nil {
 		return tlf.ID{}, ImmutableRootMetadata{}, err
 	}
