@@ -218,9 +218,9 @@ func (j journalMDOps) GetForHandle(
 	ctx context.Context, handle *TlfHandle, mStatus MergeStatus) (
 	tlfID tlf.ID, rmd ImmutableRootMetadata, err error) {
 	// TODO: Ideally, *TlfHandle would have a nicer String() function.
-	j.jServer.log.LazyTrace(ctx, "jMDOps: get %+v %s", handle, mStatus)
+	j.jServer.log.LazyTrace(ctx, "jMDOps: GetForHandle %+v %s", handle, mStatus)
 	defer func() {
-		j.jServer.deferLog.LazyTrace(ctx, "jMDOps: get %+v %s done (err=%v)", handle, mStatus, err)
+		j.jServer.deferLog.LazyTrace(ctx, "jMDOps: GetForHandle %+v %s done (err=%v)", handle, mStatus, err)
 	}()
 
 	// Need to always consult the server to get the tlfID. No need to
