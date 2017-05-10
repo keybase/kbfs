@@ -16,6 +16,17 @@ func FakeID(b byte, public bool) ID {
 	return ID{bytes}
 }
 
+// FakeIDRandomOrBust creates a fake public or private TLF ID from the given
+// byte, and fill the rest with empty bytes.
+func FakeIDRandomOrBust(b byte, public bool) ID {
+	id, err := MakeRandomID(public)
+	if err != nil {
+		panic(err)
+	}
+	id.id[0] = b
+	return id
+}
+
 // FakeIDByte returns the byte used to create a fake TLF ID with
 // FakeID.
 func FakeIDByte(id ID) byte {
