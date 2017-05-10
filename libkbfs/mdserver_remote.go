@@ -474,7 +474,13 @@ func (md *MDServerRemote) get(ctx context.Context, arg keybase1.GetMetadataArg) 
 // GetForHandle implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetForHandle(ctx context.Context,
 	handle tlf.Handle, mStatus MergeStatus) (
-	tlf.ID, *RootMetadataSigned, error) {
+	tlfID tlf.ID, rmds *RootMetadataSigned, err error) {
+	// TODO: Ideally, *tlf.Handle would have a nicer String() function.
+	md.log.LazyTrace(ctx, "MDServer: get %+v %s", handle, mStatus)
+	defer func() {
+		md.deferLog.LazyTrace(ctx, "MDServer: get %+v %s done (err=%v)", handle, mStatus, err)
+	}()
+
 	encodedHandle, err := md.config.Codec().Encode(handle)
 	if err != nil {
 		return tlf.ID{}, nil, err
