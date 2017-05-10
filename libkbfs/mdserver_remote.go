@@ -776,9 +776,9 @@ func (md *MDServerRemote) TruncateLock(ctx context.Context, id tlf.ID) (
 // TruncateUnlock implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) TruncateUnlock(ctx context.Context, id tlf.ID) (
 	unlocked bool, err error) {
-	md.log.LazyTrace(ctx, "MDServer: TruncateLock %s", id)
+	md.log.LazyTrace(ctx, "MDServer: TruncateUnlock %s", id)
 	defer func() {
-		md.deferLog.LazyTrace(ctx, "MDServer: TruncateLock %s (err=%v)", id, err)
+		md.deferLog.LazyTrace(ctx, "MDServer: TruncateUnlock %s (err=%v)", id, err)
 	}()
 	return md.getClient().TruncateUnlock(ctx, id.String())
 }
