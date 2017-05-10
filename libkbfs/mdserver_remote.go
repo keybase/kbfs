@@ -441,62 +441,19 @@ func (md *MDServerRemote) signalObserverLocked(observerChan chan<- error, id tlf
 	delete(md.observers, id)
 }
 
-// idOrHandle is a helper struct to pass into LazyTrace, so that the
-// stringification isn't done unless needed.
-type idOrHandle struct {
-	id     tlf.ID
-	handle *tlf.Handle
-}
-
-func (ioh idOrHandle) String() string {
-	if ioh.id != tlf.NullID {
-		return ioh.id.String()
-	}
-	// TODO: Ideally, *tlf.Handle would have a nicer String() function.
-	return fmt.Sprintf("%+v", ioh.handle)
-}
-
 // Helper used to retrieve metadata blocks from the MD server.
-func (md *MDServerRemote) get(ctx context.Context, id tlf.ID,
-	handle *tlf.Handle, bid BranchID, mStatus MergeStatus,
-	start, stop MetadataRevision) (tlfID tlf.ID, rmdses []*RootMetadataSigned, err error) {
-	// figure out which args to send
-	if id == tlf.NullID && handle == nil {
-		panic("nil tlf.ID and handle passed into MDServerRemote.get")
-	}
-	ioh := idOrHandle{id, handle}
-	md.log.LazyTrace(ctx, "MDServer: get %s %s %d-%d", ioh, bid, start, stop)
-	defer func() {
-		md.deferLog.LazyTrace(ctx, "MDServer: get %s %s %d-%d done (err=%v)", ioh, bid, start, stop, err)
-	}()
-
-	arg := keybase1.GetMetadataArg{
-		StartRevision: start.Number(),
-		StopRevision:  stop.Number(),
-		BranchID:      bid.String(),
-		Unmerged:      mStatus == Unmerged,
-		LogTags:       nil,
-	}
-
-	if id == tlf.NullID {
-		arg.FolderHandle, err = md.config.Codec().Encode(handle)
-		if err != nil {
-			return id, nil, err
-		}
-	} else {
-		arg.FolderID = id.String()
-	}
-
+func (md *MDServerRemote) get(ctx context.Context, arg keybase1.GetMetadataArg) (
+	tlfID tlf.ID, rmdses []*RootMetadataSigned, err error) {
 	// request
 	response, err := md.getClient().GetMetadata(ctx, arg)
 	if err != nil {
-		return id, nil, err
+		return tlf.ID{}, nil, err
 	}
 
 	// response
-	id, err = tlf.ParseID(response.FolderID)
+	tlfID, err = tlf.ParseID(response.FolderID)
 	if err != nil {
-		return id, nil, err
+		return tlf.ID{}, nil, err
 	}
 
 	// deserialize blocks
@@ -504,43 +461,57 @@ func (md *MDServerRemote) get(ctx context.Context, id tlf.ID,
 	for i, block := range response.MdBlocks {
 		ver, max := MetadataVer(block.Version), md.config.MetadataVersion()
 		rmds, err := DecodeRootMetadataSigned(
-			md.config.Codec(), id, ver, max, block.Block,
+			md.config.Codec(), tlfID, ver, max, block.Block,
 			keybase1.FromTime(block.Timestamp))
 		if err != nil {
-			return id, nil, err
+			return tlf.ID{}, nil, err
 		}
 		rmdses[i] = rmds
 	}
-	return id, rmdses, nil
+	return tlfID, rmdses, nil
 }
 
 // GetForHandle implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetForHandle(ctx context.Context,
 	handle tlf.Handle, mStatus MergeStatus) (
 	tlf.ID, *RootMetadataSigned, error) {
-	id, rmdses, err := md.get(ctx, tlf.NullID, &handle, NullBranchID,
-		mStatus,
-		MetadataRevisionUninitialized, MetadataRevisionUninitialized)
+	encodedHandle, err := md.config.Codec().Encode(handle)
 	if err != nil {
-		return id, nil, err
+		return tlf.ID{}, nil, err
+	}
+	arg := keybase1.GetMetadataArg{
+		FolderHandle: encodedHandle,
+		Unmerged:     mStatus == Unmerged,
+	}
+
+	id, rmdses, err := md.get(ctx, arg)
+	if err != nil {
+		return tlf.ID{}, nil, err
 	}
 	if len(rmdses) == 0 {
 		return id, nil, nil
 	}
+	// TODO: Error if server returns more than one rmds.
 	return id, rmdses[0], nil
 }
 
 // GetForTLF implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetForTLF(ctx context.Context, id tlf.ID,
 	bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
-	_, rmdses, err := md.get(ctx, id, nil, bid, mStatus,
-		MetadataRevisionUninitialized, MetadataRevisionUninitialized)
+	arg := keybase1.GetMetadataArg{
+		FolderID: id.String(),
+		BranchID: bid.String(),
+		Unmerged: mStatus == Unmerged,
+	}
+
+	_, rmdses, err := md.get(ctx, arg)
 	if err != nil {
 		return nil, err
 	}
 	if len(rmdses) == 0 {
 		return nil, nil
 	}
+	// TODO: Error if server returns more than one rmds.
 	return rmdses[0], nil
 }
 
@@ -548,7 +519,15 @@ func (md *MDServerRemote) GetForTLF(ctx context.Context, id tlf.ID,
 func (md *MDServerRemote) GetRange(ctx context.Context, id tlf.ID,
 	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
 	[]*RootMetadataSigned, error) {
-	_, rmds, err := md.get(ctx, id, nil, bid, mStatus, start, stop)
+	arg := keybase1.GetMetadataArg{
+		FolderID:      id.String(),
+		BranchID:      bid.String(),
+		Unmerged:      mStatus == Unmerged,
+		StartRevision: start.Number(),
+		StopRevision:  stop.Number(),
+	}
+
+	_, rmds, err := md.get(ctx, arg)
 	return rmds, err
 }
 
