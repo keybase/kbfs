@@ -476,9 +476,9 @@ func (md *MDServerRemote) GetForHandle(ctx context.Context,
 	handle tlf.Handle, mStatus MergeStatus) (
 	tlfID tlf.ID, rmds *RootMetadataSigned, err error) {
 	// TODO: Ideally, *tlf.Handle would have a nicer String() function.
-	md.log.LazyTrace(ctx, "MDServer: get %+v %s", handle, mStatus)
+	md.log.LazyTrace(ctx, "MDServer: GetForHandle %+v %s", handle, mStatus)
 	defer func() {
-		md.deferLog.LazyTrace(ctx, "MDServer: get %+v %s done (err=%v)", handle, mStatus, err)
+		md.deferLog.LazyTrace(ctx, "MDServer: GetForHandle %+v %s done (err=%v)", handle, mStatus, err)
 	}()
 
 	encodedHandle, err := md.config.Codec().Encode(handle)
@@ -503,7 +503,12 @@ func (md *MDServerRemote) GetForHandle(ctx context.Context,
 
 // GetForTLF implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetForTLF(ctx context.Context, id tlf.ID,
-	bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
+	bid BranchID, mStatus MergeStatus) (rmds *RootMetadataSigned, err error) {
+	md.log.LazyTrace(ctx, "MDServer: GetForTLF %s %s %s", id, bid, mStatus)
+	defer func() {
+		md.deferLog.LazyTrace(ctx, "MDServer: GetForTLF %s %s %s done (err=%v)", id, bid, mStatus, err)
+	}()
+
 	arg := keybase1.GetMetadataArg{
 		FolderID: id.String(),
 		BranchID: bid.String(),
@@ -524,7 +529,12 @@ func (md *MDServerRemote) GetForTLF(ctx context.Context, id tlf.ID,
 // GetRange implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetRange(ctx context.Context, id tlf.ID,
 	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
-	[]*RootMetadataSigned, error) {
+	rmdses []*RootMetadataSigned, err error) {
+	md.log.LazyTrace(ctx, "MDServer: GetRange %s %s %s %d-%d", id, bid, mStatus, start, stop)
+	defer func() {
+		md.deferLog.LazyTrace(ctx, "MDServer: GetRange %s %s %s %d-%d done (err=%v)", id, bid, mStatus, start, stop, err)
+	}()
+
 	arg := keybase1.GetMetadataArg{
 		FolderID:      id.String(),
 		BranchID:      bid.String(),
@@ -540,9 +550,9 @@ func (md *MDServerRemote) GetRange(ctx context.Context, id tlf.ID,
 // Put implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned,
 	extra ExtraMetadata) (err error) {
-	md.log.LazyTrace(ctx, "MDServer: put %s %d", rmds.MD.TlfID(), rmds.MD.RevisionNumber())
+	md.log.LazyTrace(ctx, "MDServer: Put %s %d", rmds.MD.TlfID(), rmds.MD.RevisionNumber())
 	defer func() {
-		md.deferLog.LazyTrace(ctx, "MDServer: put %s %d done (err=%v)", rmds.MD.TlfID(), rmds.MD.RevisionNumber(), err)
+		md.deferLog.LazyTrace(ctx, "MDServer: Put %s %d done (err=%v)", rmds.MD.TlfID(), rmds.MD.RevisionNumber(), err)
 	}()
 
 	// encode MD block
@@ -601,9 +611,9 @@ func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned,
 
 // PruneBranch implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) PruneBranch(ctx context.Context, id tlf.ID, bid BranchID) (err error) {
-	md.log.LazyTrace(ctx, "MDServer: prune %s %s", id, bid)
+	md.log.LazyTrace(ctx, "MDServer: PruneBranch %s %s", id, bid)
 	defer func() {
-		md.deferLog.LazyTrace(ctx, "MDServer: prune %s %s (err=%v)", id, bid, err)
+		md.deferLog.LazyTrace(ctx, "MDServer: PruneBranch %s %s (err=%v)", id, bid, err)
 	}()
 	arg := keybase1.PruneBranchArg{
 		FolderID: id.String(),
