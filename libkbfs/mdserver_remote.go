@@ -615,6 +615,7 @@ func (md *MDServerRemote) PruneBranch(ctx context.Context, id tlf.ID, bid Branch
 	defer func() {
 		md.deferLog.LazyTrace(ctx, "MDServer: PruneBranch %s %s (err=%v)", id, bid, err)
 	}()
+
 	arg := keybase1.PruneBranchArg{
 		FolderID: id.String(),
 		BranchID: bid.String(),

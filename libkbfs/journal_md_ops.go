@@ -444,7 +444,12 @@ func (j journalMDOps) PutUnmerged(ctx context.Context, rmd *RootMetadata) (
 }
 
 func (j journalMDOps) PruneBranch(
-	ctx context.Context, id tlf.ID, bid BranchID) error {
+	ctx context.Context, id tlf.ID, bid BranchID) (err error) {
+	j.jServer.log.LazyTrace(ctx, "jMDOps: PruneBranch %s %s", id, bid)
+	defer func() {
+		j.jServer.deferLog.LazyTrace(ctx, "jMDOps: PruneBranch %s %s (err=%v)", id, bid, err)
+	}()
+
 	if tlfJournal, ok := j.jServer.getTLFJournal(id); ok {
 		// Prune the journal, too.
 		err := tlfJournal.clearMDs(ctx, bid)
@@ -463,7 +468,12 @@ func (j journalMDOps) PruneBranch(
 
 func (j journalMDOps) ResolveBranch(
 	ctx context.Context, id tlf.ID, bid BranchID,
-	blocksToDelete []kbfsblock.ID, rmd *RootMetadata) (MdID, error) {
+	blocksToDelete []kbfsblock.ID, rmd *RootMetadata) (mdID MdID, err error) {
+	j.jServer.log.LazyTrace(ctx, "jMDOps: ResolveBranch %s %s", id, bid)
+	defer func() {
+		j.jServer.deferLog.LazyTrace(ctx, "jMDOps: ResolveBranch %s %s (err=%v)", id, bid, err)
+	}()
+
 	if tlfJournal, ok := j.jServer.getTLFJournal(id); ok {
 		mdID, err := tlfJournal.resolveBranch(
 			ctx, bid, blocksToDelete, rmd)
