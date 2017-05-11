@@ -3019,10 +3019,11 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 	ctx = cr.config.MaybeStartTrace(ctx, "CR.doResolve",
 		fmt.Sprintf("%s %+v", cr.fbo.folderBranch, ci))
 	defer func() { cr.config.MaybeFinishTrace(ctx, err) }()
+
 	cr.log.CDebugf(ctx, "Starting conflict resolution with input %+v", ci)
 	lState := makeFBOLockState()
 	defer func() {
-		cr.log.CDebugf(ctx, "Finished conflict resolution: %+v", err)
+		cr.deferLog.CDebugf(ctx, "Finished conflict resolution: %+v", err)
 		if err != nil {
 			head := cr.fbo.getTrustedHead(lState)
 			if head == (ImmutableRootMetadata{}) {
