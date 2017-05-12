@@ -16,8 +16,8 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/env"
 	"github.com/keybase/kbfs/kbfscrypto"
-	"github.com/keybase/kbfs/kbfshash"
 	"github.com/keybase/kbfs/kbfsmd"
+	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -37,13 +37,12 @@ const (
 	TempdirServerAddr = "tempdir"
 )
 
-func fakeMdID(b byte) MdID {
-	dh := kbfshash.RawDefaultHash{b}
-	h, err := kbfshash.HashFromRaw(kbfshash.DefaultHashType, dh[:])
+func fakeMdID(b byte) tlf.MdID {
+	mdID, err := tlf.MdIDFromBytes([]byte{b})
 	if err != nil {
 		panic(err)
 	}
-	return MdID{h}
+	return mdID
 }
 
 // newConfigForTest returns a ConfigLocal object suitable for use by

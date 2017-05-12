@@ -520,17 +520,17 @@ func (md *MDOpsStandard) GetUnmergedRange(ctx context.Context, id tlf.ID,
 }
 
 func (md *MDOpsStandard) put(
-	ctx context.Context, rmd *RootMetadata) (MdID, error) {
+	ctx context.Context, rmd *RootMetadata) (tlf.MdID, error) {
 	session, err := md.config.KBPKI().GetCurrentSession(ctx)
 	if err != nil {
-		return MdID{}, err
+		return tlf.MdID{}, err
 	}
 
 	// Ensure that the block changes are properly unembedded.
 	if !rmd.IsWriterMetadataCopiedSet() &&
 		rmd.data.Changes.Info.BlockPointer == zeroPtr &&
 		!md.config.BlockSplitter().ShouldEmbedBlockChanges(&rmd.data.Changes) {
-		return MdID{},
+		return tlf.MdID{},
 			errors.New("MD has embedded block changes, but shouldn't")
 	}
 
@@ -538,24 +538,24 @@ func (md *MDOpsStandard) put(
 		ctx, md.config.Codec(), md.config.Crypto(),
 		md.config.Crypto(), md.config.KeyManager(), session.UID, rmd)
 	if err != nil {
-		return MdID{}, err
+		return tlf.MdID{}, err
 	}
 
 	rmds, err := SignBareRootMetadata(
 		ctx, md.config.Codec(), md.config.Crypto(), md.config.Crypto(),
 		rmd.bareMd, time.Time{})
 	if err != nil {
-		return MdID{}, err
+		return tlf.MdID{}, err
 	}
 
 	err = md.config.MDServer().Put(ctx, rmds, rmd.extra)
 	if err != nil {
-		return MdID{}, err
+		return tlf.MdID{}, err
 	}
 
 	mdID, err := md.config.Crypto().MakeMdID(rmds.MD)
 	if err != nil {
-		return MdID{}, err
+		return tlf.MdID{}, err
 	}
 
 	return mdID, nil
@@ -563,22 +563,22 @@ func (md *MDOpsStandard) put(
 
 // Put implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) Put(
-	ctx context.Context, rmd *RootMetadata) (MdID, error) {
+	ctx context.Context, rmd *RootMetadata) (tlf.MdID, error) {
 	if rmd.MergedStatus() == Unmerged {
-		return MdID{}, UnexpectedUnmergedPutError{}
+		return tlf.MdID{}, UnexpectedUnmergedPutError{}
 	}
 	return md.put(ctx, rmd)
 }
 
 // PutUnmerged implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) PutUnmerged(
-	ctx context.Context, rmd *RootMetadata) (MdID, error) {
+	ctx context.Context, rmd *RootMetadata) (tlf.MdID, error) {
 	rmd.SetUnmerged()
 	if rmd.BID() == NullBranchID {
 		// new branch ID
 		bid, err := md.config.Crypto().MakeRandomBranchID()
 		if err != nil {
-			return MdID{}, err
+			return tlf.MdID{}, err
 		}
 		rmd.SetBranchID(bid)
 	}
@@ -594,11 +594,11 @@ func (md *MDOpsStandard) PruneBranch(
 // ResolveBranch implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) ResolveBranch(
 	ctx context.Context, id tlf.ID, bid BranchID, _ []kbfsblock.ID,
-	rmd *RootMetadata) (MdID, error) {
+	rmd *RootMetadata) (tlf.MdID, error) {
 	// Put the MD first.
 	mdID, err := md.Put(ctx, rmd)
 	if err != nil {
-		return MdID{}, err
+		return tlf.MdID{}, err
 	}
 
 	// Prune the branch ia the journal, if there is one.  If the
@@ -606,7 +606,7 @@ func (md *MDOpsStandard) ResolveBranch(
 	// resolutions on the next restart (see KBFS-798).
 	err = md.PruneBranch(ctx, id, bid)
 	if err != nil {
-		return MdID{}, err
+		return tlf.MdID{}, err
 	}
 	return mdID, nil
 }

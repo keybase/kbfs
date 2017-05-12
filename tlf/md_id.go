@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD
 // license that can be found in the LICENSE file.
 
-package libkbfs
+package tlf
 
 import (
 	"encoding"
 
+	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfshash"
 )
 
@@ -17,6 +18,24 @@ type MdID struct {
 
 var _ encoding.BinaryMarshaler = MdID{}
 var _ encoding.BinaryUnmarshaler = (*MdID)(nil)
+
+// MdIDFromID creates a new MdID from the given BareRootMetadata object.
+//
+// TODO: Once BareRootMetadata is moved to this package, change the
+// type.
+func MdIDFromMD(codec kbfscodec.Codec, md interface{}) (MdID, error) {
+	buf, err := codec.Encode(md)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	h, err := kbfshash.DefaultHash(buf)
+	if err != nil {
+		return MdID{}, err
+	}
+
+	return MdID{h}, nil
+}
 
 // MdIDFromBytes creates a new MdID from the given bytes. If the
 // returned error is nil, the returned MdID is valid.

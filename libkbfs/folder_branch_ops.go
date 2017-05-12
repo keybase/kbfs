@@ -2021,7 +2021,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 
 	oldPrevRoot := md.PrevRoot()
 
-	var mdID MdID
+	var mdID tlf.MdID
 
 	// This puts on a delay on any cancellations arriving to ctx. It is intended
 	// to work sort of like a critical section, except that there isn't an
