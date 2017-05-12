@@ -870,12 +870,6 @@ type cryptoPure interface {
 	// NullBranchID.
 	MakeRandomBranchID() (BranchID, error)
 
-	// MakeMdID computes the MD ID of a RootMetadata object.
-	// TODO: This should move to BareRootMetadata. Note though, that some mock tests
-	// rely on it being part of the config and crypto_measured.go uses it to keep
-	// statistics on time spent hashing.
-	MakeMdID(md BareRootMetadata) (tlf.MdID, error)
-
 	// MakeMerkleHash computes the hash of a RootMetadataSigned object
 	// for inclusion into the KBFS Merkle tree.
 	MakeMerkleHash(md *RootMetadataSigned) (MerkleHash, error)

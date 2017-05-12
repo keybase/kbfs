@@ -1252,7 +1252,7 @@ func (j *tlfJournal) flushOneMDOp(
 		rmds.MD.TlfID(), mdID, rmds.MD.RevisionNumber(), rmds.MD.BID())
 	pushErr := mdServer.Put(ctx, rmds, extra)
 	if isRevisionConflict(pushErr) {
-		headMdID, err := getMdID(ctx, mdServer, j.config.Crypto(),
+		headMdID, err := getMdID(ctx, mdServer, j.config.Codec(),
 			rmds.MD.TlfID(), rmds.MD.BID(), rmds.MD.MergedStatus(),
 			rmds.MD.RevisionNumber())
 		if err != nil {

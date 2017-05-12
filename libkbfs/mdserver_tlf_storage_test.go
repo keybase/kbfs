@@ -69,7 +69,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		recordBranchID, err := s.put(uid, verifyingKey, rmds, nil)
 		require.NoError(t, err)
 		require.False(t, recordBranchID)
-		prevRoot, err = crypto.MakeMdID(rmds.MD)
+		prevRoot, err = tlf.MakeMdID(codec, rmds.MD)
 		require.NoError(t, err)
 		if i == 5 {
 			middleRoot = prevRoot
@@ -102,7 +102,7 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 		recordBranchID, err := s.put(uid, verifyingKey, rmds, nil)
 		require.NoError(t, err)
 		require.Equal(t, i == kbfsmd.Revision(6), recordBranchID)
-		prevRoot, err = crypto.MakeMdID(rmds.MD)
+		prevRoot, err = tlf.MakeMdID(codec, rmds.MD)
 		require.NoError(t, err)
 	}
 

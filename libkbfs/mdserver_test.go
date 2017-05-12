@@ -79,7 +79,7 @@ func TestMDServerBasics(t *testing.T) {
 		// MDv3 TODO: pass actual key bundles
 		err = mdServer.Put(ctx, rmds, nil)
 		require.NoError(t, err)
-		prevRoot, err = config.Crypto().MakeMdID(rmds.MD)
+		prevRoot, err = tlf.MakeMdID(config.Codec(), rmds.MD)
 		require.NoError(t, err)
 		if i == 5 {
 			middleRoot = prevRoot
@@ -106,7 +106,7 @@ func TestMDServerBasics(t *testing.T) {
 		// MDv3 TODO: pass actual key bundles
 		err = mdServer.Put(ctx, rmds, nil)
 		require.NoError(t, err)
-		prevRoot, err = config.Crypto().MakeMdID(rmds.MD)
+		prevRoot, err = tlf.MakeMdID(config.Codec(), rmds.MD)
 		require.NoError(t, err)
 	}
 

@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"github.com/keybase/kbfs/tlf"
 	"github.com/rcrowley/go-metrics"
 )
 
@@ -25,12 +24,4 @@ func NewCryptoMeasured(delegate Crypto, r metrics.Registry) CryptoMeasured {
 		Crypto:        delegate,
 		makeMdIDTimer: makeMdIDTimer,
 	}
-}
-
-// MakeMdID implements the Crypto interface for CryptoMeasured.
-func (c CryptoMeasured) MakeMdID(md BareRootMetadata) (mdID tlf.MdID, err error) {
-	c.makeMdIDTimer.Time(func() {
-		mdID, err = c.Crypto.MakeMdID(md)
-	})
-	return mdID, err
 }

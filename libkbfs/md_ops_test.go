@@ -26,10 +26,6 @@ type shimCrypto struct {
 	key  kbfscrypto.SigningKey
 }
 
-func (c shimCrypto) MakeMdID(md BareRootMetadata) (tlf.MdID, error) {
-	return c.pure.MakeMdID(md)
-}
-
 func (c shimCrypto) Sign(
 	ctx context.Context, data []byte) (kbfscrypto.SignatureInfo, error) {
 	return c.key.Sign(data), nil
@@ -537,7 +533,7 @@ func makeRMDSRange(t *testing.T, config Config,
 			ctx, config.Codec(), config.Crypto(), config.Crypto(),
 			rmd.bareMd, time.Now())
 		require.NoError(t, err)
-		currID, err := config.Crypto().MakeMdID(rmds.MD)
+		currID, err := tlf.MakeMdID(config.Codec(), rmds.MD)
 		require.NoError(t, err)
 		prevID = currID
 		rmdses = append(rmdses, rmds)

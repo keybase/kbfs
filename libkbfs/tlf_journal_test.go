@@ -185,7 +185,7 @@ func (c testTLFJournalConfig) checkRange(rmdses []rmdsWithExtra,
 		firstPrevRoot, mStatus, bid)
 
 	for i := 1; i < len(rmdses); i++ {
-		prevID, err := c.Crypto().MakeMdID(rmdses[i-1].rmds.MD)
+		prevID, err := tlf.MakeMdID(c.Codec(), rmdses[i-1].rmds.MD)
 		require.NoError(c.t, err)
 		c.checkMD(rmdses[i].rmds, rmdses[i].extra,
 			firstRevision+kbfsmd.Revision(i), prevID, mStatus, bid)

@@ -231,7 +231,7 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 	}
 	rmd.data = pmd
 
-	mdID, err := md.config.Crypto().MakeMdID(rmd.bareMd)
+	mdID, err := tlf.MakeMdID(md.config.Codec(), rmd.bareMd)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
@@ -553,7 +553,7 @@ func (md *MDOpsStandard) put(
 		return tlf.MdID{}, err
 	}
 
-	mdID, err := md.config.Crypto().MakeMdID(rmds.MD)
+	mdID, err := tlf.MakeMdID(md.config.Codec(), rmds.MD)
 	if err != nil {
 		return tlf.MdID{}, err
 	}

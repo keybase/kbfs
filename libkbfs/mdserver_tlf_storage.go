@@ -144,7 +144,7 @@ func (s *mdServerTlfStorage) getMDReadLocked(id tlf.MdID) (
 
 	// Check integrity.
 
-	mdID, err := s.crypto.MakeMdID(rmds.MD)
+	mdID, err := tlf.MakeMdID(s.codec, rmds.MD)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (s *mdServerTlfStorage) getMDReadLocked(id tlf.MdID) (
 
 func (s *mdServerTlfStorage) putMDLocked(
 	rmds *RootMetadataSigned) (tlf.MdID, error) {
-	id, err := s.crypto.MakeMdID(rmds.MD)
+	id, err := tlf.MakeMdID(s.codec, rmds.MD)
 	if err != nil {
 		return tlf.MdID{}, err
 	}
@@ -466,7 +466,7 @@ func (s *mdServerTlfStorage) put(
 
 	// Consistency checks
 	if head != nil {
-		headID, err := s.crypto.MakeMdID(head.MD)
+		headID, err := tlf.MakeMdID(s.codec, head.MD)
 		if err != nil {
 			return false, MDServerError{err}
 		}
