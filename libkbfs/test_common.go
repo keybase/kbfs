@@ -15,7 +15,6 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/env"
-	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/tlf"
@@ -37,15 +36,6 @@ const (
 	// used with a temporary directory.
 	TempdirServerAddr = "tempdir"
 )
-
-func fakeMdID(b byte) tlf.MdID {
-	codec := kbfscodec.NewMsgpack()
-	mdID, err := tlf.MdIDFromMD(codec, []byte{b})
-	if err != nil {
-		panic(err)
-	}
-	return mdID
-}
 
 // newConfigForTest returns a ConfigLocal object suitable for use by
 // MakeTestConfigOrBust or ConfigAsUser.

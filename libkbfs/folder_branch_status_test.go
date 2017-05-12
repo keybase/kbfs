@@ -129,7 +129,7 @@ func TestFBStatusAllFields(t *testing.T) {
 
 	fbsk.setRootMetadata(
 		MakeImmutableRootMetadata(rmd, signingKey.GetVerifyingKey(),
-			fakeMdID(1), time.Now()))
+			tlf.FakeMdID(1), time.Now()))
 	fbsk.addDirtyNode(n1)
 	fbsk.addDirtyNode(n2)
 

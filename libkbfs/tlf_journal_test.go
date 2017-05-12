@@ -878,7 +878,7 @@ func testTLFJournalFlushMDBasic(t *testing.T, ver MetadataVer) {
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	firstRevision := kbfsmd.Revision(10)
-	firstPrevRoot := fakeMdID(1)
+	firstPrevRoot := tlf.FakeMdID(1)
 	mdCount := 10
 
 	prevRoot := firstPrevRoot
@@ -923,7 +923,7 @@ func testTLFJournalFlushMDConflict(t *testing.T, ver MetadataVer) {
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
 	firstRevision := kbfsmd.Revision(10)
-	firstPrevRoot := fakeMdID(1)
+	firstPrevRoot := tlf.FakeMdID(1)
 	mdCount := 10
 
 	prevRoot := firstPrevRoot
@@ -1056,7 +1056,7 @@ func testTLFJournalFlushOrdering(t *testing.T, ver MetadataVer) {
 	bid2, bCtx2, serverHalf2 := config.makeBlock([]byte{2})
 	bid3, bCtx3, serverHalf3 := config.makeBlock([]byte{3})
 
-	md1 := config.makeMD(kbfsmd.Revision(10), fakeMdID(1))
+	md1 := config.makeMD(kbfsmd.Revision(10), tlf.FakeMdID(1))
 
 	var lock sync.Mutex
 	var puts []interface{}
@@ -1139,7 +1139,7 @@ func testTLFJournalFlushOrderingAfterSquashAndCR(
 	tlfJournal.forcedSquashByBytes = 20
 
 	firstRev := kbfsmd.Revision(10)
-	firstPrevRoot := fakeMdID(1)
+	firstPrevRoot := tlf.FakeMdID(1)
 	md1 := config.makeMD(firstRev, firstPrevRoot)
 
 	var lock sync.Mutex
@@ -1299,7 +1299,7 @@ func testTLFJournalFlushInterleaving(t *testing.T, ver MetadataVer) {
 		err := tlfJournal.putBlockData(ctx, bid, bCtx, data, serverHalf)
 		require.NoError(t, err)
 	}
-	md1 := config.makeMD(kbfsmd.Revision(10), fakeMdID(1))
+	md1 := config.makeMD(kbfsmd.Revision(10), tlf.FakeMdID(1))
 	prevRoot, err := tlfJournal.putMD(ctx, md1)
 	require.NoError(t, err)
 
@@ -1391,7 +1391,7 @@ func testTLFJournalPauseBlocksAndConvertBranch(t *testing.T,
 		require.NoError(t, err)
 	}
 	firstRev = kbfsmd.Revision(10)
-	firstRoot = fakeMdID(1)
+	firstRoot = tlf.FakeMdID(1)
 	md1 := config.makeMD(firstRev, firstRoot)
 	prevRoot, err := tlfJournal.putMD(ctx, md1)
 	require.NoError(t, err)
@@ -1524,7 +1524,7 @@ func testTLFJournalFlushRetry(t *testing.T, ver MetadataVer) {
 	}
 
 	firstRevision := kbfsmd.Revision(10)
-	firstPrevRoot := fakeMdID(1)
+	firstPrevRoot := tlf.FakeMdID(1)
 	mdCount := 10
 
 	prevRoot := firstPrevRoot
@@ -1569,7 +1569,7 @@ func testTLFJournalResolveBranch(t *testing.T, ver MetadataVer) {
 	}
 
 	firstRevision := kbfsmd.Revision(10)
-	firstPrevRoot := fakeMdID(1)
+	firstPrevRoot := tlf.FakeMdID(1)
 	mdCount := 3
 
 	prevRoot := firstPrevRoot
@@ -1639,7 +1639,7 @@ func testTLFJournalSquashByBytes(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 
 	firstRevision := kbfsmd.Revision(10)
-	firstPrevRoot := fakeMdID(1)
+	firstPrevRoot := tlf.FakeMdID(1)
 	mdCount := 3
 
 	prevRoot := firstPrevRoot

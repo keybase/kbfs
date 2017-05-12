@@ -608,7 +608,7 @@ func testMDOpsGetRangeSuccessHelper(
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
-	rmdses, extras := makeRMDSRange(t, config, 100, 5, fakeMdID(1))
+	rmdses, extras := makeRMDSRange(t, config, 100, 5, tlf.FakeMdID(1))
 
 	start := kbfsmd.Revision(100)
 	stop := start + kbfsmd.Revision(len(rmdses))
@@ -653,9 +653,9 @@ func testMDOpsGetRangeFailBadPrevRoot(t *testing.T, ver MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
-	rmdses, extras := makeRMDSRange(t, config, 100, 5, fakeMdID(1))
+	rmdses, extras := makeRMDSRange(t, config, 100, 5, tlf.FakeMdID(1))
 
-	rmdses[2].MD.(MutableBareRootMetadata).SetPrevRoot(fakeMdID(1))
+	rmdses[2].MD.(MutableBareRootMetadata).SetPrevRoot(tlf.FakeMdID(1))
 
 	start := kbfsmd.Revision(100)
 	stop := start + kbfsmd.Revision(len(rmdses))
@@ -824,7 +824,7 @@ func testMDOpsGetRangeFailFinal(t *testing.T, ver MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
-	rmdses, extras := makeRMDSRange(t, config, 100, 5, fakeMdID(1))
+	rmdses, extras := makeRMDSRange(t, config, 100, 5, tlf.FakeMdID(1))
 	rmdses[2].MD.(MutableBareRootMetadata).SetFinalBit()
 	rmdses[2].MD.(MutableBareRootMetadata).SetPrevRoot(rmdses[1].MD.GetPrevRoot())
 

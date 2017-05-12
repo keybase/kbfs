@@ -37,6 +37,17 @@ func MdIDFromMD(codec kbfscodec.Codec, md interface{}) (MdID, error) {
 	return MdID{h}, nil
 }
 
+// FakeMdID returns an MdID derived from the given byte, suitable for
+// testing.
+func FakeMdID(b byte) MdID {
+	dh := kbfshash.RawDefaultHash{b}
+	h, err := kbfshash.HashFromRaw(kbfshash.DefaultHashType, dh[:])
+	if err != nil {
+		panic(err)
+	}
+	return MdID{h}
+}
+
 // Bytes returns the bytes of the MDID.
 func (id MdID) Bytes() []byte {
 	return id.h.Bytes()
