@@ -76,7 +76,7 @@ func (fc failingCodec) Encode(interface{}) ([]byte, error) {
 	return nil, errors.New("Stopping resolution process early")
 }
 
-func crMakeFakeRMD(rev MetadataRevision, bid BranchID) ImmutableRootMetadata {
+func crMakeFakeRMD(rev tlf.MetadataRevision, bid BranchID) ImmutableRootMetadata {
 	var writerFlags WriterFlags
 	if bid != NullBranchID {
 		writerFlags = MetadataFlagUnmerged
@@ -105,15 +105,15 @@ func TestCRInput(t *testing.T) {
 
 	// First try a completely unknown revision
 	cr.Resolve(
-		ctx, MetadataRevisionUninitialized, MetadataRevisionUninitialized)
+		ctx, tlf.MetadataRevisionUninitialized, tlf.MetadataRevisionUninitialized)
 	// This should return without doing anything (i.e., without
 	// calling any mock methods)
 	cr.Wait(ctx)
 
 	// Next, try resolving a few items
-	branchPoint := MetadataRevision(2)
-	unmergedHead := MetadataRevision(5)
-	mergedHead := MetadataRevision(15)
+	branchPoint := tlf.MetadataRevision(2)
+	unmergedHead := tlf.MetadataRevision(5)
+	mergedHead := tlf.MetadataRevision(15)
 
 	crypto := MakeCryptoCommon(config.Codec())
 	bid, err := crypto.MakeRandomBranchID()
@@ -129,12 +129,12 @@ func TestCRInput(t *testing.T) {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, bid).Return(
 			crMakeFakeRMD(i, bid), nil)
 	}
-	for i := MetadataRevisionInitial; i <= branchPoint; i++ {
+	for i := tlf.MetadataRevisionInitial; i <= branchPoint; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, bid).Return(
 			ImmutableRootMetadata{}, NoSuchMDError{cr.fbo.id(), branchPoint, bid})
 	}
 	config.mockMdops.EXPECT().GetUnmergedRange(gomock.Any(), cr.fbo.id(),
-		bid, MetadataRevisionInitial, branchPoint).Return(nil, nil)
+		bid, tlf.MetadataRevisionInitial, branchPoint).Return(nil, nil)
 
 	for i := branchPoint; i <= mergedHead; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, NullBranchID).Return(
@@ -154,7 +154,7 @@ func TestCRInput(t *testing.T) {
 		gomock.Any(), gomock.Any(), gomock.Any())
 
 	// First try a completely unknown revision
-	cr.Resolve(ctx, unmergedHead, MetadataRevisionUninitialized)
+	cr.Resolve(ctx, unmergedHead, tlf.MetadataRevisionUninitialized)
 	cr.Wait(ctx)
 	// Make sure sure the input is up-to-date
 	if cr.currInput.merged != mergedHead {
@@ -162,7 +162,7 @@ func TestCRInput(t *testing.T) {
 	}
 
 	// Now make sure we ignore future inputs with lesser MDs
-	cr.Resolve(ctx, MetadataRevisionUninitialized, mergedHead-1)
+	cr.Resolve(ctx, tlf.MetadataRevisionUninitialized, mergedHead-1)
 	// This should return without doing anything (i.e., without
 	// calling any mock methods)
 	cr.Wait(ctx)
@@ -173,9 +173,9 @@ func TestCRInputFracturedRange(t *testing.T) {
 	defer crTestShutdown(ctx, cancel, mockCtrl, config, cr)
 
 	// Next, try resolving a few items
-	branchPoint := MetadataRevision(2)
-	unmergedHead := MetadataRevision(5)
-	mergedHead := MetadataRevision(15)
+	branchPoint := tlf.MetadataRevision(2)
+	unmergedHead := tlf.MetadataRevision(5)
+	mergedHead := tlf.MetadataRevision(15)
 
 	crypto := MakeCryptoCommon(config.Codec())
 	bid, err := crypto.MakeRandomBranchID()
@@ -190,14 +190,14 @@ func TestCRInputFracturedRange(t *testing.T) {
 	for i := unmergedHead; i >= branchPoint+1; i-- {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, bid).Return(crMakeFakeRMD(i, bid), nil)
 	}
-	for i := MetadataRevisionInitial; i <= branchPoint; i++ {
+	for i := tlf.MetadataRevisionInitial; i <= branchPoint; i++ {
 		config.mockMdcache.EXPECT().Get(cr.fbo.id(), i, bid).Return(
 			ImmutableRootMetadata{}, NoSuchMDError{cr.fbo.id(), branchPoint, bid})
 	}
 	config.mockMdops.EXPECT().GetUnmergedRange(gomock.Any(), cr.fbo.id(),
-		bid, MetadataRevisionInitial, branchPoint).Return(nil, nil)
+		bid, tlf.MetadataRevisionInitial, branchPoint).Return(nil, nil)
 
-	skipCacheRevision := MetadataRevision(10)
+	skipCacheRevision := tlf.MetadataRevision(10)
 	for i := branchPoint; i <= mergedHead; i++ {
 		// Pretend that revision 10 isn't in the cache, and needs to
 		// be fetched from the server.
@@ -227,7 +227,7 @@ func TestCRInputFracturedRange(t *testing.T) {
 		gomock.Any(), gomock.Any(), gomock.Any())
 
 	// Resolve the fractured revision list
-	cr.Resolve(ctx, unmergedHead, MetadataRevisionUninitialized)
+	cr.Resolve(ctx, unmergedHead, tlf.MetadataRevisionUninitialized)
 	cr.Wait(ctx)
 	// Make sure sure the input is up-to-date
 	if cr.currInput.merged != mergedHead {

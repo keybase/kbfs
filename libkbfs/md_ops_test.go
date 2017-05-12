@@ -90,7 +90,7 @@ func mdOpsShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 func addFakeRMDData(t *testing.T,
 	codec kbfscodec.Codec, crypto cryptoPure, rmd *RootMetadata,
 	h *TlfHandle) {
-	rmd.SetRevision(MetadataRevision(1))
+	rmd.SetRevision(tlf.MetadataRevision(1))
 	pmd := PrivateMetadata{}
 	// TODO: Will have to change this for private folders if we
 	// un-mock out those tests.
@@ -512,7 +512,7 @@ func testMDOpsGetFailIDCheck(t *testing.T, ver MetadataVer) {
 }
 
 func makeRMDSRange(t *testing.T, config Config,
-	start MetadataRevision, count int, prevID MdID) (
+	start tlf.MetadataRevision, count int, prevID MdID) (
 	rmdses []*RootMetadataSigned, extras []ExtraMetadata) {
 	id := tlf.FakeID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)
@@ -524,7 +524,7 @@ func makeRMDSRange(t *testing.T, config Config,
 
 		addFakeRMDData(t, config.Codec(), config.Crypto(), rmd, h)
 		rmd.SetPrevRoot(prevID)
-		rmd.SetRevision(start + MetadataRevision(i))
+		rmd.SetRevision(start + tlf.MetadataRevision(i))
 
 		ctx := context.Background()
 
@@ -586,7 +586,7 @@ func (mds *keyBundleMDServer) processRMDSes(
 
 func (mds *keyBundleMDServer) GetRange(
 	ctx context.Context, id tlf.ID, bid BranchID, mStatus MergeStatus,
-	start, stop MetadataRevision) ([]*RootMetadataSigned, error) {
+	start, stop tlf.MetadataRevision) ([]*RootMetadataSigned, error) {
 	rmdses := mds.nextGetRange
 	mds.nextGetRange = nil
 	return rmdses, nil
@@ -609,8 +609,8 @@ func testMDOpsGetRangeSuccessHelper(
 
 	rmdses, extras := makeRMDSRange(t, config, 100, 5, fakeMdID(1))
 
-	start := MetadataRevision(100)
-	stop := start + MetadataRevision(len(rmdses))
+	start := tlf.MetadataRevision(100)
+	stop := start + tlf.MetadataRevision(len(rmdses))
 	if fromStart {
 		start = 0
 	}
@@ -656,8 +656,8 @@ func testMDOpsGetRangeFailBadPrevRoot(t *testing.T, ver MetadataVer) {
 
 	rmdses[2].MD.(MutableBareRootMetadata).SetPrevRoot(fakeMdID(1))
 
-	start := MetadataRevision(100)
-	stop := start + MetadataRevision(len(rmdses))
+	start := tlf.MetadataRevision(100)
+	stop := start + tlf.MetadataRevision(len(rmdses))
 
 	// Verification is parallelized, so we have to expect at most one
 	// verification for each rmds.
@@ -827,8 +827,8 @@ func testMDOpsGetRangeFailFinal(t *testing.T, ver MetadataVer) {
 	rmdses[2].MD.(MutableBareRootMetadata).SetFinalBit()
 	rmdses[2].MD.(MutableBareRootMetadata).SetPrevRoot(rmdses[1].MD.GetPrevRoot())
 
-	start := MetadataRevision(100)
-	stop := start + MetadataRevision(len(rmdses))
+	start := tlf.MetadataRevision(100)
+	stop := start + tlf.MetadataRevision(len(rmdses))
 
 	// Verification is parallelized, so we have to expect at most one
 	// verification for each rmds.
