@@ -52,7 +52,7 @@ type cryptoGetter interface {
 }
 
 type currentSessionGetterGetter interface {
-	currentSessionGetter() CurrentSessionGetter
+	CurrentSessionGetter() CurrentSessionGetter
 }
 
 type signerGetter interface {

@@ -79,7 +79,7 @@ func (c testBlockServerRemoteConfig) Signer() kbfscrypto.Signer {
 	return c.signer
 }
 
-func (c testBlockServerRemoteConfig) currentSessionGetter() CurrentSessionGetter {
+func (c testBlockServerRemoteConfig) CurrentSessionGetter() CurrentSessionGetter {
 	return c.sessionGetter
 }
 

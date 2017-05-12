@@ -301,10 +301,10 @@ func NewBlockServerRemote(config blockServerRemoteConfig,
 	// achieve better prioritization within the actual network.
 	bs.putConn = newBlockServerRemoteClientHandler(
 		"BlockServerRemotePut", log, config.Signer(),
-		config.currentSessionGetter(), blkSrvAddr, rpcLogFactory)
+		config.CurrentSessionGetter(), blkSrvAddr, rpcLogFactory)
 	bs.getConn = newBlockServerRemoteClientHandler(
 		"BlockServerRemoteGet", log, config.Signer(),
-		config.currentSessionGetter(), blkSrvAddr, rpcLogFactory)
+		config.CurrentSessionGetter(), blkSrvAddr, rpcLogFactory)
 
 	bs.shutdownFn = func() {
 		bs.putConn.shutdown()
