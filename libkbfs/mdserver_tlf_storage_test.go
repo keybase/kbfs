@@ -60,8 +60,8 @@ func TestMDServerTlfStorageBasic(t *testing.T) {
 
 	// (2) Push some new metadata blocks.
 
-	prevRoot := MdID{}
-	middleRoot := MdID{}
+	prevRoot := tlf.MdID{}
+	middleRoot := tlf.MdID{}
 	for i := kbfsmd.Revision(1); i <= 10; i++ {
 		brmd := makeBRMDForTest(t, codec, crypto, tlfID, h, i, uid, prevRoot)
 		rmds := signRMDSForTest(t, codec, signer, brmd)

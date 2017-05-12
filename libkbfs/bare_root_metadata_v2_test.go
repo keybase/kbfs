@@ -15,7 +15,6 @@ import (
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
-	"github.com/keybase/kbfs/kbfshash"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/stretchr/testify/require"
 )
@@ -278,7 +277,8 @@ func (brmf *bareRootMetadataV2Future) ToCurrentStruct() kbfscodec.CurrentStruct 
 func makeFakeBareRootMetadataV2Future(t *testing.T) *bareRootMetadataV2Future {
 	wmf := makeFakeWriterMetadataV2Future(t)
 	rkb := makeFakeTLFReaderKeyBundleV2Future(t)
-	h, err := kbfshash.DefaultHash([]byte("fake buf"))
+	c := kbfscodec.NewMsgpack()
+	mdID, err := tlf.MdIDFromMD(c, []byte("fake buf"))
 	require.NoError(t, err)
 	sa, _ := externals.NormalizeSocialAssertion("bar@github")
 	rmf := bareRootMetadataV2Future{
@@ -299,7 +299,7 @@ func makeFakeBareRootMetadataV2Future(t *testing.T) *bareRootMetadataV2Future {
 				"uid1",
 				0xb,
 				5,
-				tlf.MdID{h},
+				mdID,
 				nil,
 				[]keybase1.SocialAssertion{sa},
 				nil,

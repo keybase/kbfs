@@ -201,7 +201,7 @@ func benchmarkMDJournalBasicBody(b *testing.B, ver MetadataVer, mdCount int) {
 
 	putMDRangeHelper(b, ver, id, signer, kbfsmd.Revision(10),
 		fakeMdID(1), mdCount, j.uid,
-		func(ctx context.Context, md *RootMetadata) (MdID, error) {
+		func(ctx context.Context, md *RootMetadata) (tlf.MdID, error) {
 			b.StartTimer()
 			defer b.StopTimer()
 			return j.put(ctx, signer, ekg, bsplit, md, false)
@@ -275,18 +275,18 @@ func testMDJournalGetNextEntry(t *testing.T, ver MetadataVer) {
 
 	mdID, rmds, _, err := j.getNextEntryToFlush(ctx, md.Revision(), signer)
 	require.NoError(t, err)
-	require.Equal(t, MdID{}, mdID)
+	require.Equal(t, tlf.MdID{}, mdID)
 	require.Nil(t, rmds)
 
 	mdID, rmds, _, err = j.getNextEntryToFlush(ctx, md.Revision()+1, signer)
 	require.NoError(t, err)
-	require.NotEqual(t, MdID{}, mdID)
+	require.NotEqual(t, tlf.MdID{}, mdID)
 	require.Equal(t, md.bareMd, rmds.MD)
 
 	mdID, rmds, _, err = j.getNextEntryToFlush(
 		ctx, md.Revision()+100, signer)
 	require.NoError(t, err)
-	require.NotEqual(t, MdID{}, mdID)
+	require.NotEqual(t, tlf.MdID{}, mdID)
 	require.Equal(t, md.bareMd, rmds.MD)
 }
 
@@ -542,7 +542,7 @@ func flushAllMDs(
 	for {
 		mdID, rmds, _, err := j.getNextEntryToFlush(ctx, end, signer)
 		require.NoError(t, err)
-		if mdID == (MdID{}) {
+		if mdID == (tlf.MdID{}) {
 			break
 		}
 		j.removeFlushedEntry(ctx, mdID, rmds)
@@ -819,7 +819,7 @@ func testMDJournalBranchConversionPreservesUnknownFields(t *testing.T, ver Metad
 
 		// Zero out the MdID, since branch conversion changes
 		// it.
-		entry.ID = MdID{}
+		entry.ID = tlf.MdID{}
 		expectedEntries = append(expectedEntries, entry)
 
 		prevRoot = mdID
@@ -836,7 +836,7 @@ func testMDJournalBranchConversionPreservesUnknownFields(t *testing.T, ver Metad
 	require.NoError(t, err)
 	// Zero out MdIDs for comparison.
 	for i, entry := range entries {
-		entry.ID = MdID{}
+		entry.ID = tlf.MdID{}
 		entries[i] = entry
 	}
 	require.Equal(t, expectedEntries, entries)
@@ -930,7 +930,7 @@ func testMDJournalClearPendingWithMaster(t *testing.T, ver MetadataVer) {
 
 	_, prevRoot := putMDRangeHelper(t, ver, id, signer, firstRevision,
 		firstPrevRoot, mdCount, j.uid,
-		func(ctx context.Context, md *RootMetadata) (MdID, error) {
+		func(ctx context.Context, md *RootMetadata) (tlf.MdID, error) {
 			return j.put(ctx, signer, ekg, bsplit, md, true)
 		})
 
