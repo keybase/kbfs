@@ -7,6 +7,7 @@ package libfs
 import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/libkbfs"
+	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
 )
 
@@ -46,7 +47,7 @@ func FilterTLFEarlyExitError(ctx context.Context, err error, log logger.Logger, 
 			name)
 		return true, nil
 
-	case libkbfs.MDServerErrorWriteAccess:
+	case tlf.MDServerErrorWriteAccess:
 		// Same as above; cannot fallthrough in type switch
 		log.CDebugf(ctx,
 			"No permission to write to %s, so pretending it's empty",

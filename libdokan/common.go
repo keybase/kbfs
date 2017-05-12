@@ -10,6 +10,7 @@ import (
 
 	"github.com/keybase/kbfs/dokan"
 	"github.com/keybase/kbfs/libkbfs"
+	"github.com/keybase/kbfs/tlf"
 )
 
 const (
@@ -67,7 +68,7 @@ func errToDokan(err error) error {
 		return dokan.ErrObjectNameNotFound
 	case libkbfs.NoSuchUserError:
 		return dokan.ErrObjectNameNotFound
-	case libkbfs.MDServerErrorUnauthorized:
+	case tlf.MDServerErrorUnauthorized:
 		return dokan.ErrAccessDenied
 	case nil:
 		return nil
