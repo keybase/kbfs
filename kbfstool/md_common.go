@@ -80,12 +80,12 @@ func getBranchID(ctx context.Context, config libkbfs.Config,
 
 func getRevision(ctx context.Context, config libkbfs.Config,
 	tlfID tlf.ID, branchID libkbfs.BranchID,
-	revisionStr string) (libkbfs.MetadataRevision, error) {
+	revisionStr string) (tlf.MetadataRevision, error) {
 	if len(revisionStr) == 0 || revisionStr == "latest" {
 		if branchID == libkbfs.NullBranchID {
 			irmd, err := config.MDOps().GetForTLF(ctx, tlfID)
 			if err != nil {
-				return libkbfs.MetadataRevisionUninitialized,
+				return tlf.MetadataRevisionUninitialized,
 					err
 			}
 			return irmd.Revision(), nil
@@ -94,7 +94,7 @@ func getRevision(ctx context.Context, config libkbfs.Config,
 		irmd, err := config.MDOps().GetUnmergedForTLF(
 			ctx, tlfID, branchID)
 		if err != nil {
-			return libkbfs.MetadataRevisionUninitialized, err
+			return tlf.MetadataRevisionUninitialized, err
 		}
 		return irmd.Revision(), nil
 	}
@@ -106,13 +106,13 @@ func getRevision(ctx context.Context, config libkbfs.Config,
 	}
 	u, err := strconv.ParseUint(revisionStr, base, 64)
 	if err != nil {
-		return libkbfs.MetadataRevisionUninitialized, err
+		return tlf.MetadataRevisionUninitialized, err
 	}
-	return libkbfs.MetadataRevision(u), nil
+	return tlf.MetadataRevision(u), nil
 }
 
 func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
-	branchID libkbfs.BranchID, rev libkbfs.MetadataRevision) (
+	branchID libkbfs.BranchID, rev tlf.MetadataRevision) (
 	libkbfs.ImmutableRootMetadata, error) {
 	var irmds []libkbfs.ImmutableRootMetadata
 	var err error
