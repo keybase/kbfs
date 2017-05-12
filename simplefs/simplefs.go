@@ -241,7 +241,7 @@ func copyWithCancellation(ctx context.Context, dst io.Writer, src io.Reader) err
 	for {
 		select {
 		case <-ctx.Done():
-			return err
+			return ctx.Err()
 		default:
 		}
 		_, err := io.CopyN(dst, src, 64*1024)
@@ -269,7 +269,7 @@ func (k *SimpleFS) SimpleFSCopyRecursive(ctx context.Context,
 			for len(paths) > 0 {
 				select {
 				case <-ctx.Done():
-					return err
+					return ctx.Err()
 				default:
 				}
 				// wrap in a function for defers.
