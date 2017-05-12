@@ -87,7 +87,7 @@ func teardownMDJournalTest(t testing.TB, tempdir string) {
 
 func makeMDForTest(t testing.TB, ver MetadataVer, tlfID tlf.ID,
 	revision kbfsmd.Revision, uid keybase1.UID,
-	signer kbfscrypto.Signer, prevRoot MdID) *RootMetadata {
+	signer kbfscrypto.Signer, prevRoot tlf.MdID) *RootMetadata {
 	nug := testNormalizedUsernameGetter{
 		uid: "fake_username",
 	}
@@ -108,7 +108,7 @@ func putMDRangeHelper(t testing.TB, ver MetadataVer, tlfID tlf.ID,
 	signer kbfscrypto.Signer, firstRevision kbfsmd.Revision,
 	firstPrevRoot MdID, mdCount int, uid keybase1.UID,
 	putMD func(context.Context, *RootMetadata) (MdID, error)) (
-	[]*RootMetadata, MdID) {
+	[]*RootMetadata, tlf.MdID) {
 	require.True(t, mdCount > 0)
 	ctx := context.Background()
 	var mds []*RootMetadata
@@ -135,10 +135,10 @@ func putMDRangeHelper(t testing.TB, ver MetadataVer, tlfID tlf.ID,
 func putMDRange(t testing.TB, ver MetadataVer, tlfID tlf.ID,
 	signer kbfscrypto.Signer, ekg encryptionKeyGetter,
 	bsplit BlockSplitter, firstRevision kbfsmd.Revision,
-	firstPrevRoot MdID, mdCount int, j *mdJournal) ([]*RootMetadata, MdID) {
+	firstPrevRoot tlf.MdID, mdCount int, j *mdJournal) ([]*RootMetadata, tlf.MdID) {
 	return putMDRangeHelper(t, ver, tlfID, signer, firstRevision,
 		firstPrevRoot, mdCount, j.uid,
-		func(ctx context.Context, md *RootMetadata) (MdID, error) {
+		func(ctx context.Context, md *RootMetadata) (tlf.MdID, error) {
 			return j.put(ctx, signer, ekg, bsplit, md, false)
 		})
 }
@@ -146,7 +146,7 @@ func putMDRange(t testing.TB, ver MetadataVer, tlfID tlf.ID,
 func checkBRMD(t *testing.T, uid keybase1.UID, key kbfscrypto.VerifyingKey,
 	codec kbfscodec.Codec, crypto cryptoPure, brmd BareRootMetadata,
 	extra ExtraMetadata, expectedRevision kbfsmd.Revision,
-	expectedPrevRoot MdID, expectedMergeStatus MergeStatus,
+	expectedPrevRoot tlf.MdID, expectedMergeStatus MergeStatus,
 	expectedBranchID BranchID) {
 	require.Equal(t, expectedRevision, brmd.RevisionNumber())
 	require.Equal(t, expectedPrevRoot, brmd.GetPrevRoot())
@@ -164,7 +164,7 @@ func checkBRMD(t *testing.T, uid keybase1.UID, key kbfscrypto.VerifyingKey,
 func checkIBRMDRange(t *testing.T, uid keybase1.UID,
 	key kbfscrypto.VerifyingKey, codec kbfscodec.Codec, crypto cryptoPure,
 	ibrmds []ImmutableBareRootMetadata, firstRevision kbfsmd.Revision,
-	firstPrevRoot MdID, mStatus MergeStatus, bid BranchID) {
+	firstPrevRoot tlf.MdID, mStatus MergeStatus, bid BranchID) {
 	checkBRMD(t, uid, key, codec, crypto, ibrmds[0], ibrmds[0].extra,
 		firstRevision, firstPrevRoot, mStatus, bid)
 

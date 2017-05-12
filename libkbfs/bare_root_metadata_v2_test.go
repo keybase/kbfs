@@ -299,7 +299,7 @@ func makeFakeBareRootMetadataV2Future(t *testing.T) *bareRootMetadataV2Future {
 				"uid1",
 				0xb,
 				5,
-				MdID{h},
+				tlf.MdID{h},
 				nil,
 				[]keybase1.SocialAssertion{sa},
 				nil,

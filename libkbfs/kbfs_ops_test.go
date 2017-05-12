@@ -319,7 +319,7 @@ func createNewRMD(t *testing.T, config Config, name string, public bool) (
 }
 
 func makeImmutableRMDForTest(t *testing.T, config Config, rmd *RootMetadata,
-	mdID MdID) ImmutableRootMetadata {
+	mdID tlf.MdID) ImmutableRootMetadata {
 	session, err := config.KBPKI().GetCurrentSession(context.Background())
 	require.NoError(t, err)
 	// We have to fake out the signature here because most tests

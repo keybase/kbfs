@@ -26,7 +26,7 @@ type shimCrypto struct {
 	key  kbfscrypto.SigningKey
 }
 
-func (c shimCrypto) MakeMdID(md BareRootMetadata) (MdID, error) {
+func (c shimCrypto) MakeMdID(md BareRootMetadata) (tlf.MdID, error) {
 	return c.pure.MakeMdID(md)
 }
 
@@ -513,7 +513,7 @@ func testMDOpsGetFailIDCheck(t *testing.T, ver MetadataVer) {
 }
 
 func makeRMDSRange(t *testing.T, config Config,
-	start kbfsmd.Revision, count int, prevID MdID) (
+	start kbfsmd.Revision, count int, prevID tlf.MdID) (
 	rmdses []*RootMetadataSigned, extras []ExtraMetadata) {
 	id := tlf.FakeID(1, false)
 	h := parseTlfHandleOrBust(t, config, "alice,bob", false)

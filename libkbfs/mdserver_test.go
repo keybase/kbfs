@@ -20,7 +20,7 @@ import (
 
 func makeBRMDForTest(t *testing.T, codec kbfscodec.Codec, crypto cryptoPure,
 	id tlf.ID, h tlf.Handle, revision kbfsmd.Revision, uid keybase1.UID,
-	prevRoot MdID) *BareRootMetadataV2 {
+	prevRoot tlf.MdID) *BareRootMetadataV2 {
 	var md BareRootMetadataV2
 	// MDv3 TODO: uncomment the below when we're ready for MDv3
 	// md := &BareRootMetadataV3{}
@@ -71,8 +71,8 @@ func TestMDServerBasics(t *testing.T) {
 	require.Nil(t, rmds)
 
 	// (2) push some new metadata blocks
-	prevRoot := MdID{}
-	middleRoot := MdID{}
+	prevRoot := tlf.MdID{}
+	middleRoot := tlf.MdID{}
 	for i := kbfsmd.Revision(1); i <= 10; i++ {
 		brmd := makeBRMDForTest(t, config.Codec(), config.Crypto(), id, h, i, uid, prevRoot)
 		rmds := signRMDSForTest(t, config.Codec(), config.Crypto(), brmd)
