@@ -39,7 +39,7 @@ type blockServerRemoteClientHandler struct {
 	name          string
 	log           logger.Logger
 	deferLog      logger.Logger
-	csg           currentSessionGetter
+	csg           CurrentSessionGetter
 	authToken     *kbfscrypto.AuthToken
 	srvAddr       string
 	connOpts      rpc.ConnectionOpts
@@ -52,7 +52,7 @@ type blockServerRemoteClientHandler struct {
 }
 
 func newBlockServerRemoteClientHandler(name string, log logger.Logger,
-	signer kbfscrypto.Signer, csg currentSessionGetter, srvAddr string,
+	signer kbfscrypto.Signer, csg CurrentSessionGetter, srvAddr string,
 	rpcLogFactory *libkb.RPCLogFactory) *blockServerRemoteClientHandler {
 	deferLog := log.CloneWithAddedDepth(1)
 	b := &blockServerRemoteClientHandler{
