@@ -277,9 +277,6 @@ func (brmf *bareRootMetadataV2Future) ToCurrentStruct() kbfscodec.CurrentStruct 
 func makeFakeBareRootMetadataV2Future(t *testing.T) *bareRootMetadataV2Future {
 	wmf := makeFakeWriterMetadataV2Future(t)
 	rkb := makeFakeTLFReaderKeyBundleV2Future(t)
-	c := kbfscodec.NewMsgpack()
-	mdID, err := tlf.MdIDFromMD(c, []byte("fake buf"))
-	require.NoError(t, err)
 	sa, _ := externals.NormalizeSocialAssertion("bar@github")
 	rmf := bareRootMetadataV2Future{
 		wmf,
@@ -299,7 +296,7 @@ func makeFakeBareRootMetadataV2Future(t *testing.T) *bareRootMetadataV2Future {
 				"uid1",
 				0xb,
 				5,
-				mdID,
+				tlf.FakeMdID(1),
 				nil,
 				[]keybase1.SocialAssertion{sa},
 				nil,
