@@ -54,6 +54,9 @@ func (c CryptoCommon) MakeRandomBranchID() (BranchID, error) {
 }
 
 // MakeMdID implements the Crypto interface for CryptoCommon.
+//
+// TODO: This should be removed and callers should use tlf.MakeMdID
+// directly. Some mock tests will have to be fixed up.
 func (c CryptoCommon) MakeMdID(md BareRootMetadata) (tlf.MdID, error) {
 	return tlf.MakeMdID(c.codec, md)
 }
