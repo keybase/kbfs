@@ -37,16 +37,6 @@ func MdIDFromMD(codec kbfscodec.Codec, md interface{}) (MdID, error) {
 	return MdID{h}, nil
 }
 
-// MdIDFromBytes creates a new MdID from the given bytes. If the
-// returned error is nil, the returned MdID is valid.
-func MdIDFromBytes(data []byte) (MdID, error) {
-	h, err := kbfshash.HashFromBytes(data)
-	if err != nil {
-		return MdID{}, err
-	}
-	return MdID{h}, nil
-}
-
 // Bytes returns the bytes of the MDID.
 func (id MdID) Bytes() []byte {
 	return id.h.Bytes()
