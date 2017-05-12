@@ -15,6 +15,7 @@ import (
 // Make sure MdID encodes and decodes properly with minimal overhead.
 func TestMdIDEncodeDecode(t *testing.T) {
 	id := FakeMdID(1)
+	codec := kbfscodec.NewMsgpack()
 	encodedMdID, err := codec.Encode(id)
 	require.NoError(t, err)
 

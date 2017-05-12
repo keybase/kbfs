@@ -9,6 +9,7 @@ import (
 
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfshash"
+	"github.com/pkg/errors"
 )
 
 // MdID is the content-based ID for a metadata block.
@@ -19,11 +20,14 @@ type MdID struct {
 var _ encoding.BinaryMarshaler = MdID{}
 var _ encoding.BinaryUnmarshaler = (*MdID)(nil)
 
-// MdIDFromID creates a new MdID from the given BareRootMetadata object.
-//
-// TODO: Once BareRootMetadata is moved to this package, change the
-// type.
-func MdIDFromMD(codec kbfscodec.Codec, md interface{}) (MdID, error) {
+// MakeMdID creates a new MdID from the given BareRootMetadata object.
+func MakeMdID(codec kbfscodec.Codec, md BareRootMetadata) (MdID, error) {
+	// Make sure that the serialized metadata is set; otherwise we
+	// won't get the right MdID.
+	if md.GetSerializedPrivateMetadata() == nil {
+		return MdID{}, errors.WithStack(MDMissingDataError{md.TlfID()})
+	}
+
 	buf, err := codec.Encode(md)
 	if err != nil {
 		return MdID{}, err
