@@ -136,7 +136,7 @@ func (m *mdServerLocalUpdateManager) setHead(id tlf.ID, server mdServerLocal) {
 }
 
 func (m *mdServerLocalUpdateManager) registerForUpdate(
-	id tlf.ID, currHead, currMergedHeadRev MetadataRevision,
+	id tlf.ID, currHead, currMergedHeadRev tlf.MetadataRevision,
 	server mdServerLocal) <-chan error {
 	m.lock.Lock()
 	defer m.lock.Unlock()

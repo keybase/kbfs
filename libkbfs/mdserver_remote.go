@@ -532,7 +532,7 @@ func (md *MDServerRemote) GetForTLF(ctx context.Context, id tlf.ID,
 
 // GetRange implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetRange(ctx context.Context, id tlf.ID,
-	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
+	bid BranchID, mStatus MergeStatus, start, stop tlf.MetadataRevision) (
 	rmdses []*RootMetadataSigned, err error) {
 	md.log.LazyTrace(ctx, "MDServer: GetRange %s %s %s %d-%d", id, bid, mStatus, start, stop)
 	defer func() {
@@ -698,7 +698,7 @@ func (md *MDServerRemote) getConn() *rpc.Connection {
 
 // RegisterForUpdate implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) RegisterForUpdate(ctx context.Context, id tlf.ID,
-	currHead MetadataRevision) (<-chan error, error) {
+	currHead tlf.MetadataRevision) (<-chan error, error) {
 	arg := keybase1.RegisterForUpdatesArg{
 		FolderID:     id.String(),
 		CurrRevision: currHead.Number(),

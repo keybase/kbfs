@@ -108,8 +108,8 @@ func (md *MDOpsStandard) verifyWriterKey(ctx context.Context,
 	prevHead := rmds.MD.RevisionNumber() - 1
 	for {
 		startRev := prevHead - maxMDsAtATime + 1
-		if startRev < MetadataRevisionInitial {
-			startRev = MetadataRevisionInitial
+		if startRev < tlf.MetadataRevisionInitial {
+			startRev = tlf.MetadataRevisionInitial
 		}
 
 		// Recursively call into MDOps.  Note that in the case where
@@ -445,7 +445,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id tlf.ID,
 
 	// Sort into slice based on revision.
 	irmds := make([]ImmutableRootMetadata, rmdsCount)
-	numExpected := MetadataRevision(len(irmds))
+	numExpected := tlf.MetadataRevision(len(irmds))
 	for irmd := range irmdChan {
 		i := irmd.Revision() - startRev
 		if i < 0 || i >= numExpected {
@@ -492,7 +492,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id tlf.ID,
 }
 
 func (md *MDOpsStandard) getRange(ctx context.Context, id tlf.ID,
-	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
+	bid BranchID, mStatus MergeStatus, start, stop tlf.MetadataRevision) (
 	[]ImmutableRootMetadata, error) {
 	rmds, err := md.config.MDServer().GetRange(
 		ctx, id, bid, mStatus, start, stop)
@@ -508,13 +508,13 @@ func (md *MDOpsStandard) getRange(ctx context.Context, id tlf.ID,
 
 // GetRange implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetRange(ctx context.Context, id tlf.ID,
-	start, stop MetadataRevision) ([]ImmutableRootMetadata, error) {
+	start, stop tlf.MetadataRevision) ([]ImmutableRootMetadata, error) {
 	return md.getRange(ctx, id, NullBranchID, Merged, start, stop)
 }
 
 // GetUnmergedRange implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetUnmergedRange(ctx context.Context, id tlf.ID,
-	bid BranchID, start, stop MetadataRevision) ([]ImmutableRootMetadata, error) {
+	bid BranchID, start, stop tlf.MetadataRevision) ([]ImmutableRootMetadata, error) {
 	return md.getRange(ctx, id, bid, Unmerged, start, stop)
 }
 

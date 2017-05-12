@@ -15,6 +15,7 @@ import (
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfssync"
+	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
 )
 
@@ -44,8 +45,8 @@ const (
 const CtxCROpID = "CRID"
 
 type conflictInput struct {
-	unmerged MetadataRevision
-	merged   MetadataRevision
+	unmerged tlf.MetadataRevision
+	merged   tlf.MetadataRevision
 }
 
 // ConflictResolver is responsible for resolving conflicts in the
@@ -97,8 +98,8 @@ func NewConflictResolver(
 		deferLog:         traceLogger{log.CloneWithAddedDepth(1)},
 		maxRevsThreshold: crMaxRevsThresholdDefault,
 		currInput: conflictInput{
-			unmerged: MetadataRevisionUninitialized,
-			merged:   MetadataRevisionUninitialized,
+			unmerged: tlf.MetadataRevisionUninitialized,
+			merged:   tlf.MetadataRevisionUninitialized,
 		},
 	}
 
@@ -221,7 +222,7 @@ func (cr *ConflictResolver) processInput(baseCtx context.Context,
 // Resolve takes the latest known unmerged and merged revision
 // numbers, and kicks off the resolution process.
 func (cr *ConflictResolver) Resolve(ctx context.Context,
-	unmerged MetadataRevision, merged MetadataRevision) {
+	unmerged tlf.MetadataRevision, merged tlf.MetadataRevision) {
 	cr.inputChanLock.RLock()
 	defer cr.inputChanLock.RUnlock()
 
@@ -303,7 +304,7 @@ func (cr *ConflictResolver) getMDs(ctx context.Context, lState *lockState,
 	writerLocked bool) (unmerged []ImmutableRootMetadata,
 	merged []ImmutableRootMetadata, err error) {
 	// First get all outstanding unmerged MDs for this device.
-	var branchPoint MetadataRevision
+	var branchPoint tlf.MetadataRevision
 	if writerLocked {
 		branchPoint, unmerged, err =
 			cr.fbo.getUnmergedMDUpdatesLocked(ctx, lState)
@@ -326,7 +327,7 @@ func (cr *ConflictResolver) getMDs(ctx context.Context, lState *lockState,
 	// fetching the branch point and remove the successor check below
 	// once we fix KBFS-1664.
 	fetchFrom := branchPoint + 1
-	if branchPoint >= MetadataRevisionInitial {
+	if branchPoint >= tlf.MetadataRevisionInitial {
 		fetchFrom = branchPoint
 	}
 	merged, err = getMergedMDUpdates(ctx, cr.fbo.config, cr.fbo.id(), fetchFrom)
@@ -389,7 +390,7 @@ func (cr *ConflictResolver) updateCurrInput(ctx context.Context,
 				"expected merged revision %d", rev, cr.currInput.merged)
 		}
 	} else {
-		rev = MetadataRevisionUninitialized
+		rev = tlf.MetadataRevisionUninitialized
 	}
 	cr.currInput.merged = rev
 

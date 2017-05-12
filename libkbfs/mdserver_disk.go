@@ -352,7 +352,7 @@ func (md *MDServerDisk) GetForTLF(ctx context.Context, id tlf.ID,
 
 // GetRange implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) GetRange(ctx context.Context, id tlf.ID,
-	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
+	bid BranchID, mStatus MergeStatus, start, stop tlf.MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
@@ -452,7 +452,7 @@ func (md *MDServerDisk) PruneBranch(ctx context.Context, id tlf.ID, bid BranchID
 }
 
 func (md *MDServerDisk) getCurrentMergedHeadRevision(
-	ctx context.Context, id tlf.ID) (rev MetadataRevision, err error) {
+	ctx context.Context, id tlf.ID) (rev tlf.MetadataRevision, err error) {
 	head, err := md.GetForTLF(ctx, id, NullBranchID, Merged)
 	if err != nil {
 		return 0, err
@@ -465,7 +465,7 @@ func (md *MDServerDisk) getCurrentMergedHeadRevision(
 
 // RegisterForUpdate implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) RegisterForUpdate(ctx context.Context, id tlf.ID,
-	currHead MetadataRevision) (<-chan error, error) {
+	currHead tlf.MetadataRevision) (<-chan error, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
 	}

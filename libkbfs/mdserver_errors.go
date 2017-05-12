@@ -92,8 +92,8 @@ func (e MDServerErrorBadRequest) Error() string {
 // MDServerErrorConflictRevision is returned when the passed MD block is inconsistent with current history.
 type MDServerErrorConflictRevision struct {
 	Desc     string
-	Expected MetadataRevision
-	Actual   MetadataRevision
+	Expected tlf.MetadataRevision
+	Actual   tlf.MetadataRevision
 }
 
 // Error implements the Error interface for MDServerErrorConflictRevision.

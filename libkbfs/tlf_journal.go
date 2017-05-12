@@ -95,8 +95,8 @@ const (
 // JSON.
 type TLFJournalStatus struct {
 	Dir           string
-	RevisionStart MetadataRevision
-	RevisionEnd   MetadataRevision
+	RevisionStart tlf.MetadataRevision
+	RevisionEnd   tlf.MetadataRevision
 	BranchID      string
 	BlockOpCount  uint64
 	// The byte counters below are signed because
@@ -668,11 +668,11 @@ func (j *tlfJournal) checkEnabledLocked() error {
 }
 
 func (j *tlfJournal) getJournalEnds(ctx context.Context) (
-	blockEnd journalOrdinal, mdEnd MetadataRevision, err error) {
+	blockEnd journalOrdinal, mdEnd tlf.MetadataRevision, err error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	if err := j.checkEnabledLocked(); err != nil {
-		return 0, MetadataRevisionUninitialized, err
+		return 0, tlf.MetadataRevisionUninitialized, err
 	}
 
 	blockEnd, err = j.blockJournal.end()
@@ -746,7 +746,7 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 			return err
 		}
 
-		if blockEnd == 0 && mdEnd == MetadataRevisionUninitialized {
+		if blockEnd == 0 && mdEnd == tlf.MetadataRevisionUninitialized {
 			j.log.CDebugf(ctx, "Nothing else to flush")
 			break
 		}
@@ -815,11 +815,11 @@ func (e errTLFJournalNotEmpty) Error() string {
 
 func (j *tlfJournal) getNextBlockEntriesToFlush(
 	ctx context.Context, end journalOrdinal) (
-	entries blockEntriesToFlush, maxMDRevToFlush MetadataRevision, err error) {
+	entries blockEntriesToFlush, maxMDRevToFlush tlf.MetadataRevision, err error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	if err := j.checkEnabledLocked(); err != nil {
-		return blockEntriesToFlush{}, MetadataRevisionUninitialized, err
+		return blockEntriesToFlush{}, tlf.MetadataRevisionUninitialized, err
 	}
 
 	return j.blockJournal.getNextEntriesToFlush(ctx, end,
@@ -859,11 +859,11 @@ func (j *tlfJournal) removeFlushedBlockEntries(ctx context.Context,
 
 func (j *tlfJournal) flushBlockEntries(
 	ctx context.Context, end journalOrdinal) (
-	numFlushed int, maxMDRevToFlush MetadataRevision,
+	numFlushed int, maxMDRevToFlush tlf.MetadataRevision,
 	converted bool, err error) {
 	entries, maxMDRevToFlush, err := j.getNextBlockEntriesToFlush(ctx, end)
 	if err != nil {
-		return 0, MetadataRevisionUninitialized, false, err
+		return 0, tlf.MetadataRevisionUninitialized, false, err
 	}
 
 	if entries.length() == 0 {
@@ -876,7 +876,7 @@ func (j *tlfJournal) flushBlockEntries(
 	// Mark these blocks as flushing, and clear when done.
 	err = j.markFlushingBlockIDs(entries)
 	if err != nil {
-		return 0, MetadataRevisionUninitialized, false, err
+		return 0, tlf.MetadataRevisionUninitialized, false, err
 	}
 	cleared := false
 	defer func() {
@@ -940,18 +940,18 @@ func (j *tlfJournal) flushBlockEntries(
 
 	err = eg.Wait()
 	if err != nil {
-		return 0, MetadataRevisionUninitialized, false, err
+		return 0, tlf.MetadataRevisionUninitialized, false, err
 	}
 
 	err = j.clearFlushingBlockIDs(entries)
 	cleared = true
 	if err != nil {
-		return 0, MetadataRevisionUninitialized, false, err
+		return 0, tlf.MetadataRevisionUninitialized, false, err
 	}
 
 	err = j.removeFlushedBlockEntries(ctx, entries)
 	if err != nil {
-		return 0, MetadataRevisionUninitialized, false, err
+		return 0, tlf.MetadataRevisionUninitialized, false, err
 	}
 
 	// If a conversion happened, the original `maxMDRevToFlush` only
@@ -959,16 +959,16 @@ func (j *tlfJournal) flushBlockEntries(
 	// local squash.  TODO: conversion might not have actually
 	// happened yet, in which case it's still ok to flush
 	// maxMDRevToFlush.
-	if converted && maxMDRevToFlush != MetadataRevisionUninitialized &&
+	if converted && maxMDRevToFlush != tlf.MetadataRevisionUninitialized &&
 		!entries.revIsLocalSquash(maxMDRevToFlush) {
-		maxMDRevToFlush = MetadataRevisionUninitialized
+		maxMDRevToFlush = tlf.MetadataRevisionUninitialized
 	}
 
 	return entries.length(), maxMDRevToFlush, converted, nil
 }
 
 func (j *tlfJournal) getNextMDEntryToFlush(ctx context.Context,
-	end MetadataRevision) (MdID, *RootMetadataSigned, ExtraMetadata, error) {
+	end tlf.MetadataRevision) (MdID, *RootMetadataSigned, ExtraMetadata, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	if err := j.checkEnabledLocked(); err != nil {
@@ -1222,9 +1222,9 @@ func (j *tlfJournal) removeFlushedMDEntryLocked(ctx context.Context,
 }
 
 func (j *tlfJournal) flushOneMDOp(
-	ctx context.Context, maxMDRevToFlush MetadataRevision) (
+	ctx context.Context, maxMDRevToFlush tlf.MetadataRevision) (
 	flushed bool, err error) {
-	if maxMDRevToFlush == MetadataRevisionUninitialized {
+	if maxMDRevToFlush == tlf.MetadataRevisionUninitialized {
 		// Avoid a call to `getNextMDEntryToFlush`, which
 		// would otherwise unnecessarily read an MD from disk.
 		return false, nil
@@ -1373,7 +1373,7 @@ func (j *tlfJournal) getJournalStatusWithRange() (
 		return jStatus, unflushedPaths, nil, true, nil
 	}
 
-	if jStatus.RevisionEnd == MetadataRevisionUninitialized {
+	if jStatus.RevisionEnd == tlf.MetadataRevisionUninitialized {
 		return jStatus, nil, nil, true, nil
 	}
 
@@ -1889,7 +1889,7 @@ func (j *tlfJournal) getMDHead(
 }
 
 func (j *tlfJournal) getMDRange(
-	ctx context.Context, bid BranchID, start, stop MetadataRevision) (
+	ctx context.Context, bid BranchID, start, stop tlf.MetadataRevision) (
 	[]ImmutableBareRootMetadata, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
@@ -1918,7 +1918,7 @@ func (j *tlfJournal) doPutMD(ctx context.Context, rmd *RootMetadata,
 
 	// Treat the first revision as a squash, so that it doesn't end up
 	// as the earliest revision in a range during a CR squash.
-	isFirstRev := rmd.Revision() == MetadataRevisionInitial
+	isFirstRev := rmd.Revision() == tlf.MetadataRevisionInitial
 
 	// TODO: remove the revision from the cache on any errors below?
 	// Tricky when the append is only queued.

@@ -19,8 +19,8 @@ import (
 )
 
 type mdRange struct {
-	start MetadataRevision
-	end   MetadataRevision
+	start tlf.MetadataRevision
+	end   tlf.MetadataRevision
 }
 
 func makeRekeyReadErrorHelper(
@@ -77,11 +77,11 @@ func isReadableOrError(
 }
 
 func getMDRange(ctx context.Context, config Config, id tlf.ID, bid BranchID,
-	start MetadataRevision, end MetadataRevision, mStatus MergeStatus) (
+	start tlf.MetadataRevision, end tlf.MetadataRevision, mStatus MergeStatus) (
 	rmds []ImmutableRootMetadata, err error) {
 	// The range is invalid.  Don't treat as an error though; it just
 	// indicates that we don't yet know about any revisions.
-	if start < MetadataRevisionInitial || end < MetadataRevisionInitial {
+	if start < tlf.MetadataRevisionInitial || end < tlf.MetadataRevisionInitial {
 		return nil, nil
 	}
 
@@ -166,7 +166,7 @@ func getMDRange(ctx context.Context, config Config, id tlf.ID, bid BranchID,
 
 // getSingleMD returns an MD that is required to exist.
 func getSingleMD(ctx context.Context, config Config, id tlf.ID, bid BranchID,
-	rev MetadataRevision, mStatus MergeStatus) (
+	rev tlf.MetadataRevision, mStatus MergeStatus) (
 	ImmutableRootMetadata, error) {
 	rmds, err := getMDRange(ctx, config, id, bid, rev, rev, mStatus)
 	if err != nil {
@@ -188,10 +188,10 @@ func getSingleMD(ctx context.Context, config Config, id tlf.ID, bid BranchID,
 // TODO: Accept a parameter to express that we want copies of the MDs
 // instead of the cached versions.
 func getMergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
-	startRev MetadataRevision) (mergedRmds []ImmutableRootMetadata, err error) {
+	startRev tlf.MetadataRevision) (mergedRmds []ImmutableRootMetadata, err error) {
 	// We don't yet know about any revisions yet, so there's no range
 	// to get.
-	if startRev < MetadataRevisionInitial {
+	if startRev < tlf.MetadataRevisionInitial {
 		return nil, nil
 	}
 
@@ -272,8 +272,8 @@ func getMergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
 // TODO: Accept a parameter to express that we want copies of the MDs
 // instead of the cached versions.
 func getUnmergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
-	bid BranchID, startRev MetadataRevision) (
-	currHead MetadataRevision, unmergedRmds []ImmutableRootMetadata,
+	bid BranchID, startRev tlf.MetadataRevision) (
+	currHead tlf.MetadataRevision, unmergedRmds []ImmutableRootMetadata,
 	err error) {
 	if bid == NullBranchID {
 		// We're not really unmerged, so there's nothing to do.
@@ -285,23 +285,23 @@ func getUnmergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
 
 	// We don't yet know about any revisions yet, so there's no range
 	// to get.
-	if startRev < MetadataRevisionInitial {
-		return MetadataRevisionUninitialized, nil, nil
+	if startRev < tlf.MetadataRevisionInitial {
+		return tlf.MetadataRevisionUninitialized, nil, nil
 	}
 
 	// walk backwards until we find one that is merged
 	currHead = startRev
 	for {
 		// first look up all unmerged MD revisions older than my current head
-		startRev := currHead - maxMDsAtATime + 1 // (MetadataRevision is signed)
-		if startRev < MetadataRevisionInitial {
-			startRev = MetadataRevisionInitial
+		startRev := currHead - maxMDsAtATime + 1 // (tlf.MetadataRevision is signed)
+		if startRev < tlf.MetadataRevisionInitial {
+			startRev = tlf.MetadataRevisionInitial
 		}
 
 		rmds, err := getMDRange(ctx, config, id, bid, startRev, currHead,
 			Unmerged)
 		if err != nil {
-			return MetadataRevisionUninitialized, nil, err
+			return tlf.MetadataRevisionUninitialized, nil, err
 		}
 
 		numNew := len(rmds)
@@ -312,8 +312,8 @@ func getUnmergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
 		if numNew > 0 {
 			currHead = rmds[0].Revision() - 1
 		}
-		if currHead < MetadataRevisionInitial {
-			return MetadataRevisionUninitialized, nil,
+		if currHead < tlf.MetadataRevisionInitial {
+			return tlf.MetadataRevisionUninitialized, nil,
 				errors.New("ran out of MD updates to unstage")
 		}
 		// TODO: limit the number of MDs we're allowed to hold in

@@ -452,7 +452,7 @@ func (m *stallingMDOps) GetUnmergedForTLF(ctx context.Context, id tlf.ID,
 }
 
 func (m *stallingMDOps) GetRange(ctx context.Context, id tlf.ID,
-	start, stop MetadataRevision) (
+	start, stop tlf.MetadataRevision) (
 	mds []ImmutableRootMetadata, err error) {
 	m.maybeStall(ctx, StallableMDGetRange)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
@@ -464,7 +464,7 @@ func (m *stallingMDOps) GetRange(ctx context.Context, id tlf.ID,
 }
 
 func (m *stallingMDOps) GetUnmergedRange(ctx context.Context, id tlf.ID,
-	bid BranchID, start, stop MetadataRevision) (mds []ImmutableRootMetadata, err error) {
+	bid BranchID, start, stop tlf.MetadataRevision) (mds []ImmutableRootMetadata, err error) {
 	m.maybeStall(ctx, StallableMDGetUnmergedRange)
 	err = runWithContextCheck(ctx, func(ctx context.Context) error {
 		var errGetUnmergedRange error

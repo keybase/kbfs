@@ -253,7 +253,7 @@ type folderBranchOps struct {
 	head       ImmutableRootMetadata
 	headStatus headTrustStatus
 	// latestMergedRevision tracks the latest heard merged revision on server
-	latestMergedRevision MetadataRevision
+	latestMergedRevision tlf.MetadataRevision
 	// Has this folder ever been cleared?
 	hasBeenCleared bool
 
@@ -609,14 +609,14 @@ var errNoMergedRevWhileStaged = errors.New(
 // getJournalPredecessorRevision returns the revision that precedes
 // the current journal head if journaling enabled and there are
 // unflushed MD updates; otherwise it returns
-// MetadataRevisionUninitialized.  If there aren't any flushed MD
+// tlf.MetadataRevisionUninitialized.  If there aren't any flushed MD
 // revisions, it returns errNoFlushedRevisions.
 func (fbo *folderBranchOps) getJournalPredecessorRevision(ctx context.Context) (
-	MetadataRevision, error) {
+	tlf.MetadataRevision, error) {
 	jServer, err := GetJournalServer(fbo.config)
 	if err != nil {
 		// Journaling is disabled entirely.
-		return MetadataRevisionUninitialized, nil
+		return tlf.MetadataRevisionUninitialized, nil
 	}
 
 	jStatus, err := jServer.JournalStatus(fbo.id())
@@ -626,20 +626,20 @@ func (fbo *folderBranchOps) getJournalPredecessorRevision(ctx context.Context) (
 		// file/disk corruption) that indicate a real problem, so it
 		// might be nice to type those errors so we can distinguish
 		// them.
-		return MetadataRevisionUninitialized, nil
+		return tlf.MetadataRevisionUninitialized, nil
 	}
 
 	if jStatus.BranchID != NullBranchID.String() {
-		return MetadataRevisionUninitialized, errNoMergedRevWhileStaged
+		return tlf.MetadataRevisionUninitialized, errNoMergedRevWhileStaged
 	}
 
-	if jStatus.RevisionStart == MetadataRevisionUninitialized {
+	if jStatus.RevisionStart == tlf.MetadataRevisionUninitialized {
 		// The journal is empty, so the local head must be the most recent.
-		return MetadataRevisionUninitialized, nil
-	} else if jStatus.RevisionStart == MetadataRevisionInitial {
+		return tlf.MetadataRevisionUninitialized, nil
+	} else if jStatus.RevisionStart == tlf.MetadataRevisionInitial {
 		// Nothing has been flushed to the servers yet, so don't
 		// return anything.
-		return MetadataRevisionUninitialized, errNoFlushedRevisions
+		return tlf.MetadataRevisionUninitialized, errNoFlushedRevisions
 	}
 
 	return jStatus.RevisionStart - 1, nil
@@ -703,7 +703,7 @@ func (fbo *folderBranchOps) setHeadLocked(
 		fbo.setBranchIDLocked(lState, md.BID())
 		// Use uninitialized for the merged branch; the unmerged
 		// revision is enough to trigger conflict resolution.
-		fbo.cr.Resolve(ctx, md.Revision(), MetadataRevisionUninitialized)
+		fbo.cr.Resolve(ctx, md.Revision(), tlf.MetadataRevisionUninitialized)
 	} else if md.MergedStatus() == Merged {
 		journalEnabled := TLFJournalEnabled(fbo.config, fbo.id())
 		if journalEnabled {
@@ -719,9 +719,9 @@ func (fbo *folderBranchOps) setHeadLocked(
 				switch err {
 				case nil:
 					// journalPred will be
-					// MetadataRevisionUninitialized when the journal
+					// tlf.MetadataRevisionUninitialized when the journal
 					// is empty.
-					if journalPred >= MetadataRevisionInitial {
+					if journalPred >= tlf.MetadataRevisionInitial {
 						fbo.setLatestMergedRevisionLocked(
 							ctx, lState, journalPred, false)
 					} else {
@@ -811,7 +811,7 @@ func (fbo *folderBranchOps) setNewInitialHeadLocked(ctx context.Context,
 	if fbo.head != (ImmutableRootMetadata{}) {
 		return errors.New("Unexpected non-nil head in setNewInitialHeadLocked")
 	}
-	if md.Revision() != MetadataRevisionInitial {
+	if md.Revision() != tlf.MetadataRevisionInitial {
 		return errors.Errorf("setNewInitialHeadLocked unexpectedly called with revision %d", md.Revision())
 	}
 	return fbo.setHeadLocked(ctx, lState, md, headTrusted)
@@ -905,7 +905,7 @@ func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
 	if fbo.head == (ImmutableRootMetadata{}) {
 		return errors.New("Unexpected nil head in setHeadPredecessorLocked")
 	}
-	if fbo.head.Revision() <= MetadataRevisionInitial {
+	if fbo.head.Revision() <= tlf.MetadataRevisionInitial {
 		return errors.Errorf("setHeadPredecessorLocked unexpectedly called with revision %d", fbo.head.Revision())
 	}
 
@@ -1121,7 +1121,7 @@ func (fbo *folderBranchOps) getMostRecentFullyMergedMD(ctx context.Context) (
 		return ImmutableRootMetadata{}, err
 	}
 
-	if mergedRev == MetadataRevisionUninitialized {
+	if mergedRev == tlf.MetadataRevisionUninitialized {
 		// No unflushed journal entries, so use the local head.
 		lState := makeFBOLockState()
 		return fbo.getMDForReadHelper(ctx, lState, mdReadNoIdentify)
@@ -2016,7 +2016,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 	mdops := fbo.config.MDOps()
 
 	doUnmergedPut := true
-	mergedRev := MetadataRevisionUninitialized
+	mergedRev := tlf.MetadataRevisionUninitialized
 
 	oldPrevRoot := md.PrevRoot()
 
@@ -2152,7 +2152,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 		bid := md.BID()
 		fbo.setBranchIDLocked(lState, bid)
 		doResolve = true
-		resolveMergedRev = MetadataRevisionUninitialized
+		resolveMergedRev = tlf.MetadataRevisionUninitialized
 	}
 
 	fbo.headLock.Lock(lState)
@@ -2203,7 +2203,7 @@ func (fbo *folderBranchOps) waitForJournalLocked(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	if jStatus.RevisionEnd != MetadataRevisionUninitialized {
+	if jStatus.RevisionEnd != tlf.MetadataRevisionUninitialized {
 		return errors.Errorf("Couldn't flush all MD revisions; current "+
 			"revision end for the journal is %d", jStatus.RevisionEnd)
 	}
@@ -2260,7 +2260,7 @@ func (fbo *folderBranchOps) finalizeMDRekeyWriteLocked(ctx context.Context,
 	if rebased {
 		bid := md.BID()
 		fbo.setBranchIDLocked(lState, bid)
-		fbo.cr.Resolve(ctx, md.Revision(), MetadataRevisionUninitialized)
+		fbo.cr.Resolve(ctx, md.Revision(), tlf.MetadataRevisionUninitialized)
 	}
 
 	md.loadCachedBlockChanges(ctx, nil, fbo.log)
@@ -2347,7 +2347,7 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *GCOp) (
 	if rebased {
 		bid := md.BID()
 		fbo.setBranchIDLocked(lState, bid)
-		fbo.cr.Resolve(ctx, md.Revision(), MetadataRevisionUninitialized)
+		fbo.cr.Resolve(ctx, md.Revision(), tlf.MetadataRevisionUninitialized)
 	}
 
 	fbo.headLock.Lock(lState)
@@ -4508,17 +4508,17 @@ func (fbo *folderBranchOps) notifyOneOp(ctx context.Context,
 	return fbo.notifyOneOpLocked(ctx, lState, op, md, shouldPrefetch)
 }
 
-func (fbo *folderBranchOps) getCurrMDRevisionLocked(lState *lockState) MetadataRevision {
+func (fbo *folderBranchOps) getCurrMDRevisionLocked(lState *lockState) tlf.MetadataRevision {
 	fbo.headLock.AssertAnyLocked(lState)
 
 	if fbo.head != (ImmutableRootMetadata{}) {
 		return fbo.head.Revision()
 	}
-	return MetadataRevisionUninitialized
+	return tlf.MetadataRevisionUninitialized
 }
 
 func (fbo *folderBranchOps) getCurrMDRevision(
-	lState *lockState) MetadataRevision {
+	lState *lockState) tlf.MetadataRevision {
 	fbo.headLock.RLock(lState)
 	defer fbo.headLock.RUnlock(lState)
 	return fbo.getCurrMDRevisionLocked(lState)
@@ -4537,7 +4537,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 		if err != nil {
 			return err
 		}
-		if mergedRev != MetadataRevisionUninitialized {
+		if mergedRev != tlf.MetadataRevisionUninitialized {
 			if len(rmds) > 0 {
 				// We should update our view of the merged master though,
 				// to avoid re-registering for the same updates again.
@@ -4581,7 +4581,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			fbo.setLatestMergedRevisionLocked(
 				ctx, lState, latestMerged.Revision(), false)
 
-			unmergedRev := MetadataRevisionUninitialized
+			unmergedRev := tlf.MetadataRevisionUninitialized
 			if fbo.head != (ImmutableRootMetadata{}) {
 				unmergedRev = fbo.head.Revision()
 			}
@@ -4700,16 +4700,16 @@ func (fbo *folderBranchOps) applyMDUpdates(ctx context.Context,
 	return fbo.applyMDUpdatesLocked(ctx, lState, rmds)
 }
 
-func (fbo *folderBranchOps) getLatestMergedRevision(lState *lockState) MetadataRevision {
+func (fbo *folderBranchOps) getLatestMergedRevision(lState *lockState) tlf.MetadataRevision {
 	fbo.headLock.RLock(lState)
 	defer fbo.headLock.RUnlock(lState)
 	return fbo.latestMergedRevision
 }
 
 // caller should have held fbo.headLock
-func (fbo *folderBranchOps) setLatestMergedRevisionLocked(ctx context.Context, lState *lockState, rev MetadataRevision, allowBackward bool) {
+func (fbo *folderBranchOps) setLatestMergedRevisionLocked(ctx context.Context, lState *lockState, rev tlf.MetadataRevision, allowBackward bool) {
 	fbo.headLock.AssertLocked(lState)
-	if rev == MetadataRevisionUninitialized {
+	if rev == tlf.MetadataRevisionUninitialized {
 		panic("Cannot set latest merged revision to an uninitialized value")
 	}
 
@@ -4791,7 +4791,7 @@ func (fbo *folderBranchOps) getAndApplyNewestUnmergedHead(ctx context.Context,
 // should be modified with care.
 func (fbo *folderBranchOps) getUnmergedMDUpdates(
 	ctx context.Context, lState *lockState) (
-	MetadataRevision, []ImmutableRootMetadata, error) {
+	tlf.MetadataRevision, []ImmutableRootMetadata, error) {
 	// acquire mdWriterLock to read the current branch ID.
 	bid := func() BranchID {
 		fbo.mdWriterLock.Lock(lState)
@@ -4804,7 +4804,7 @@ func (fbo *folderBranchOps) getUnmergedMDUpdates(
 
 func (fbo *folderBranchOps) getUnmergedMDUpdatesLocked(
 	ctx context.Context, lState *lockState) (
-	MetadataRevision, []ImmutableRootMetadata, error) {
+	tlf.MetadataRevision, []ImmutableRootMetadata, error) {
 	fbo.mdWriterLock.AssertLocked(lState)
 
 	return getUnmergedMDUpdates(ctx, fbo.config, fbo.id(),
@@ -5349,7 +5349,7 @@ func (fbo *folderBranchOps) maybeFastForward(ctx context.Context,
 	if err != nil {
 		return false, err
 	}
-	if mergedRev != MetadataRevisionUninitialized {
+	if mergedRev != tlf.MetadataRevisionUninitialized {
 		return false, nil
 	}
 
@@ -5888,7 +5888,7 @@ func (fbo *folderBranchOps) handleTLFBranchChange(ctx context.Context,
 
 	// Kick off conflict resolution and set the head to the correct branch.
 	fbo.setBranchIDLocked(lState, newBID)
-	fbo.cr.Resolve(ctx, md.Revision(), MetadataRevisionUninitialized)
+	fbo.cr.Resolve(ctx, md.Revision(), tlf.MetadataRevisionUninitialized)
 
 	fbo.headLock.Lock(lState)
 	defer fbo.headLock.Unlock(lState)
@@ -5920,7 +5920,7 @@ func (fbo *folderBranchOps) onTLFBranchChange(newBID BranchID) {
 }
 
 func (fbo *folderBranchOps) handleMDFlush(ctx context.Context, bid BranchID,
-	rev MetadataRevision) {
+	rev tlf.MetadataRevision) {
 	fbo.log.CDebugf(ctx, "Considering archiving references for flushed MD revision %d", rev)
 
 	lState := makeFBOLockState()
@@ -5948,7 +5948,7 @@ func (fbo *folderBranchOps) handleMDFlush(ctx context.Context, bid BranchID,
 	fbo.fbm.archiveUnrefBlocks(rmd.ReadOnly())
 }
 
-func (fbo *folderBranchOps) onMDFlush(bid BranchID, rev MetadataRevision) {
+func (fbo *folderBranchOps) onMDFlush(bid BranchID, rev tlf.MetadataRevision) {
 	fbo.mdFlushes.Add(1)
 
 	go func() {
@@ -5979,7 +5979,7 @@ func (fbo *folderBranchOps) GetUpdateHistory(ctx context.Context,
 	}
 
 	rmds, err := getMergedMDUpdates(ctx, fbo.config, fbo.id(),
-		MetadataRevisionInitial)
+		tlf.MetadataRevisionInitial)
 	if err != nil {
 		return TLFUpdateHistory{}, err
 	}
@@ -6096,7 +6096,7 @@ func (fbo *folderBranchOps) ClearPrivateFolderMD(ctx context.Context) {
 
 	fbo.head = ImmutableRootMetadata{}
 	fbo.headStatus = headUntrusted
-	fbo.latestMergedRevision = MetadataRevisionUninitialized
+	fbo.latestMergedRevision = tlf.MetadataRevisionUninitialized
 	fbo.hasBeenCleared = true
 }
 

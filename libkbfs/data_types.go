@@ -625,7 +625,7 @@ type OpSummary struct {
 
 // UpdateSummary describes the operations done by a single MD revision.
 type UpdateSummary struct {
-	Revision  MetadataRevision
+	Revision  tlf.MetadataRevision
 	Date      time.Time
 	Writer    string
 	LiveBytes uint64 // the "DiskUsage" for the TLF as of this revision
@@ -645,7 +645,7 @@ type TLFUpdateHistory struct {
 type writerInfo struct {
 	uid      keybase1.UID
 	key      kbfscrypto.VerifyingKey
-	revision MetadataRevision
+	revision tlf.MetadataRevision
 }
 
 // ErrorModeType indicates what type of operation was being attempted

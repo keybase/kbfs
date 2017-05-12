@@ -49,7 +49,7 @@ type mdBlockMem struct {
 }
 
 type mdBlockMemList struct {
-	initialRevision MetadataRevision
+	initialRevision tlf.MetadataRevision
 	blocks          []mdBlockMem
 }
 
@@ -312,7 +312,7 @@ func (md *MDServerMemory) getCurrentDeviceKey(ctx context.Context) (
 
 // GetRange implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetRange(ctx context.Context, id tlf.ID,
-	bid BranchID, mStatus MergeStatus, start, stop MetadataRevision) (
+	bid BranchID, mStatus MergeStatus, start, stop tlf.MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
@@ -366,7 +366,7 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id tlf.ID,
 		if err != nil {
 			return nil, MDServerError{err}
 		}
-		expectedRevision := blockList.initialRevision + MetadataRevision(i)
+		expectedRevision := blockList.initialRevision + tlf.MetadataRevision(i)
 		if expectedRevision != rmds.MD.RevisionNumber() {
 			panic(errors.Errorf("expected revision %v, got %v",
 				expectedRevision, rmds.MD.RevisionNumber()))
@@ -589,7 +589,7 @@ func (md *MDServerMemory) getBranchID(ctx context.Context, id tlf.ID) (BranchID,
 
 // RegisterForUpdate implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) RegisterForUpdate(ctx context.Context, id tlf.ID,
-	currHead MetadataRevision) (<-chan error, error) {
+	currHead tlf.MetadataRevision) (<-chan error, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
 	}
@@ -750,7 +750,7 @@ func (md *MDServerMemory) addNewAssertionForTest(uid keybase1.UID,
 }
 
 func (md *MDServerMemory) getCurrentMergedHeadRevision(
-	ctx context.Context, id tlf.ID) (rev MetadataRevision, err error) {
+	ctx context.Context, id tlf.ID) (rev tlf.MetadataRevision, err error) {
 	head, err := md.GetForTLF(ctx, id, NullBranchID, Merged)
 	if err != nil {
 		return 0, err

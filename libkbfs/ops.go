@@ -14,6 +14,7 @@ import (
 
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
+	"github.com/keybase/kbfs/tlf"
 )
 
 // op represents a single file-system remote-sync operation
@@ -1278,10 +1279,10 @@ type GCOp struct {
 	//
 	// The codec name overrides the one for RefBlocks in OpCommon,
 	// which GCOp doesn't use.
-	LatestRev MetadataRevision `codec:"r"`
+	LatestRev tlf.MetadataRevision `codec:"r"`
 }
 
-func newGCOp(latestRev MetadataRevision) *GCOp {
+func newGCOp(latestRev tlf.MetadataRevision) *GCOp {
 	gco := &GCOp{
 		LatestRev: latestRev,
 	}

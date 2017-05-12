@@ -89,7 +89,7 @@ type branchChangeListener interface {
 // accessing the journal, it must do so from another goroutine to
 // avoid deadlocks.
 type mdFlushListener interface {
-	onMDFlush(tlf.ID, BranchID, MetadataRevision)
+	onMDFlush(tlf.ID, BranchID, tlf.MetadataRevision)
 }
 
 // TODO: JournalServer isn't really a server, although it can create

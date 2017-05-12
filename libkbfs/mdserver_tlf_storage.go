@@ -256,7 +256,7 @@ func (s *mdServerTlfStorage) checkGetParamsReadLocked(
 }
 
 func (s *mdServerTlfStorage) getRangeReadLocked(
-	currentUID keybase1.UID, bid BranchID, start, stop MetadataRevision) (
+	currentUID keybase1.UID, bid BranchID, start, stop tlf.MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	err := s.checkGetParamsReadLocked(currentUID, bid)
 	if err != nil {
@@ -274,7 +274,7 @@ func (s *mdServerTlfStorage) getRangeReadLocked(
 	}
 	var rmdses []*RootMetadataSigned
 	for i, entry := range entries {
-		expectedRevision := realStart + MetadataRevision(i)
+		expectedRevision := realStart + tlf.MetadataRevision(i)
 		rmds, err := s.getMDReadLocked(entry.ID)
 		if err != nil {
 			return nil, MDServerError{err}
@@ -379,7 +379,7 @@ func (s *mdServerTlfStorage) getForTLF(
 }
 
 func (s *mdServerTlfStorage) getRange(
-	currentUID keybase1.UID, bid BranchID, start, stop MetadataRevision) (
+	currentUID keybase1.UID, bid BranchID, start, stop tlf.MetadataRevision) (
 	[]*RootMetadataSigned, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
