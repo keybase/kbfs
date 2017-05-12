@@ -128,7 +128,7 @@ func (md *MDServerMemory) getHandleID(ctx context.Context, handle tlf.Handle,
 	mStatus MergeStatus) (tlfID tlf.ID, created bool, err error) {
 	handleBytes, err := md.config.Codec().Encode(handle)
 	if err != nil {
-		return tlf.NullID, false, tlf.MDServerError{err}
+		return tlf.NullID, false, tlf.MDServerError{Err: err}
 	}
 
 	md.lock.Lock()
@@ -146,7 +146,7 @@ func (md *MDServerMemory) getHandleID(ctx context.Context, handle tlf.Handle,
 	// Non-readers shouldn't be able to create the dir.
 	session, err := md.config.currentSessionGetter().GetCurrentSession(ctx)
 	if err != nil {
-		return tlf.NullID, false, tlf.MDServerError{err}
+		return tlf.NullID, false, tlf.MDServerError{Err: err}
 	}
 	if !handle.IsReader(session.UID) {
 		return tlf.NullID, false, tlf.MDServerErrorUnauthorized{}
@@ -155,7 +155,7 @@ func (md *MDServerMemory) getHandleID(ctx context.Context, handle tlf.Handle,
 	// Allocate a new random ID.
 	id, err = md.config.cryptoPure().MakeRandomTlfID(handle.IsPublic())
 	if err != nil {
-		return tlf.NullID, false, tlf.MDServerError{err}
+		return tlf.NullID, false, tlf.MDServerError{Err: err}
 	}
 
 	md.handleDb[mdHandleKey(handleBytes)] = id
@@ -198,12 +198,12 @@ func (md *MDServerMemory) checkGetParams(
 	mergedMasterHead, err :=
 		md.getHeadForTLF(ctx, id, NullBranchID, Merged)
 	if err != nil {
-		return NullBranchID, tlf.MDServerError{err}
+		return NullBranchID, tlf.MDServerError{Err: err}
 	}
 
 	session, err := md.config.currentSessionGetter().GetCurrentSession(ctx)
 	if err != nil {
-		return NullBranchID, tlf.MDServerError{err}
+		return NullBranchID, tlf.MDServerError{Err: err}
 	}
 
 	// TODO: Figure out nil case.
@@ -211,11 +211,11 @@ func (md *MDServerMemory) checkGetParams(
 		extra, err := getExtraMetadata(
 			md.getKeyBundles, mergedMasterHead.MD)
 		if err != nil {
-			return NullBranchID, tlf.MDServerError{err}
+			return NullBranchID, tlf.MDServerError{Err: err}
 		}
 		ok, err := isReader(session.UID, mergedMasterHead.MD, extra)
 		if err != nil {
-			return NullBranchID, tlf.MDServerError{err}
+			return NullBranchID, tlf.MDServerError{Err: err}
 		}
 		if !ok {
 			return NullBranchID, tlf.MDServerErrorUnauthorized{}
@@ -247,7 +247,7 @@ func (md *MDServerMemory) GetForTLF(ctx context.Context, id tlf.ID,
 
 	rmds, err := md.getHeadForTLF(ctx, id, bid, mStatus)
 	if err != nil {
-		return nil, tlf.MDServerError{err}
+		return nil, tlf.MDServerError{Err: err}
 	}
 	return rmds, nil
 }
@@ -330,7 +330,7 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id tlf.ID,
 
 	key, err := md.getMDKey(id, bid, mStatus)
 	if err != nil {
-		return nil, tlf.MDServerError{err}
+		return nil, tlf.MDServerError{Err: err}
 	}
 
 	md.lock.Lock()
@@ -365,7 +365,7 @@ func (md *MDServerMemory) GetRange(ctx context.Context, id tlf.ID,
 			md.config.Codec(), id, ver, max, buf,
 			blocks[i].timestamp)
 		if err != nil {
-			return nil, tlf.MDServerError{err}
+			return nil, tlf.MDServerError{Err: err}
 		}
 		expectedRevision := blockList.initialRevision + kbfsmd.Revision(i)
 		if expectedRevision != rmds.MD.RevisionNumber() {
@@ -387,7 +387,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 
 	session, err := md.config.currentSessionGetter().GetCurrentSession(ctx)
 	if err != nil {
-		return tlf.MDServerError{err}
+		return tlf.MDServerError{Err: err}
 	}
 
 	err = rmds.IsValidAndSigned(
@@ -408,7 +408,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 	mergedMasterHead, err :=
 		md.getHeadForTLF(ctx, id, NullBranchID, Merged)
 	if err != nil {
-		return tlf.MDServerError{err}
+		return tlf.MDServerError{Err: err}
 	}
 
 	// TODO: Figure out nil case.
@@ -416,13 +416,13 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 		prevExtra, err := getExtraMetadata(
 			md.getKeyBundles, mergedMasterHead.MD)
 		if err != nil {
-			return tlf.MDServerError{err}
+			return tlf.MDServerError{Err: err}
 		}
 		ok, err := isWriterOrValidRekey(
 			md.config.Codec(), session.UID, mergedMasterHead.MD,
 			rmds.MD, prevExtra, extra)
 		if err != nil {
-			return tlf.MDServerError{err}
+			return tlf.MDServerError{Err: err}
 		}
 		if !ok {
 			return tlf.MDServerErrorUnauthorized{}
@@ -434,7 +434,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 
 	head, err := md.getHeadForTLF(ctx, id, bid, mStatus)
 	if err != nil {
-		return tlf.MDServerError{err}
+		return tlf.MDServerError{Err: err}
 	}
 
 	var recordBranchID bool
@@ -444,7 +444,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 		prevRev := rmds.MD.RevisionNumber() - 1
 		rmdses, err := md.GetRange(ctx, id, NullBranchID, Merged, prevRev, prevRev)
 		if err != nil {
-			return tlf.MDServerError{err}
+			return tlf.MDServerError{Err: err}
 		}
 		if len(rmdses) != 1 {
 			return tlf.MDServerError{
@@ -471,7 +471,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 	if recordBranchID {
 		branchKey, err := md.getBranchKey(ctx, id)
 		if err != nil {
-			return tlf.MDServerError{err}
+			return tlf.MDServerError{Err: err}
 		}
 		err = func() error {
 			md.lock.Lock()
@@ -490,7 +490,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 
 	encodedMd, err := EncodeRootMetadataSigned(md.config.Codec(), rmds)
 	if err != nil {
-		return tlf.MDServerError{err}
+		return tlf.MDServerError{Err: err}
 	}
 
 	block := mdBlockMem{encodedMd, md.config.Clock().Now(), rmds.MD.Version()}
@@ -498,7 +498,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 	// Add an entry with the revision key.
 	revKey, err := md.getMDKey(id, bid, mStatus)
 	if err != nil {
-		return tlf.MDServerError{err}
+		return tlf.MDServerError{Err: err}
 	}
 
 	md.lock.Lock()
@@ -520,7 +520,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 	}
 
 	if err := md.putExtraMetadataLocked(rmds, extra); err != nil {
-		return tlf.MDServerError{err}
+		return tlf.MDServerError{Err: err}
 	}
 
 	if mStatus == Merged &&
@@ -556,7 +556,7 @@ func (md *MDServerMemory) PruneBranch(ctx context.Context, id tlf.ID, bid Branch
 	// background.
 	branchKey, err := md.getBranchKey(ctx, id)
 	if err != nil {
-		return tlf.MDServerError{err}
+		return tlf.MDServerError{Err: err}
 	}
 	md.lock.Lock()
 	defer md.lock.Unlock()
@@ -572,7 +572,7 @@ func (md *MDServerMemory) PruneBranch(ctx context.Context, id tlf.ID, bid Branch
 func (md *MDServerMemory) getBranchID(ctx context.Context, id tlf.ID) (BranchID, error) {
 	branchKey, err := md.getBranchKey(ctx, id)
 	if err != nil {
-		return NullBranchID, tlf.MDServerError{err}
+		return NullBranchID, tlf.MDServerError{Err: err}
 	}
 	md.lock.Lock()
 	defer md.lock.Unlock()
@@ -873,7 +873,7 @@ func (md *MDServerMemory) GetKeyBundles(ctx context.Context,
 
 	wkb, rkb, err := md.getKeyBundles(tlfID, wkbID, rkbID)
 	if err != nil {
-		return nil, nil, tlf.MDServerError{err}
+		return nil, nil, tlf.MDServerError{Err: err}
 	}
 	return wkb, rkb, nil
 }

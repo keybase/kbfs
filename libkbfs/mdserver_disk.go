@@ -160,7 +160,7 @@ func (md *MDServerDisk) getHandleID(ctx context.Context, handle tlf.Handle,
 	mStatus MergeStatus) (tlfID tlf.ID, created bool, err error) {
 	handleBytes, err := md.config.Codec().Encode(handle)
 	if err != nil {
-		return tlf.NullID, false, tlf.MDServerError{err}
+		return tlf.NullID, false, tlf.MDServerError{Err: err}
 	}
 
 	md.lock.Lock()
@@ -172,13 +172,13 @@ func (md *MDServerDisk) getHandleID(ctx context.Context, handle tlf.Handle,
 
 	buf, err := md.handleDb.Get(handleBytes, nil)
 	if err != nil && err != leveldb.ErrNotFound {
-		return tlf.NullID, false, tlf.MDServerError{err}
+		return tlf.NullID, false, tlf.MDServerError{Err: err}
 	}
 	if err == nil {
 		var id tlf.ID
 		err := id.UnmarshalBinary(buf)
 		if err != nil {
-			return tlf.NullID, false, tlf.MDServerError{err}
+			return tlf.NullID, false, tlf.MDServerError{Err: err}
 		}
 		return id, false, nil
 	}
@@ -186,7 +186,7 @@ func (md *MDServerDisk) getHandleID(ctx context.Context, handle tlf.Handle,
 	// Non-readers shouldn't be able to create the dir.
 	session, err := md.config.currentSessionGetter().GetCurrentSession(ctx)
 	if err != nil {
-		return tlf.NullID, false, tlf.MDServerError{err}
+		return tlf.NullID, false, tlf.MDServerError{Err: err}
 	}
 	if !handle.IsReader(session.UID) {
 		return tlf.NullID, false, tlf.MDServerErrorUnauthorized{}
@@ -195,12 +195,12 @@ func (md *MDServerDisk) getHandleID(ctx context.Context, handle tlf.Handle,
 	// Allocate a new random ID.
 	id, err := md.config.cryptoPure().MakeRandomTlfID(handle.IsPublic())
 	if err != nil {
-		return tlf.NullID, false, tlf.MDServerError{err}
+		return tlf.NullID, false, tlf.MDServerError{Err: err}
 	}
 
 	err = md.handleDb.Put(handleBytes, id.Bytes(), nil)
 	if err != nil {
-		return tlf.NullID, false, tlf.MDServerError{err}
+		return tlf.NullID, false, tlf.MDServerError{Err: err}
 	}
 	return id, true, nil
 }
@@ -250,7 +250,7 @@ func (md *MDServerDisk) getBranchKey(ctx context.Context, id tlf.ID) ([]byte, er
 func (md *MDServerDisk) getBranchID(ctx context.Context, id tlf.ID) (BranchID, error) {
 	branchKey, err := md.getBranchKey(ctx, id)
 	if err != nil {
-		return NullBranchID, tlf.MDServerError{err}
+		return NullBranchID, tlf.MDServerError{Err: err}
 	}
 
 	md.lock.RLock()
@@ -286,15 +286,15 @@ func (md *MDServerDisk) putBranchID(
 
 	branchKey, err := md.getBranchKey(ctx, id)
 	if err != nil {
-		return tlf.MDServerError{err}
+		return tlf.MDServerError{Err: err}
 	}
 	buf, err := md.config.Codec().Encode(bid)
 	if err != nil {
-		return tlf.MDServerError{err}
+		return tlf.MDServerError{Err: err}
 	}
 	err = md.branchDb.Put(branchKey, buf, nil)
 	if err != nil {
-		return tlf.MDServerError{err}
+		return tlf.MDServerError{Err: err}
 	}
 
 	return nil
@@ -310,11 +310,11 @@ func (md *MDServerDisk) deleteBranchID(ctx context.Context, id tlf.ID) error {
 
 	branchKey, err := md.getBranchKey(ctx, id)
 	if err != nil {
-		return tlf.MDServerError{err}
+		return tlf.MDServerError{Err: err}
 	}
 	err = md.branchDb.Delete(branchKey, nil)
 	if err != nil {
-		return tlf.MDServerError{err}
+		return tlf.MDServerError{Err: err}
 	}
 	return nil
 }
@@ -340,7 +340,7 @@ func (md *MDServerDisk) GetForTLF(ctx context.Context, id tlf.ID,
 
 	session, err := md.config.currentSessionGetter().GetCurrentSession(ctx)
 	if err != nil {
-		return nil, tlf.MDServerError{err}
+		return nil, tlf.MDServerError{Err: err}
 	}
 
 	tlfStorage, err := md.getStorage(id)
@@ -375,7 +375,7 @@ func (md *MDServerDisk) GetRange(ctx context.Context, id tlf.ID,
 
 	session, err := md.config.currentSessionGetter().GetCurrentSession(ctx)
 	if err != nil {
-		return nil, tlf.MDServerError{err}
+		return nil, tlf.MDServerError{Err: err}
 	}
 
 	tlfStorage, err := md.getStorage(id)
@@ -395,7 +395,7 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned,
 
 	session, err := md.config.currentSessionGetter().GetCurrentSession(ctx)
 	if err != nil {
-		return tlf.MDServerError{err}
+		return tlf.MDServerError{Err: err}
 	}
 
 	tlfStorage, err := md.getStorage(rmds.MD.TlfID())
@@ -413,7 +413,7 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned,
 	if recordBranchID {
 		err = md.putBranchID(ctx, rmds.MD.TlfID(), rmds.MD.BID())
 		if err != nil {
-			return tlf.MDServerError{err}
+			return tlf.MDServerError{Err: err}
 		}
 	}
 
@@ -496,7 +496,7 @@ func (md *MDServerDisk) TruncateLock(ctx context.Context, id tlf.ID) (
 
 	session, err := md.config.currentSessionGetter().GetCurrentSession(ctx)
 	if err != nil {
-		return false, tlf.MDServerError{err}
+		return false, tlf.MDServerError{Err: err}
 	}
 
 	md.lock.Lock()
@@ -518,7 +518,7 @@ func (md *MDServerDisk) TruncateUnlock(ctx context.Context, id tlf.ID) (
 
 	session, err := md.config.currentSessionGetter().GetCurrentSession(ctx)
 	if err != nil {
-		return false, tlf.MDServerError{err}
+		return false, tlf.MDServerError{Err: err}
 	}
 
 	md.lock.Lock()
