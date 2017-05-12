@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD
 // license that can be found in the LICENSE file.
 
-package libkbfs
+package tlf
 
 import (
 	"errors"
@@ -13,7 +13,6 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc/rpc"
 	"github.com/keybase/kbfs/kbfsmd"
-	"github.com/keybase/kbfs/tlf"
 )
 
 const (
@@ -256,8 +255,8 @@ func (e MDServerErrorConditionFailed) ToStatus() (s keybase1.Status) {
 // ID mapping mismatch.
 type MDServerErrorConflictFolderMapping struct {
 	Desc     string
-	Expected tlf.ID
-	Actual   tlf.ID
+	Expected ID
+	Actual   ID
 }
 
 // Error implements the Error interface for MDServerErrorConflictFolderMapping.

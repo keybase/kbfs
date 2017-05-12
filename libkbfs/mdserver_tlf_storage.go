@@ -235,21 +235,21 @@ func (s *mdServerTlfStorage) checkGetParamsReadLocked(
 	currentUID keybase1.UID, bid BranchID) error {
 	mergedMasterHead, err := s.getHeadForTLFReadLocked(NullBranchID)
 	if err != nil {
-		return MDServerError{err}
+		return tlf.MDServerError{err}
 	}
 
 	if mergedMasterHead != nil {
 		extra, err := getExtraMetadata(
 			s.getKeyBundlesReadLocked, mergedMasterHead.MD)
 		if err != nil {
-			return MDServerError{err}
+			return tlf.MDServerError{err}
 		}
 		ok, err := isReader(currentUID, mergedMasterHead.MD, extra)
 		if err != nil {
-			return MDServerError{err}
+			return tlf.MDServerError{err}
 		}
 		if !ok {
-			return MDServerErrorUnauthorized{}
+			return tlf.MDServerErrorUnauthorized{}
 		}
 	}
 
@@ -278,7 +278,7 @@ func (s *mdServerTlfStorage) getRangeReadLocked(
 		expectedRevision := realStart + kbfsmd.Revision(i)
 		rmds, err := s.getMDReadLocked(entry.ID)
 		if err != nil {
-			return nil, MDServerError{err}
+			return nil, tlf.MDServerError{err}
 		}
 		if expectedRevision != rmds.MD.RevisionNumber() {
 			panic(errors.Errorf("expected revision %v, got %v",
@@ -374,7 +374,7 @@ func (s *mdServerTlfStorage) getForTLF(
 
 	rmds, err := s.getHeadForTLFReadLocked(bid)
 	if err != nil {
-		return nil, MDServerError{err}
+		return nil, tlf.MDServerError{err}
 	}
 	return rmds, nil
 }
@@ -405,19 +405,19 @@ func (s *mdServerTlfStorage) put(
 
 	err = rmds.IsValidAndSigned(s.codec, s.crypto, extra)
 	if err != nil {
-		return false, MDServerErrorBadRequest{Reason: err.Error()}
+		return false, tlf.MDServerErrorBadRequest{Reason: err.Error()}
 	}
 
 	err = rmds.IsLastModifiedBy(currentUID, currentVerifyingKey)
 	if err != nil {
-		return false, MDServerErrorBadRequest{Reason: err.Error()}
+		return false, tlf.MDServerErrorBadRequest{Reason: err.Error()}
 	}
 
 	// Check permissions
 
 	mergedMasterHead, err := s.getHeadForTLFReadLocked(NullBranchID)
 	if err != nil {
-		return false, MDServerError{err}
+		return false, tlf.MDServerError{err}
 	}
 
 	// TODO: Figure out nil case.
@@ -425,17 +425,17 @@ func (s *mdServerTlfStorage) put(
 		prevExtra, err := getExtraMetadata(
 			s.getKeyBundlesReadLocked, mergedMasterHead.MD)
 		if err != nil {
-			return false, MDServerError{err}
+			return false, tlf.MDServerError{err}
 		}
 		ok, err := isWriterOrValidRekey(
 			s.codec, currentUID,
 			mergedMasterHead.MD, rmds.MD,
 			prevExtra, extra)
 		if err != nil {
-			return false, MDServerError{err}
+			return false, tlf.MDServerError{err}
 		}
 		if !ok {
-			return false, MDServerErrorUnauthorized{}
+			return false, tlf.MDServerErrorUnauthorized{}
 		}
 	}
 
@@ -444,7 +444,7 @@ func (s *mdServerTlfStorage) put(
 
 	head, err := s.getHeadForTLFReadLocked(bid)
 	if err != nil {
-		return false, MDServerError{err}
+		return false, tlf.MDServerError{err}
 	}
 
 	if mStatus == Unmerged && head == nil {
@@ -453,10 +453,10 @@ func (s *mdServerTlfStorage) put(
 		rmdses, err := s.getRangeReadLocked(
 			currentUID, NullBranchID, prevRev, prevRev)
 		if err != nil {
-			return false, MDServerError{err}
+			return false, tlf.MDServerError{err}
 		}
 		if len(rmdses) != 1 {
-			return false, MDServerError{
+			return false, tlf.MDServerError{
 				Err: errors.Errorf("Expected 1 MD block got %d", len(rmdses)),
 			}
 		}
@@ -468,7 +468,7 @@ func (s *mdServerTlfStorage) put(
 	if head != nil {
 		headID, err := kbfsmd.MakeID(s.codec, head.MD)
 		if err != nil {
-			return false, MDServerError{err}
+			return false, tlf.MDServerError{err}
 		}
 
 		err = head.MD.CheckValidSuccessorForServer(headID, rmds.MD)
@@ -479,12 +479,12 @@ func (s *mdServerTlfStorage) put(
 
 	id, err := s.putMDLocked(rmds)
 	if err != nil {
-		return false, MDServerError{err}
+		return false, tlf.MDServerError{err}
 	}
 
 	err = s.putExtraMetadataLocked(rmds, extra)
 	if err != nil {
-		return false, MDServerError{err}
+		return false, tlf.MDServerError{err}
 	}
 
 	j, err := s.getOrCreateBranchJournalLocked(bid)
@@ -494,7 +494,7 @@ func (s *mdServerTlfStorage) put(
 
 	err = j.append(rmds.MD.RevisionNumber(), mdIDJournalEntry{ID: id})
 	if err != nil {
-		return false, MDServerError{err}
+		return false, tlf.MDServerError{err}
 	}
 
 	return recordBranchID, nil

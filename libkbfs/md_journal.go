@@ -594,7 +594,7 @@ func (j mdJournal) checkGetParams() (ImmutableBareRootMetadata, error) {
 	}
 	if !ok {
 		// TODO: Use a non-server error.
-		return ImmutableBareRootMetadata{}, MDServerErrorUnauthorized{}
+		return ImmutableBareRootMetadata{}, tlf.MDServerErrorUnauthorized{}
 	}
 
 	return head, nil
@@ -1286,7 +1286,7 @@ func (j *mdJournal) put(
 		}
 		if !ok {
 			// TODO: Use a non-server error.
-			return kbfsmd.ID{}, MDServerErrorUnauthorized{}
+			return kbfsmd.ID{}, tlf.MDServerErrorUnauthorized{}
 		}
 
 		// Consistency checks
