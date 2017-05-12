@@ -4,7 +4,9 @@
 
 package tlf
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // InvalidIDError indicates that a TLF ID string is not parseable or
 // invalid.
@@ -28,4 +30,16 @@ type HandleExtensionMismatchError struct {
 func (e HandleExtensionMismatchError) Error() string {
 	return fmt.Sprintf("Folder handle extension mismatch, "+
 		"expected: %s, actual: %s", e.Expected, e.Actual)
+}
+
+// MDMissingDataError indicates that we are trying to take get the
+// metadata ID of a MD object with no serialized data field.
+type MDMissingDataError struct {
+	ID ID
+}
+
+// Error implements the error interface for MDMissingDataError
+func (e MDMissingDataError) Error() string {
+	return fmt.Sprintf("No serialized private data in the metadata "+
+		"for directory %v", e.ID)
 }

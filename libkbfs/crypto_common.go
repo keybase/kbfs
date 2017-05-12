@@ -60,7 +60,7 @@ func (c CryptoCommon) MakeMdID(md BareRootMetadata) (tlf.MdID, error) {
 	//
 	// TODO: Move this check to tlf/md_id.go.
 	if md.GetSerializedPrivateMetadata() == nil {
-		return tlf.MdID{}, errors.WithStack(MDMissingDataError{md.TlfID()})
+		return tlf.MdID{}, errors.WithStack(tlf.MDMissingDataError{md.TlfID()})
 	}
 
 	return tlf.MdIDFromMD(c.codec, md)
