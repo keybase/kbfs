@@ -475,6 +475,8 @@ type normalizedUsernameGetter interface {
 	GetNormalizedUsername(ctx context.Context, uid keybase1.UID) (libkb.NormalizedUsername, error)
 }
 
+// CurrentSessionGetter is an interface for objects that can return
+// session info.
 type CurrentSessionGetter interface {
 	// GetCurrentSession gets the current session info.
 	GetCurrentSession(ctx context.Context) (SessionInfo, error)
