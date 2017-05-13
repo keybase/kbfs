@@ -595,8 +595,6 @@ func (j *tlfJournal) doBackgroundWorkLoop(
 
 // doBackgroundWork currently only does auto-flushing. It assumes that
 // ctx is canceled when the background processing should stop.
-//
-// TODO: Handle garbage collection too.
 func (j *tlfJournal) doBackgroundWork(ctx context.Context) <-chan error {
 	errCh := make(chan error, 1)
 	// TODO: Handle panics.
