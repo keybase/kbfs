@@ -526,25 +526,25 @@ func (md *BareRootMetadataV2) CheckValidSuccessorForServer(
 		break
 
 	case MDRevisionMismatch:
-		return tlf.MDServerErrorConflictRevision{
+		return kbfsmd.ServerErrorConflictRevision{
 			Expected: err.curr + 1,
 			Actual:   err.rev,
 		}
 
 	case MDPrevRootMismatch:
-		return tlf.MDServerErrorConflictPrevRoot{
+		return kbfsmd.ServerErrorConflictPrevRoot{
 			Expected: err.expectedPrevRoot,
 			Actual:   err.prevRoot,
 		}
 
 	case MDDiskUsageMismatch:
-		return tlf.MDServerErrorConflictDiskUsage{
+		return kbfsmd.ServerErrorConflictDiskUsage{
 			Expected: err.expectedDiskUsage,
 			Actual:   err.actualDiskUsage,
 		}
 
 	default:
-		return tlf.MDServerError{Err: err}
+		return kbfsmd.ServerError{Err: err}
 	}
 
 	return nil

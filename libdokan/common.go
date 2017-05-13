@@ -68,7 +68,7 @@ func errToDokan(err error) error {
 		return dokan.ErrObjectNameNotFound
 	case libkbfs.NoSuchUserError:
 		return dokan.ErrObjectNameNotFound
-	case tlf.MDServerErrorUnauthorized:
+	case kbfsmd.ServerErrorUnauthorized:
 		return dokan.ErrAccessDenied
 	case nil:
 		return nil

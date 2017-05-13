@@ -9,7 +9,7 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/kbfs/kbfscrypto"
-	"github.com/keybase/kbfs/tlf"
+	"github.com/keybase/kbfs/kbfsmd"
 )
 
 // Test that Put/Get works for TLF crypt key server halves.
@@ -127,7 +127,7 @@ func TestKeyServerLocalTLFCryptKeyServerHalves(t *testing.T) {
 	}
 
 	half4, err := config1.KeyOps().GetTLFCryptKeyServerHalf(ctx, serverHalfID4, publicKey1)
-	_, unauthorized := err.(tlf.MDServerErrorUnauthorized)
+	_, unauthorized := err.(kbfsmd.ServerErrorUnauthorized)
 	if !unauthorized {
 		t.Errorf("Expected unauthorized, got %v", err)
 	}
