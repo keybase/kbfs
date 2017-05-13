@@ -1192,6 +1192,9 @@ func (j *tlfJournal) doOnMDFlushAndRemoveFlushedMDEntry(ctx context.Context,
 		j.log.CDebugf(ctx,
 			"TLF journal is now empty; removing all files in %s", j.dir)
 
+		// If we ever need to upgrade the journal version,
+		// this would be the place to do it.
+
 		// Reset to initial state.
 		j.unflushedPaths = unflushedPathCache{}
 		j.unsquashedBytes = 0
