@@ -1019,6 +1019,10 @@ func (s *orderedMDServer) Put(
 func (s *orderedMDServer) Shutdown() {}
 
 func testTLFJournalGCd(t *testing.T, tlfJournal *tlfJournal) {
+	// The root dir shouldn't exist.
+	_, err := ioutil.Stat(tlfJournal.dir)
+	require.True(t, ioutil.IsNotExist(err))
+	// Do some other (redundant) checks.
 	requireJournalEntryCounts(t, tlfJournal, 0, 0)
 	testBlockJournalGCd(t, tlfJournal.blockJournal)
 	testMDJournalGCd(t, tlfJournal.mdJournal)
