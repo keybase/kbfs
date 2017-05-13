@@ -1121,7 +1121,7 @@ func (j *tlfJournal) getBlockDeferredGCRange() (
 	return length, earliest, latest, nil
 }
 
-func (j *tlfJournal) doOnMDFlush(ctx context.Context,
+func (j *tlfJournal) doOnMDFlushAndRemoveFlushedMDEntry(ctx context.Context,
 	mdID MdID, rmds *RootMetadataSigned) error {
 	if j.onMDFlush != nil {
 		j.onMDFlush.onMDFlush(rmds.MD.TlfID(), rmds.MD.BID(),
@@ -1290,7 +1290,7 @@ func (j *tlfJournal) flushOneMDOp(
 		return false, pushErr
 	}
 
-	err = j.doOnMDFlush(ctx, mdID, rmds)
+	err = j.doOnMDFlushAndRemoveFlushedMDEntry(ctx, mdID, rmds)
 	if err != nil {
 		return false, err
 	}
