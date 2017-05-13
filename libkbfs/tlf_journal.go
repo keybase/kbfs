@@ -1107,19 +1107,18 @@ func (j *tlfJournal) convertMDsToBranchIfOverThreshold(ctx context.Context,
 	return true, nil
 }
 
-func (j *tlfJournal) getMDFlushRange() (
-	blockJournal *blockJournal, length int, earliest, latest journalOrdinal,
-	err error) {
+func (j *tlfJournal) getBlockDeferredGCRange() (
+	length int, earliest, latest journalOrdinal, err error) {
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
 	if err := j.checkEnabledLocked(); err != nil {
-		return nil, 0, 0, 0, err
+		return 0, 0, 0, err
 	}
 	length, earliest, latest, err = j.blockJournal.getDeferredGCRange()
 	if err != nil {
-		return nil, 0, 0, 0, err
+		return 0, 0, 0, err
 	}
-	return j.blockJournal, length, earliest, latest, nil
+	return length, earliest, latest, nil
 }
 
 func (j *tlfJournal) doOnMDFlush(ctx context.Context,
@@ -1129,7 +1128,7 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 			rmds.MD.RevisionNumber())
 	}
 
-	blockJournal, length, earliest, latest, err := j.getMDFlushRange()
+	length, earliest, latest, err := j.getBlockDeferredGCRange()
 	if err != nil {
 		return err
 	}
@@ -1140,7 +1139,7 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 		// journalLock, as it doesn't touch the actual journal, only
 		// the deferred GC journal.
 		var err error
-		removedBytes, removedFiles, err = blockJournal.doGC(
+		removedBytes, removedFiles, err = j.blockJournal.doGC(
 			ctx, earliest, latest)
 		if err != nil {
 			return err
