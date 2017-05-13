@@ -9,7 +9,7 @@ import (
 
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
-	"github.com/keybase/kbfs/tlf"
+	"github.com/keybase/kbfs/kbfsmd"
 )
 
 type mdIDJournalEntryFuture struct {
