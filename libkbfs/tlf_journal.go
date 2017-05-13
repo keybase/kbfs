@@ -1191,6 +1191,12 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 	if j.blockJournal.empty() && clearedMDJournal {
 		j.log.CDebugf(ctx,
 			"TLF journal is now empty; removing all files in %s", j.dir)
+
+		// Reset to initial state.
+		j.unflushedPaths = unflushedPathCache{}
+		j.unsquashedBytes = 0
+		j.flushingBlocks = make(map[kbfsblock.ID]bool)
+
 		err := ioutil.RemoveAll(j.dir)
 		if err != nil {
 			return err

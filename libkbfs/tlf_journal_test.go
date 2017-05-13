@@ -1022,8 +1022,19 @@ func testTLFJournalGCd(t *testing.T, tlfJournal *tlfJournal) {
 	// The root dir shouldn't exist.
 	_, err := ioutil.Stat(tlfJournal.dir)
 	require.True(t, ioutil.IsNotExist(err))
-	// Do some other (redundant) checks.
+
+	func() {
+		tlfJournal.journalLock.Lock()
+		defer tlfJournal.journalLock.Unlock()
+		unflushedPaths := tlfJournal.unflushedPaths.getUnflushedPaths()
+		require.Nil(t, unflushedPaths)
+		require.Equal(t, uint64(0), tlfJournal.unsquashedBytes)
+		require.Equal(t, 0, len(tlfJournal.flushingBlocks))
+	}()
+
 	requireJournalEntryCounts(t, tlfJournal, 0, 0)
+
+	// Check child journals.
 	testBlockJournalGCd(t, tlfJournal.blockJournal)
 	testMDJournalGCd(t, tlfJournal.mdJournal)
 }
