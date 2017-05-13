@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/keybase/kbfs/dokan"
+	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/libkbfs"
-	"github.com/keybase/kbfs/tlf"
 )
 
 const (
