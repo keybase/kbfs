@@ -11,7 +11,6 @@ import (
 	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfsmd"
-	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
 )
 
@@ -37,7 +36,7 @@ type mdIDJournal struct {
 // of the id journal; once there is one entry with `isLocalSquash =
 // false`, it will be the same in all the remaining entries.
 type mdIDJournalEntry struct {
-	ID tlf.MdID
+	ID kbfsmd.ID
 	// IsLocalSquash is true when this MD is the result of
 	// squashing some other local MDs.
 	IsLocalSquash bool `codec:",omitempty"`

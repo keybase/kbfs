@@ -541,7 +541,7 @@ func (fbm *folderBlockManager) processBlocksToDelete(ctx context.Context, toDele
 			rmd = rmds[0]
 		}
 
-		mdID, err := tlf.MakeMdID(fbm.config.Codec(), toDelete.md.bareMd)
+		mdID, err := kbfsmd.MakeID(fbm.config.Codec(), toDelete.md.bareMd)
 		if err != nil {
 			fbm.log.CErrorf(ctx, "Error when comparing dirs: %v", err)
 		} else if mdID == rmd.mdID {

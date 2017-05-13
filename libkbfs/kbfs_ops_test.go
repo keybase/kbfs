@@ -309,7 +309,7 @@ func createNewRMD(t *testing.T, config Config, name string, public bool) (
 }
 
 func makeImmutableRMDForTest(t *testing.T, config Config, rmd *RootMetadata,
-	mdID tlf.MdID) ImmutableRootMetadata {
+	mdID kbfsmd.ID) ImmutableRootMetadata {
 	session, err := config.KBPKI().GetCurrentSession(context.Background())
 	require.NoError(t, err)
 	// We have to fake out the signature here because most tests
@@ -352,7 +352,7 @@ func injectNewRMD(t *testing.T, config *ConfigMock) (
 
 	ops := getOps(config, id)
 	ops.head = makeImmutableRMDForTest(
-		t, config, rmd, tlf.FakeMdID(tlf.FakeIDByte(id)))
+		t, config, rmd, kbfsmd.FakeID(tlf.FakeIDByte(id)))
 	ops.headStatus = headTrusted
 	rmd.SetSerializedPrivateMetadata(make([]byte, 1))
 	config.Notifier().RegisterForChanges(
@@ -535,7 +535,7 @@ func testKBFSOpsGetRootNodeCreateNewSuccess(t *testing.T, public bool) {
 	// create a new MD
 	config.mockMdops.EXPECT().GetUnmergedForTLF(
 		gomock.Any(), id, gomock.Any()).Return(ImmutableRootMetadata{}, nil)
-	irmd := makeImmutableRMDForTest(t, config, rmd, tlf.FakeMdID(1))
+	irmd := makeImmutableRMDForTest(t, config, rmd, kbfsmd.FakeID(1))
 	config.mockMdops.EXPECT().GetForTLF(gomock.Any(), id).Return(irmd, nil)
 	config.mockMdcache.EXPECT().Put(irmd).Return(nil)
 
@@ -584,11 +584,11 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 	config.mockMdops.EXPECT().GetForHandle(gomock.Any(), h, Unmerged).Return(
 		tlf.ID{}, ImmutableRootMetadata{}, nil)
 	config.mockMdops.EXPECT().GetForHandle(gomock.Any(), h, Merged).Return(
-		tlf.ID{}, makeImmutableRMDForTest(t, config, rmd, tlf.FakeMdID(1)), nil)
+		tlf.ID{}, makeImmutableRMDForTest(t, config, rmd, kbfsmd.FakeID(1)), nil)
 	ops := getOps(config, id)
 	assert.False(t, fboIdentityDone(ops))
 
-	ops.head = makeImmutableRMDForTest(t, config, rmd, tlf.FakeMdID(2))
+	ops.head = makeImmutableRMDForTest(t, config, rmd, kbfsmd.FakeID(2))
 	ops.headStatus = headTrusted
 	n, ei, err :=
 		config.KBFSOps().GetOrCreateRootNode(ctx, h, MasterBranch)
@@ -770,7 +770,7 @@ func TestKBFSOpsGetBaseDirChildrenUncachedFailNonReader(t *testing.T) {
 
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
-	ops.head = makeImmutableRMDForTest(t, config, rmd, tlf.FakeMdID(1))
+	ops.head = makeImmutableRMDForTest(t, config, rmd, kbfsmd.FakeID(1))
 	ops.headStatus = headTrusted
 	expectedErr := NewReadAccessError(h, "alice", "/keybase/private/bob#alice")
 	if _, err := config.KBFSOps().GetDirChildren(ctx, n); err == nil {
@@ -814,7 +814,7 @@ func TestKBFSOpsGetNestedDirChildrenCacheSuccess(t *testing.T) {
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 
 	ops := getOps(config, id)
-	ops.head = makeImmutableRMDForTest(t, config, rmd, tlf.FakeMdID(1))
+	ops.head = makeImmutableRMDForTest(t, config, rmd, kbfsmd.FakeID(1))
 	ops.headStatus = headTrusted
 
 	u := h.FirstResolvedWriter()
@@ -858,7 +858,7 @@ func TestKBFSOpsLookupSuccess(t *testing.T) {
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 
 	ops := getOps(config, id)
-	ops.head = makeImmutableRMDForTest(t, config, rmd, tlf.FakeMdID(1))
+	ops.head = makeImmutableRMDForTest(t, config, rmd, kbfsmd.FakeID(1))
 	ops.headStatus = headTrusted
 
 	u := h.FirstResolvedWriter()
@@ -903,7 +903,7 @@ func TestKBFSOpsLookupSymlinkSuccess(t *testing.T) {
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 
 	ops := getOps(config, id)
-	ops.head = makeImmutableRMDForTest(t, config, rmd, tlf.FakeMdID(1))
+	ops.head = makeImmutableRMDForTest(t, config, rmd, kbfsmd.FakeID(1))
 	ops.headStatus = headTrusted
 
 	u := h.FirstResolvedWriter()
@@ -943,7 +943,7 @@ func TestKBFSOpsLookupNoSuchNameFail(t *testing.T) {
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 
 	ops := getOps(config, id)
-	ops.head = makeImmutableRMDForTest(t, config, rmd, tlf.FakeMdID(1))
+	ops.head = makeImmutableRMDForTest(t, config, rmd, kbfsmd.FakeID(1))
 	ops.headStatus = headTrusted
 
 	u := h.FirstResolvedWriter()
@@ -980,7 +980,7 @@ func TestKBFSOpsLookupNewDataVersionFail(t *testing.T) {
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 
 	ops := getOps(config, id)
-	ops.head = makeImmutableRMDForTest(t, config, rmd, tlf.FakeMdID(1))
+	ops.head = makeImmutableRMDForTest(t, config, rmd, kbfsmd.FakeID(1))
 	ops.headStatus = headTrusted
 
 	u := h.FirstResolvedWriter()
@@ -1023,7 +1023,7 @@ func TestKBFSOpsStatSuccess(t *testing.T) {
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 
 	ops := getOps(config, id)
-	ops.head = makeImmutableRMDForTest(t, config, rmd, tlf.FakeMdID(1))
+	ops.head = makeImmutableRMDForTest(t, config, rmd, kbfsmd.FakeID(1))
 	ops.headStatus = headTrusted
 
 	u := h.FirstResolvedWriter()
@@ -2859,7 +2859,7 @@ func TestKBFSOpsStatRootSuccess(t *testing.T) {
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 
 	ops := getOps(config, id)
-	ops.head = makeImmutableRMDForTest(t, config, rmd, tlf.FakeMdID(1))
+	ops.head = makeImmutableRMDForTest(t, config, rmd, kbfsmd.FakeID(1))
 	ops.headStatus = headTrusted
 
 	u := h.FirstResolvedWriter()
@@ -2881,7 +2881,7 @@ func TestKBFSOpsFailingRootOps(t *testing.T) {
 	id, h, rmd := createNewRMD(t, config, "alice", false)
 
 	ops := getOps(config, id)
-	ops.head = makeImmutableRMDForTest(t, config, rmd, tlf.FakeMdID(1))
+	ops.head = makeImmutableRMDForTest(t, config, rmd, kbfsmd.FakeID(1))
 	ops.headStatus = headTrusted
 
 	u := h.FirstResolvedWriter()

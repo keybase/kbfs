@@ -28,7 +28,7 @@ func (ef mdIDJournalEntryFuture) ToCurrentStruct() kbfscodec.CurrentStruct {
 func makeFakeMDIDJournalEntryFuture(t *testing.T) mdIDJournalEntryFuture {
 	ef := mdIDJournalEntryFuture{
 		mdIDJournalEntry{
-			tlf.FakeMdID(1),
+			kbfsmd.FakeID(1),
 			false, false, false,
 			codec.UnknownFieldSetHandler{},
 		},
