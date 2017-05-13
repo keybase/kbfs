@@ -1154,15 +1154,17 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 		return err
 	}
 
+	var clearedBlockJournal bool
 	if length != 0 {
-		clearedJournal, aggregateInfo, err :=
+		var aggregateInfo blockAggregateInfo
+		clearedBlockJournal, aggregateInfo, err =
 			j.blockJournal.clearDeferredGCRange(
 				ctx, removedBytes, removedFiles, earliest, latest)
 		if err != nil {
 			return err
 		}
 
-		if clearedJournal {
+		if clearedBlockJournal {
 			equal, err := kbfscodec.Equal(
 				j.config.Codec(), aggregateInfo, blockAggregateInfo{})
 			if err != nil {
@@ -1183,22 +1185,32 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 		}
 	}
 
-	err = j.removeFlushedMDEntryLocked(ctx, mdID, rmds)
+	clearedMDJournal, err := j.removeFlushedMDEntryLocked(ctx, mdID, rmds)
 	if err != nil {
 		return err
+	}
+
+	if clearedBlockJournal && clearedMDJournal {
+		j.log.CDebugf(ctx,
+			"TLF journal is now empty; removing all files in %s", j.dir)
+		err := ioutil.RemoveAll(j.dir)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (j *tlfJournal) removeFlushedMDEntryLocked(ctx context.Context,
-	mdID MdID, rmds *RootMetadataSigned) error {
-	if err := j.mdJournal.removeFlushedEntry(ctx, mdID, rmds); err != nil {
-		return err
+	mdID MdID, rmds *RootMetadataSigned) (clearedMDJournal bool, err error) {
+	clearedMDJournal, err = j.mdJournal.removeFlushedEntry(ctx, mdID, rmds)
+	if err != nil {
+		return false, err
 	}
 
 	j.unflushedPaths.removeFromCache(rmds.MD.RevisionNumber())
-	return nil
+	return clearedMDJournal, nil
 }
 
 func (j *tlfJournal) flushOneMDOp(
