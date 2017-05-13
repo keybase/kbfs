@@ -26,10 +26,10 @@ import (
 // objects can be assumed to never alias a (modifiable)
 // BareRootMetadata.
 //
-// Note that crypto.MakeMdID() on an ImmutableBareRootMetadata will
+// Note that kbfsmd.MakeID() on an ImmutableBareRootMetadata will
 // compute the wrong result, since anonymous fields of interface type
 // are not encoded inline by the codec. Use
-// crypto.MakeMDID(ibrmd.BareRootMetadata) instead.
+// kbfsmd.MakeID(ibrmd.BareRootMetadata) instead.
 //
 // TODO: Move this to bare_root_metadata.go if it's used in more
 // places.
