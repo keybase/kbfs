@@ -1188,6 +1188,9 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 		return err
 	}
 
+	// If we check just clearedBlockJournal here, we'll miss the
+	// chance to clear the TLF journal if the block journal
+	// empties out before the MD journal does.
 	if j.blockJournal.empty() && clearedMDJournal {
 		j.log.CDebugf(ctx,
 			"TLF journal is now empty; removing all files in %s", j.dir)
