@@ -1133,20 +1133,21 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	if length == 0 {
-		return nil
-	}
 
-	// onMDFlush() only needs to be called under the flushLock, not
-	// the journalLock, as it doesn't touch the actual journal, only
-	// the deferred GC journal.
-	removedBytes, removedFiles, err := blockJournal.doGC(
-		ctx, earliest, latest)
-	if err != nil {
-		return err
-	}
+	var removedBytes, removedFiles int64
+	if length != 0 {
+		// doGC() only needs to be called under the flushLock, not the
+		// journalLock, as it doesn't touch the actual journal, only
+		// the deferred GC journal.
+		var err error
+		removedBytes, removedFiles, err = blockJournal.doGC(
+			ctx, earliest, latest)
+		if err != nil {
+			return err
+		}
 
-	j.diskLimiter.onBlocksDelete(ctx, removedBytes, removedFiles)
+		j.diskLimiter.onBlocksDelete(ctx, removedBytes, removedFiles)
+	}
 
 	j.journalLock.Lock()
 	defer j.journalLock.Unlock()
@@ -1154,44 +1155,45 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 		return err
 	}
 
-	clearedJournal, aggregateInfo, err :=
-		j.blockJournal.clearDeferredGCRange(
-			ctx, removedBytes, removedFiles, earliest, latest)
-	if err != nil {
-		return err
-	}
-
-	if clearedJournal {
-		equal, err := kbfscodec.Equal(
-			j.config.Codec(), aggregateInfo, blockAggregateInfo{})
+	if length != 0 {
+		clearedJournal, aggregateInfo, err :=
+			j.blockJournal.clearDeferredGCRange(
+				ctx, removedBytes, removedFiles, earliest, latest)
 		if err != nil {
 			return err
 		}
-		if !equal {
-			j.log.CWarningf(ctx,
-				"Cleared block journal for %s, but still has aggregate info %+v",
-				j.tlfID, aggregateInfo)
-			// TODO: Consider trying to adjust the disk
-			// limiter state to compensate for the
-			// leftover bytes/files here. Ideally, the
-			// disk limiter would keep track of per-TLF
-			// state, so we could just call
-			// j.diskLimiter.onJournalClear(tlfID) to have
-			// it clear its state for this TLF.
+
+		if clearedJournal {
+			equal, err := kbfscodec.Equal(
+				j.config.Codec(), aggregateInfo, blockAggregateInfo{})
+			if err != nil {
+				return err
+			}
+			if !equal {
+				j.log.CWarningf(ctx,
+					"Cleared block journal for %s, but still has aggregate info %+v",
+					j.tlfID, aggregateInfo)
+				// TODO: Consider trying to adjust the disk
+				// limiter state to compensate for the
+				// leftover bytes/files here. Ideally, the
+				// disk limiter would keep track of per-TLF
+				// state, so we could just call
+				// j.diskLimiter.onJournalClear(tlfID) to have
+				// it clear its state for this TLF.
+			}
 		}
+	}
+
+	err = j.removeFlushedMDEntryLocked(ctx, mdID, rmds)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (j *tlfJournal) removeFlushedMDEntry(ctx context.Context,
+func (j *tlfJournal) removeFlushedMDEntryLocked(ctx context.Context,
 	mdID MdID, rmds *RootMetadataSigned) error {
-	j.journalLock.Lock()
-	defer j.journalLock.Unlock()
-	if err := j.checkEnabledLocked(); err != nil {
-		return err
-	}
-
 	if err := j.mdJournal.removeFlushedEntry(ctx, mdID, rmds); err != nil {
 		return err
 	}
@@ -1271,11 +1273,6 @@ func (j *tlfJournal) flushOneMDOp(
 	}
 
 	err = j.doOnMDFlush(ctx, mdID, rmds)
-	if err != nil {
-		return false, err
-	}
-
-	err = j.removeFlushedMDEntry(ctx, mdID, rmds)
 	if err != nil {
 		return false, err
 	}
