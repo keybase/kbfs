@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/libkbfs"
-	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
 )
 
