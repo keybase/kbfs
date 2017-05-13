@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD
 // license that can be found in the LICENSE file.
 
-package tlf
+package kbfsmd
 
 import (
 	"testing"
@@ -12,37 +12,37 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Make sure MdID encodes and decodes properly with minimal overhead.
-func TestMdIDEncodeDecode(t *testing.T) {
-	id := FakeMdID(1)
+// Make sure ID encodes and decodes properly with minimal overhead.
+func TestIDEncodeDecode(t *testing.T) {
+	id := FakeID(1)
 	codec := kbfscodec.NewMsgpack()
-	encodedMdID, err := codec.Encode(id)
+	encodedID, err := codec.Encode(id)
 	require.NoError(t, err)
 
 	// See
 	// https://github.com/msgpack/msgpack/blob/master/spec.md#formats-bin
 	// for why there are two bytes of overhead.
 	const overhead = 2
-	require.Equal(t, kbfshash.DefaultHashByteLength+overhead, len(encodedMdID))
+	require.Equal(t, kbfshash.DefaultHashByteLength+overhead, len(encodedID))
 
-	var id2 MdID
-	err = codec.Decode(encodedMdID, &id2)
+	var id2 ID
+	err = codec.Decode(encodedID, &id2)
 	require.NoError(t, err)
 
 	require.Equal(t, id, id2)
 }
 
-// Make sure the zero MdID value encodes and decodes properly.
-func TestMdIDEncodeDecodeZero(t *testing.T) {
+// Make sure the zero ID value encodes and decodes properly.
+func TestIDEncodeDecodeZero(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
-	encodedMdID, err := codec.Encode(MdID{})
+	encodedID, err := codec.Encode(ID{})
 	require.NoError(t, err)
 
-	require.Equal(t, []byte{0xc0}, encodedMdID)
+	require.Equal(t, []byte{0xc0}, encodedID)
 
-	var id MdID
-	err = codec.Decode(encodedMdID, &id)
+	var id ID
+	err = codec.Decode(encodedID, &id)
 	require.NoError(t, err)
 
-	require.Equal(t, MdID{}, id)
+	require.Equal(t, ID{}, id)
 }
