@@ -764,19 +764,17 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 		}
 		flushedBlockEntries += numFlushed
 
-		// If we ever switched branches while flushing block entries,
-		// we need to make sure `mdEnd` still reflects reality, since
-		// the number of md entries could have shrunk.
-		if converted {
-			_, mdEnd, err = j.getJournalEnds(ctx)
-			if err != nil {
-				return err
-			}
-		}
-
 		if numFlushed == 0 {
-			// There were no blocks to flush, so we can flush all of
-			// the remaining MDs.
+			// If converted is true, the journal may have
+			// shrunk, and so mdEnd would be obsolete. But
+			// converted is always false when numFlushed
+			// is 0.
+			if converted {
+				panic("numFlushed == 0 and converted is true")
+			}
+
+			// There were no blocks to flush, so we can
+			// flush all of the remaining MDs.
 			maxMDRevToFlush = mdEnd
 		}
 
