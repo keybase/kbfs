@@ -106,8 +106,8 @@ func makeMDForTest(t testing.TB, ver MetadataVer, tlfID tlf.ID,
 
 func putMDRangeHelper(t testing.TB, ver MetadataVer, tlfID tlf.ID,
 	signer kbfscrypto.Signer, firstRevision kbfsmd.Revision,
-	firstPrevRoot MdID, mdCount int, uid keybase1.UID,
-	putMD func(context.Context, *RootMetadata) (MdID, error)) (
+	firstPrevRoot tlf.MdID, mdCount int, uid keybase1.UID,
+	putMD func(context.Context, *RootMetadata) (tlf.MdID, error)) (
 	[]*RootMetadata, tlf.MdID) {
 	require.True(t, mdCount > 0)
 	ctx := context.Background()
