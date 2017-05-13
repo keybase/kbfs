@@ -1018,6 +1018,12 @@ func (s *orderedMDServer) Put(
 
 func (s *orderedMDServer) Shutdown() {}
 
+func testTLFJournalGCd(t *testing.T, tlfJournal *tlfJournal) {
+	requireJournalEntryCounts(t, tlfJournal, 0, 0)
+	testBlockJournalGCd(t, tlfJournal.blockJournal)
+	testMDJournalGCd(t, tlfJournal.mdJournal)
+}
+
 // testTLFJournalFlushOrdering tests that we respect the relative
 // orderings of blocks and MD ops when flushing, i.e. if a block op
 // was added to the block journal before an MD op was added to the MD
@@ -1082,8 +1088,7 @@ func testTLFJournalFlushOrdering(t *testing.T, ver MetadataVer) {
 
 	err = tlfJournal.flush(ctx)
 	require.NoError(t, err)
-	requireJournalEntryCounts(t, tlfJournal, 0, 0)
-	testMDJournalGCd(t, tlfJournal.mdJournal)
+	testTLFJournalGCd(t, tlfJournal)
 
 	// These two orderings depend on the exact flushing process,
 	// but there are other possible orderings which respect the
@@ -1234,8 +1239,7 @@ func testTLFJournalFlushOrderingAfterSquashAndCR(
 	// `resolveMD`.
 	err = tlfJournal.flush(ctx)
 	require.NoError(t, err)
-	requireJournalEntryCounts(t, tlfJournal, 0, 0)
-	testMDJournalGCd(t, tlfJournal.mdJournal)
+	testTLFJournalGCd(t, tlfJournal)
 
 	require.Equal(t, resolveMD.Revision(), puts[len(puts)-1])
 }
@@ -1296,8 +1300,7 @@ func testTLFJournalFlushInterleaving(t *testing.T, ver MetadataVer) {
 
 	err = tlfJournal.flush(ctx)
 	require.NoError(t, err)
-	requireJournalEntryCounts(t, tlfJournal, 0, 0)
-	testMDJournalGCd(t, tlfJournal.mdJournal)
+	testTLFJournalGCd(t, tlfJournal)
 
 	// Make sure that: before revision 1, all the rev1 blocks were
 	// put; rev2 comes last; some blocks are put between the two.
@@ -1464,8 +1467,7 @@ func testTLFJournalSquashWhileFlushing(t *testing.T, ver MetadataVer) {
 
 	// Since flush() never saw the branch in conflict, it will finish
 	// flushing everything.
-	requireJournalEntryCounts(t, tlfJournal, 0, 0)
-	testMDJournalGCd(t, tlfJournal.mdJournal)
+	testTLFJournalGCd(t, tlfJournal)
 	require.Equal(t, NullBranchID, tlfJournal.mdJournal.getBranchID())
 }
 
@@ -1530,8 +1532,7 @@ func testTLFJournalFlushRetry(t *testing.T, ver MetadataVer) {
 	<-resetCh
 
 	require.Equal(t, b.numBackOffs, 1)
-	requireJournalEntryCounts(t, tlfJournal, 0, 0)
-	testMDJournalGCd(t, tlfJournal.mdJournal)
+	testTLFJournalGCd(t, tlfJournal)
 }
 
 func testTLFJournalResolveBranch(t *testing.T, ver MetadataVer) {
