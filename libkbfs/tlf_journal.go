@@ -1123,7 +1123,7 @@ func (j *tlfJournal) getMDFlushRange() (
 }
 
 func (j *tlfJournal) doOnMDFlush(ctx context.Context,
-	rmds *RootMetadataSigned) error {
+	mdID MdID, rmds *RootMetadataSigned) error {
 	if j.onMDFlush != nil {
 		j.onMDFlush.onMDFlush(rmds.MD.TlfID(), rmds.MD.BID(),
 			rmds.MD.RevisionNumber())
@@ -1270,7 +1270,7 @@ func (j *tlfJournal) flushOneMDOp(
 		return false, pushErr
 	}
 
-	err = j.doOnMDFlush(ctx, rmds)
+	err = j.doOnMDFlush(ctx, mdID, rmds)
 	if err != nil {
 		return false, err
 	}
