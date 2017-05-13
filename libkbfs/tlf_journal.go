@@ -1154,10 +1154,8 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 		return err
 	}
 
-	var clearedBlockJournal bool
 	if length != 0 {
-		var aggregateInfo blockAggregateInfo
-		clearedBlockJournal, aggregateInfo, err =
+		clearedBlockJournal, aggregateInfo, err :=
 			j.blockJournal.clearDeferredGCRange(
 				ctx, removedBytes, removedFiles, earliest, latest)
 		if err != nil {
@@ -1190,7 +1188,7 @@ func (j *tlfJournal) doOnMDFlush(ctx context.Context,
 		return err
 	}
 
-	if clearedBlockJournal && clearedMDJournal {
+	if j.blockJournal.empty() && clearedMDJournal {
 		j.log.CDebugf(ctx,
 			"TLF journal is now empty; removing all files in %s", j.dir)
 		err := ioutil.RemoveAll(j.dir)
