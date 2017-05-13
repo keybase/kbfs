@@ -111,7 +111,7 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 // the most recent one is returned.
 func mdCheckChain(ctx context.Context, config libkbfs.Config,
 	irmd libkbfs.ImmutableRootMetadata,
-	minRevision tlf.MetadataRevision, verbose bool) (
+	minRevision kbfsmd.Revision, verbose bool) (
 	irmdsWithRoots []libkbfs.ImmutableRootMetadata, err error) {
 	fmt.Printf("Checking chain from rev %d to %d...\n",
 		minRevision, irmd.Revision())
@@ -198,13 +198,13 @@ func mdCheckOne(ctx context.Context, config libkbfs.Config,
 	if mdLimit < 0 {
 		mdLimit = 0
 	}
-	var minRevision tlf.MetadataRevision
-	if irmd.Revision() >= tlf.MetadataRevisionInitial+
-		tlf.MetadataRevision(mdLimit) {
+	var minRevision kbfsmd.Revision
+	if irmd.Revision() >= kbfsmd.RevisionInitial+
+		kbfsmd.Revision(mdLimit) {
 		minRevision = irmd.Revision() -
-			tlf.MetadataRevision(mdLimit)
+			kbfsmd.Revision(mdLimit)
 	} else {
-		minRevision = tlf.MetadataRevisionInitial
+		minRevision = kbfsmd.RevisionInitial
 	}
 	irmdsWithRoots, _ := mdCheckChain(
 		ctx, config, irmd, minRevision, verbose)

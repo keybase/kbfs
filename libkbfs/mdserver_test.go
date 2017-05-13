@@ -18,7 +18,7 @@ import (
 )
 
 func makeBRMDForTest(t *testing.T, codec kbfscodec.Codec, crypto cryptoPure,
-	id tlf.ID, h tlf.Handle, revision tlf.MetadataRevision, uid keybase1.UID,
+	id tlf.ID, h tlf.Handle, revision kbfsmd.Revision, uid keybase1.UID,
 	prevRoot MdID) *BareRootMetadataV2 {
 	var md BareRootMetadataV2
 	// MDv3 TODO: uncomment the below when we're ready for MDv3
@@ -72,7 +72,7 @@ func TestMDServerBasics(t *testing.T) {
 	// (2) push some new metadata blocks
 	prevRoot := MdID{}
 	middleRoot := MdID{}
-	for i := tlf.MetadataRevision(1); i <= 10; i++ {
+	for i := kbfsmd.Revision(1); i <= 10; i++ {
 		brmd := makeBRMDForTest(t, config.Codec(), config.Crypto(), id, h, i, uid, prevRoot)
 		rmds := signRMDSForTest(t, config.Codec(), config.Crypto(), brmd)
 		// MDv3 TODO: pass actual key bundles
@@ -97,7 +97,7 @@ func TestMDServerBasics(t *testing.T) {
 	prevRoot = middleRoot
 	bid, err := config.Crypto().MakeRandomBranchID()
 	require.NoError(t, err)
-	for i := tlf.MetadataRevision(6); i < 41; i++ {
+	for i := kbfsmd.Revision(6); i < 41; i++ {
 		brmd := makeBRMDForTest(t, config.Codec(), config.Crypto(), id, h, i, uid, prevRoot)
 		brmd.SetUnmerged()
 		brmd.SetBranchID(bid)
@@ -113,13 +113,13 @@ func TestMDServerBasics(t *testing.T) {
 	head, err := mdServer.GetForTLF(ctx, id, bid, Unmerged)
 	require.NoError(t, err)
 	require.NotNil(t, head)
-	require.Equal(t, tlf.MetadataRevision(40), head.MD.RevisionNumber())
+	require.Equal(t, kbfsmd.Revision(40), head.MD.RevisionNumber())
 
 	// (6a) try to get unmerged range
 	rmdses, err := mdServer.GetRange(ctx, id, bid, Unmerged, 1, 100)
 	require.NoError(t, err)
 	require.Equal(t, 35, len(rmdses))
-	for i := tlf.MetadataRevision(6); i < 41; i++ {
+	for i := kbfsmd.Revision(6); i < 41; i++ {
 		require.Equal(t, i, rmdses[i-6].MD.RevisionNumber())
 	}
 
@@ -127,7 +127,7 @@ func TestMDServerBasics(t *testing.T) {
 	rmdses, err = mdServer.GetRange(ctx, id, bid, Unmerged, 7, 14)
 	require.NoError(t, err)
 	require.Equal(t, 8, len(rmdses))
-	for i := tlf.MetadataRevision(7); i <= 14; i++ {
+	for i := kbfsmd.Revision(7); i <= 14; i++ {
 		require.Equal(t, i, rmdses[i-7].MD.RevisionNumber())
 	}
 
@@ -149,13 +149,13 @@ func TestMDServerBasics(t *testing.T) {
 	head, err = mdServer.GetForTLF(ctx, id, NullBranchID, Merged)
 	require.NoError(t, err)
 	require.NotNil(t, head)
-	require.Equal(t, tlf.MetadataRevision(10), head.MD.RevisionNumber())
+	require.Equal(t, kbfsmd.Revision(10), head.MD.RevisionNumber())
 
 	// (11) try to get merged range
 	rmdses, err = mdServer.GetRange(ctx, id, NullBranchID, Merged, 1, 100)
 	require.NoError(t, err)
 	require.Equal(t, 10, len(rmdses))
-	for i := tlf.MetadataRevision(1); i <= 10; i++ {
+	for i := kbfsmd.Revision(1); i <= 10; i++ {
 		require.Equal(t, i, rmdses[i-1].MD.RevisionNumber())
 	}
 }
@@ -190,9 +190,9 @@ func TestMDServerRegisterForUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, id1, id2)
 
-	_, err = mdServer.RegisterForUpdate(ctx, id1, tlf.MetadataRevisionInitial)
+	_, err = mdServer.RegisterForUpdate(ctx, id1, kbfsmd.RevisionInitial)
 	require.NoError(t, err)
 
-	_, err = mdServer.RegisterForUpdate(ctx, id2, tlf.MetadataRevisionInitial)
+	_, err = mdServer.RegisterForUpdate(ctx, id2, kbfsmd.RevisionInitial)
 	require.NoError(t, err)
 }

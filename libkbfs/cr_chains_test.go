@@ -528,7 +528,7 @@ func TestCRChainsRemove(t *testing.T) {
 
 	for i := range chainMDs {
 		chainMDs[i].(rootMetadataWithKeyAndTimestamp).RootMetadata.SetRevision(
-			tlf.MetadataRevision(i))
+			kbfsmd.Revision(i))
 	}
 
 	ccs, err := newCRChains(

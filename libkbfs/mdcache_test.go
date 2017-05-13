@@ -33,7 +33,7 @@ func testMdcacheMakeHandle(t *testing.T, n uint32) *TlfHandle {
 	return h
 }
 
-func testMdcachePut(t *testing.T, tlf tlf.ID, rev tlf.MetadataRevision,
+func testMdcachePut(t *testing.T, tlf tlf.ID, rev kbfsmd.Revision,
 	bid BranchID, h *TlfHandle, mdcache *MDCacheStandard) {
 	rmd, err := makeInitialRootMetadata(defaultClientMetadataVer, tlf, h)
 	require.NoError(t, err)

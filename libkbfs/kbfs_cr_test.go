@@ -560,7 +560,7 @@ func TestBasicCRNoConflictWithUnembeddedBlockChanges(t *testing.T) {
 
 type registerForUpdateRecord struct {
 	id       tlf.ID
-	currHead tlf.MetadataRevision
+	currHead kbfsmd.Revision
 }
 
 type mdServerLocalRecordingRegisterForUpdate struct {
@@ -580,7 +580,7 @@ func newMDServerLocalRecordingRegisterForUpdate(mdServerRaw mdServerLocal) (
 
 func (md mdServerLocalRecordingRegisterForUpdate) RegisterForUpdate(
 	ctx context.Context,
-	id tlf.ID, currHead tlf.MetadataRevision) (<-chan error, error) {
+	id tlf.ID, currHead kbfsmd.Revision) (<-chan error, error) {
 	md.ch <- registerForUpdateRecord{id: id, currHead: currHead}
 	return md.mdServerLocal.RegisterForUpdate(ctx, id, currHead)
 }

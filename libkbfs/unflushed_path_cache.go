@@ -14,7 +14,7 @@ import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
-	"github.com/keybase/kbfs/tlf"
+	"github.com/keybase/kbfs/kbfsmd"
 	"golang.org/x/net/context"
 )
 
@@ -27,7 +27,7 @@ const (
 )
 
 type unflushedPathsPerRevMap map[string]bool
-type unflushedPathsMap map[tlf.MetadataRevision]unflushedPathsPerRevMap
+type unflushedPathsMap map[kbfsmd.Revision]unflushedPathsPerRevMap
 
 type upcQueuedOpType int
 
@@ -44,7 +44,7 @@ type upcQueuedOp struct {
 	info unflushedPathMDInfo
 
 	// All op types should set this.
-	rev tlf.MetadataRevision
+	rev kbfsmd.Revision
 
 	// Only reinit ops need to set this explicitly.
 	isLocalSquash bool
@@ -143,7 +143,7 @@ func (upc *unflushedPathCache) abortInitialization() {
 // unflushedPathMDInfo is the subset of metadata info needed by
 // unflushedPathCache.
 type unflushedPathMDInfo struct {
-	revision       tlf.MetadataRevision
+	revision       kbfsmd.Revision
 	kmd            KeyMetadata
 	pmd            PrivateMetadata
 	localTimestamp time.Time
@@ -296,7 +296,7 @@ func (upc *unflushedPathCache) appendToCache(mdInfo unflushedPathMDInfo,
 	return true
 }
 
-func (upc *unflushedPathCache) removeFromCache(rev tlf.MetadataRevision) {
+func (upc *unflushedPathCache) removeFromCache(rev kbfsmd.Revision) {
 	upc.lock.Lock()
 	defer upc.lock.Unlock()
 	switch upc.state {
@@ -334,7 +334,7 @@ func (upc *unflushedPathCache) setCacheIfPossible(cache unflushedPathsMap,
 	return nil
 }
 
-func reinitUpcCache(revision tlf.MetadataRevision,
+func reinitUpcCache(revision kbfsmd.Revision,
 	unflushedPaths unflushedPathsMap, perRevMap unflushedPathsPerRevMap,
 	isLocalSquash bool) {
 	// Remove all entries equal or bigger to this revision.  Keep

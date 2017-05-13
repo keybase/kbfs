@@ -10,13 +10,13 @@ import (
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfscodec"
-	"github.com/keybase/kbfs/tlf"
+	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/pkg/errors"
 )
 
 // An mdIDJournal wraps a diskJournal to provide a persistent list of
 // MdIDs (with possible other fields in the future) with sequential
-// MetadataRevisions for a single branch.
+// Revisions for a single branch.
 //
 // Like diskJournal, this type assumes that the directory passed into
 // makeMdIDJournal isn't used by anything else, and that all
@@ -61,17 +61,17 @@ func makeMdIDJournal(codec kbfscodec.Codec, dir string) (mdIDJournal, error) {
 	return mdIDJournal{j}, nil
 }
 
-func ordinalToRevision(o journalOrdinal) (tlf.MetadataRevision, error) {
-	r := tlf.MetadataRevision(o)
-	if r < tlf.MetadataRevisionInitial {
-		return tlf.MetadataRevisionUninitialized, errors.Errorf(
-			"Cannot convert ordinal %s to a tlf.MetadataRevision", o)
+func ordinalToRevision(o journalOrdinal) (kbfsmd.Revision, error) {
+	r := kbfsmd.Revision(o)
+	if r < kbfsmd.RevisionInitial {
+		return kbfsmd.RevisionUninitialized, errors.Errorf(
+			"Cannot convert ordinal %s to a kbfsmd.Revision", o)
 	}
 	return r, nil
 }
 
-func revisionToOrdinal(r tlf.MetadataRevision) (journalOrdinal, error) {
-	if r < tlf.MetadataRevisionInitial {
+func revisionToOrdinal(r kbfsmd.Revision) (journalOrdinal, error) {
+	if r < kbfsmd.RevisionInitial {
 		return journalOrdinal(0), errors.Errorf(
 			"Cannot convert revision %s to an ordinal", r)
 	}
@@ -81,17 +81,17 @@ func revisionToOrdinal(r tlf.MetadataRevision) (journalOrdinal, error) {
 // TODO: Consider caching the values returned by the read functions
 // below in memory.
 
-func (j mdIDJournal) readEarliestRevision() (tlf.MetadataRevision, error) {
+func (j mdIDJournal) readEarliestRevision() (kbfsmd.Revision, error) {
 	o, err := j.j.readEarliestOrdinal()
 	if ioutil.IsNotExist(err) {
-		return tlf.MetadataRevisionUninitialized, nil
+		return kbfsmd.RevisionUninitialized, nil
 	} else if err != nil {
-		return tlf.MetadataRevisionUninitialized, err
+		return kbfsmd.RevisionUninitialized, err
 	}
 	return ordinalToRevision(o)
 }
 
-func (j mdIDJournal) writeEarliestRevision(r tlf.MetadataRevision) error {
+func (j mdIDJournal) writeEarliestRevision(r kbfsmd.Revision) error {
 	o, err := revisionToOrdinal(r)
 	if err != nil {
 		return err
@@ -99,17 +99,17 @@ func (j mdIDJournal) writeEarliestRevision(r tlf.MetadataRevision) error {
 	return j.j.writeEarliestOrdinal(o)
 }
 
-func (j mdIDJournal) readLatestRevision() (tlf.MetadataRevision, error) {
+func (j mdIDJournal) readLatestRevision() (kbfsmd.Revision, error) {
 	o, err := j.j.readLatestOrdinal()
 	if ioutil.IsNotExist(err) {
-		return tlf.MetadataRevisionUninitialized, nil
+		return kbfsmd.RevisionUninitialized, nil
 	} else if err != nil {
-		return tlf.MetadataRevisionUninitialized, err
+		return kbfsmd.RevisionUninitialized, err
 	}
 	return ordinalToRevision(o)
 }
 
-func (j mdIDJournal) writeLatestRevision(r tlf.MetadataRevision) error {
+func (j mdIDJournal) writeLatestRevision(r kbfsmd.Revision) error {
 	o, err := revisionToOrdinal(r)
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func (j mdIDJournal) writeLatestRevision(r tlf.MetadataRevision) error {
 	return j.j.writeLatestOrdinal(o)
 }
 
-func (j mdIDJournal) readJournalEntry(r tlf.MetadataRevision) (
+func (j mdIDJournal) readJournalEntry(r kbfsmd.Revision) (
 	mdIDJournalEntry, error) {
 	o, err := revisionToOrdinal(r)
 	if err != nil {
@@ -137,13 +137,13 @@ func (j mdIDJournal) length() uint64 {
 	return j.j.length()
 }
 
-func (j mdIDJournal) end() (tlf.MetadataRevision, error) {
+func (j mdIDJournal) end() (kbfsmd.Revision, error) {
 	last, err := j.readLatestRevision()
 	if err != nil {
-		return tlf.MetadataRevisionUninitialized, err
+		return kbfsmd.RevisionUninitialized, err
 	}
-	if last == tlf.MetadataRevisionUninitialized {
-		return tlf.MetadataRevisionUninitialized, nil
+	if last == kbfsmd.RevisionUninitialized {
+		return kbfsmd.RevisionUninitialized, nil
 	}
 
 	return last + 1, nil
@@ -154,7 +154,7 @@ func (j mdIDJournal) getEarliestEntry() (
 	earliestRevision, err := j.readEarliestRevision()
 	if err != nil {
 		return mdIDJournalEntry{}, false, err
-	} else if earliestRevision == tlf.MetadataRevisionUninitialized {
+	} else if earliestRevision == kbfsmd.RevisionUninitialized {
 		return mdIDJournalEntry{}, false, nil
 	}
 	entry, err = j.readJournalEntry(earliestRevision)
@@ -169,7 +169,7 @@ func (j mdIDJournal) getLatestEntry() (
 	latestRevision, err := j.readLatestRevision()
 	if err != nil {
 		return mdIDJournalEntry{}, false, err
-	} else if latestRevision == tlf.MetadataRevisionUninitialized {
+	} else if latestRevision == kbfsmd.RevisionUninitialized {
 		return mdIDJournalEntry{}, false, nil
 	}
 	entry, err = j.readJournalEntry(latestRevision)
@@ -179,20 +179,20 @@ func (j mdIDJournal) getLatestEntry() (
 	return entry, true, err
 }
 
-func (j mdIDJournal) getEntryRange(start, stop tlf.MetadataRevision) (
-	tlf.MetadataRevision, []mdIDJournalEntry, error) {
+func (j mdIDJournal) getEntryRange(start, stop kbfsmd.Revision) (
+	kbfsmd.Revision, []mdIDJournalEntry, error) {
 	earliestRevision, err := j.readEarliestRevision()
 	if err != nil {
-		return tlf.MetadataRevisionUninitialized, nil, err
-	} else if earliestRevision == tlf.MetadataRevisionUninitialized {
-		return tlf.MetadataRevisionUninitialized, nil, nil
+		return kbfsmd.RevisionUninitialized, nil, err
+	} else if earliestRevision == kbfsmd.RevisionUninitialized {
+		return kbfsmd.RevisionUninitialized, nil, nil
 	}
 
 	latestRevision, err := j.readLatestRevision()
 	if err != nil {
-		return tlf.MetadataRevisionUninitialized, nil, err
-	} else if latestRevision == tlf.MetadataRevisionUninitialized {
-		return tlf.MetadataRevisionUninitialized, nil, nil
+		return kbfsmd.RevisionUninitialized, nil, err
+	} else if latestRevision == kbfsmd.RevisionUninitialized {
+		return kbfsmd.RevisionUninitialized, nil, nil
 	}
 
 	if start < earliestRevision {
@@ -204,14 +204,14 @@ func (j mdIDJournal) getEntryRange(start, stop tlf.MetadataRevision) (
 	}
 
 	if stop < start {
-		return tlf.MetadataRevisionUninitialized, nil, nil
+		return kbfsmd.RevisionUninitialized, nil, nil
 	}
 
 	var entries []mdIDJournalEntry
 	for i := start; i <= stop; i++ {
 		entry, err := j.readJournalEntry(i)
 		if err != nil {
-			return tlf.MetadataRevisionUninitialized, nil, err
+			return kbfsmd.RevisionUninitialized, nil, err
 		}
 		entries = append(entries, entry)
 	}
@@ -226,7 +226,7 @@ func (j mdIDJournal) replaceHead(entry mdIDJournalEntry) error {
 	return j.j.writeJournalEntry(o, entry)
 }
 
-func (j mdIDJournal) append(r tlf.MetadataRevision, entry mdIDJournalEntry) error {
+func (j mdIDJournal) append(r kbfsmd.Revision, entry mdIDJournalEntry) error {
 	o, err := revisionToOrdinal(r)
 	if err != nil {
 		return err
@@ -243,7 +243,7 @@ func (j mdIDJournal) clear() error {
 	return j.j.clear()
 }
 
-func (j mdIDJournal) clearFrom(revision tlf.MetadataRevision) error {
+func (j mdIDJournal) clearFrom(revision kbfsmd.Revision) error {
 	earliestRevision, err := j.readEarliestRevision()
 	if err != nil {
 		return err

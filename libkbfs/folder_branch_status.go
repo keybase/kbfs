@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/keybase/client/go/libkb"
-	"github.com/keybase/kbfs/tlf"
+	"github.com/keybase/kbfs/kbfsmd"
 
 	"golang.org/x/net/context"
 )
@@ -25,7 +25,7 @@ type FolderBranchStatus struct {
 	RekeyPending        bool
 	LatestKeyGeneration KeyGen
 	FolderID            string
-	Revision            tlf.MetadataRevision
+	Revision            kbfsmd.Revision
 	MDVersion           MetadataVer
 
 	// DirtyPaths are files that have been written, but not flushed.

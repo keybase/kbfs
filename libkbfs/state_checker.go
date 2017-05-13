@@ -13,6 +13,7 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfsblock"
+	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
 )
@@ -84,14 +85,14 @@ func (sc *StateChecker) findAllBlocksInPath(ctx context.Context,
 }
 
 func (sc *StateChecker) getLastGCData(ctx context.Context,
-	tlfID tlf.ID) (time.Time, tlf.MetadataRevision) {
+	tlfID tlf.ID) (time.Time, kbfsmd.Revision) {
 	config, ok := sc.config.(*ConfigLocal)
 	if !ok {
-		return time.Time{}, tlf.MetadataRevisionUninitialized
+		return time.Time{}, kbfsmd.RevisionUninitialized
 	}
 
 	var latestTime time.Time
-	var latestRev tlf.MetadataRevision
+	var latestRev kbfsmd.Revision
 	for _, c := range *config.allKnownConfigsForTesting {
 		ops := c.KBFSOps().(*KBFSOpsStandard).getOps(context.Background(),
 			FolderBranch{tlfID, MasterBranch}, FavoritesOpNoChange)
@@ -120,7 +121,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlfID tlf.ID) erro
 	// Fetch all the MD updates for this folder, and use the block
 	// change lists to build up the set of currently referenced blocks.
 	rmds, err := getMergedMDUpdates(ctx, sc.config, tlfID,
-		tlf.MetadataRevisionInitial)
+		kbfsmd.RevisionInitial)
 	if err != nil {
 		return err
 	}
@@ -151,7 +152,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlfID tlf.ID) erro
 	// See what the last GC op revision is.  All unref'd pointers from
 	// that revision or earlier should be deleted from the block
 	// server.
-	gcRevision := tlf.MetadataRevisionUninitialized
+	gcRevision := kbfsmd.RevisionUninitialized
 	for _, rmd := range rmds {
 		// Don't process copies.
 		if rmd.IsWriterMetadataCopiedSet() {
