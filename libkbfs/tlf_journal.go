@@ -783,7 +783,7 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 		// TODO: Flush MDs in batch.
 
 		for {
-			flushed, err := j.flushOneMDOp(ctx, mdEnd, maxMDRevToFlush)
+			flushed, err := j.flushOneMDOp(ctx, maxMDRevToFlush)
 			if err != nil {
 				return err
 			}
@@ -1201,11 +1201,10 @@ func (j *tlfJournal) removeFlushedMDEntry(ctx context.Context,
 }
 
 func (j *tlfJournal) flushOneMDOp(
-	ctx context.Context, end MetadataRevision,
-	maxMDRevToFlush MetadataRevision) (flushed bool, err error) {
+	ctx context.Context, maxMDRevToFlush MetadataRevision) (
+	flushed bool, err error) {
 	if maxMDRevToFlush == MetadataRevisionUninitialized {
-		// Short-cut `getNextMDEntryToFlush`, which would otherwise read
-		// an MD from disk and sign it unnecessarily.
+		// Nothing to do.
 		return false, nil
 	}
 
@@ -1218,23 +1217,11 @@ func (j *tlfJournal) flushOneMDOp(
 
 	mdServer := j.config.MDServer()
 
-	// TODO: Do we need `end` at all, or can we just pass
-	// `maxMDRevToFlush+1` here?  The only argument for `end` is that
-	// it might help if the block and MD journals are out of sync.
-	mdID, rmds, extra, err := j.getNextMDEntryToFlush(ctx, end)
+	mdID, rmds, extra, err := j.getNextMDEntryToFlush(ctx, maxMDRevToFlush+1)
 	if err != nil {
 		return false, err
 	}
 	if mdID == (MdID{}) {
-		return false, nil
-	}
-
-	// Only flush MDs for which the blocks have been fully flushed.
-	if rmds.MD.RevisionNumber() > maxMDRevToFlush {
-		j.log.CDebugf(ctx, "Haven't flushed all the blocks for TLF=%s "+
-			"with id=%s, rev=%s, bid=%s yet (maxMDRevToFlush=%d)",
-			rmds.MD.TlfID(), mdID, rmds.MD.RevisionNumber(), rmds.MD.BID(),
-			maxMDRevToFlush)
 		return false, nil
 	}
 
