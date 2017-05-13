@@ -12,6 +12,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc/rpc"
+	"github.com/keybase/kbfs/tlf"
 )
 
 const (
@@ -254,8 +255,8 @@ func (e ServerErrorConditionFailed) ToStatus() (s keybase1.Status) {
 // ID mapping mismatch.
 type ServerErrorConflictFolderMapping struct {
 	Desc     string
-	Expected ID
-	Actual   ID
+	Expected tlf.ID
+	Actual   tlf.ID
 }
 
 // Error implements the Error interface for ServerErrorConflictFolderMapping.
