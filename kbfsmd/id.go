@@ -25,7 +25,7 @@ func MakeID(codec kbfscodec.Codec, md RootMetadata) (ID, error) {
 	// Make sure that the serialized metadata is set; otherwise we
 	// won't get the right ID.
 	if md.GetSerializedPrivateMetadata() == nil {
-		return ID{}, errors.WithStack(MDMissingDataError{md.TlfID()})
+		return ID{}, errors.WithStack(MissingDataError{md.TlfID()})
 	}
 
 	buf, err := codec.Encode(md)
