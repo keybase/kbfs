@@ -1203,8 +1203,7 @@ func (j *tlfJournal) flushOneMDOp(
 	flushed bool, err error) {
 	if maxMDRevToFlush == MetadataRevisionUninitialized {
 		// Avoid a call to `getNextMDEntryToFlush`, which
-		// would otherwise read an MD from disk and sign it
-		// unnecessarily.
+		// would otherwise unnecessarily read an MD from disk.
 		return false, nil
 	}
 
