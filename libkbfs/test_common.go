@@ -79,9 +79,10 @@ func MakeTestBlockServerOrBust(t logger.TestLogBackend,
 	}
 }
 
-// MakeTestConfigOrBust creates and returns a config suitable for
-// unit-testing with the given list of users.
-func MakeTestConfigOrBust(t logger.TestLogBackend,
+// MakeTestConfigOrBustLoggedIn creates and returns a config suitable for
+// unit-testing with the given list of users and which (index) user among the list is
+// currently logged in.
+func MakeTestConfigOrBustLoggedIn(t logger.TestLogBackend, loggedIn int,
 	users ...libkb.NormalizedUsername) *ConfigLocal {
 	log := logger.NewTestLogger(t)
 	config := newConfigForTest(InitDefault, func(m string) logger.Logger {
@@ -183,6 +184,13 @@ func MakeTestConfigOrBust(t logger.TestLogBackend,
 	config.allKnownConfigsForTesting = &configs
 
 	return config
+}
+
+// MakeTestConfigOrBust creates and returns a config suitable for
+// unit-testing with the given list of users.
+func MakeTestConfigOrBust(t logger.TestLogBackend,
+	users ...libkb.NormalizedUsername) *ConfigLocal {
+	return MakeTestConfigOrBustLoggedIn(t, 0, users...)
 }
 
 func configAsUserWithMode(config *ConfigLocal,
