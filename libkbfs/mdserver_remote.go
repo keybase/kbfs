@@ -71,6 +71,8 @@ type MDServerRemote struct {
 	serverOffsetMu    sync.RWMutex
 	serverOffsetKnown bool
 	serverOffset      time.Duration
+
+	reconnectBackoff *CancelableRandomBackoff
 }
 
 // Test that MDServerRemote fully implements the MDServer interface.
@@ -91,13 +93,14 @@ func NewMDServerRemote(config Config, srvAddr string,
 	log := config.MakeLogger("")
 	deferLog := log.CloneWithAddedDepth(1)
 	mdServer := &MDServerRemote{
-		config:        config,
-		observers:     make(map[tlf.ID]chan<- error),
-		log:           traceLogger{log},
-		deferLog:      traceLogger{deferLog},
-		mdSrvAddr:     srvAddr,
-		rpcLogFactory: rpcLogFactory,
-		rekeyTimer:    time.NewTimer(MdServerBackgroundRekeyPeriod),
+		config:           config,
+		observers:        make(map[tlf.ID]chan<- error),
+		log:              traceLogger{log},
+		deferLog:         traceLogger{deferLog},
+		mdSrvAddr:        srvAddr,
+		rpcLogFactory:    rpcLogFactory,
+		rekeyTimer:       time.NewTimer(MdServerBackgroundRekeyPeriod),
+		reconnectBackoff: &CancelableRandomBackoff{},
 	}
 
 	mdServer.pinger = pinger{
@@ -351,6 +354,8 @@ func (md *MDServerRemote) OnDisconnected(ctx context.Context,
 		md.log.CWarningf(ctx, "MDServerRemote is disconnected")
 		md.config.Reporter().Notify(ctx,
 			connectionNotification(connectionStatusDisconnected))
+		md.reconnectBackoff.Start(reconnectBackoffWindow)
+		defer md.reconnectBackoff.Wait()
 	}
 
 	func() {
@@ -476,6 +481,7 @@ func (md *MDServerRemote) get(ctx context.Context, arg keybase1.GetMetadataArg) 
 func (md *MDServerRemote) GetForHandle(ctx context.Context,
 	handle tlf.Handle, mStatus MergeStatus) (
 	tlfID tlf.ID, rmds *RootMetadataSigned, err error) {
+	md.reconnectBackoff.Cancel()
 	// TODO: Ideally, *tlf.Handle would have a nicer String() function.
 	md.log.LazyTrace(ctx, "MDServer: GetForHandle %+v %s", handle, mStatus)
 	defer func() {
@@ -509,6 +515,7 @@ func (md *MDServerRemote) GetForHandle(ctx context.Context,
 // GetForTLF implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetForTLF(ctx context.Context, id tlf.ID,
 	bid BranchID, mStatus MergeStatus) (rmds *RootMetadataSigned, err error) {
+	md.reconnectBackoff.Cancel()
 	md.log.LazyTrace(ctx, "MDServer: GetForTLF %s %s %s", id, bid, mStatus)
 	defer func() {
 		md.deferLog.LazyTrace(ctx, "MDServer: GetForTLF %s %s %s done (err=%v)", id, bid, mStatus, err)
@@ -535,6 +542,7 @@ func (md *MDServerRemote) GetForTLF(ctx context.Context, id tlf.ID,
 func (md *MDServerRemote) GetRange(ctx context.Context, id tlf.ID,
 	bid BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision) (
 	rmdses []*RootMetadataSigned, err error) {
+	md.reconnectBackoff.Cancel()
 	md.log.LazyTrace(ctx, "MDServer: GetRange %s %s %s %d-%d", id, bid, mStatus, start, stop)
 	defer func() {
 		md.deferLog.LazyTrace(ctx, "MDServer: GetRange %s %s %s %d-%d done (err=%v)", id, bid, mStatus, start, stop, err)
@@ -555,9 +563,12 @@ func (md *MDServerRemote) GetRange(ctx context.Context, id tlf.ID,
 // Put implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned,
 	extra ExtraMetadata) (err error) {
-	md.log.LazyTrace(ctx, "MDServer: Put %s %d", rmds.MD.TlfID(), rmds.MD.RevisionNumber())
+	md.reconnectBackoff.Cancel()
+	md.log.LazyTrace(ctx,
+		"MDServer: Put %s %d", rmds.MD.TlfID(), rmds.MD.RevisionNumber())
 	defer func() {
-		md.deferLog.LazyTrace(ctx, "MDServer: Put %s %d done (err=%v)", rmds.MD.TlfID(), rmds.MD.RevisionNumber(), err)
+		md.deferLog.LazyTrace(ctx, "MDServer: Put %s %d done (err=%v)",
+			rmds.MD.TlfID(), rmds.MD.RevisionNumber(), err)
 	}()
 
 	// encode MD block
@@ -615,7 +626,9 @@ func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned,
 }
 
 // PruneBranch implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) PruneBranch(ctx context.Context, id tlf.ID, bid BranchID) (err error) {
+func (md *MDServerRemote) PruneBranch(
+	ctx context.Context, id tlf.ID, bid BranchID) (err error) {
+	md.reconnectBackoff.Cancel()
 	md.log.LazyTrace(ctx, "MDServer: PruneBranch %s %s", id, bid)
 	defer func() {
 		md.deferLog.LazyTrace(ctx, "MDServer: PruneBranch %s %s (err=%v)", id, bid, err)
@@ -771,6 +784,7 @@ func (md *MDServerRemote) RegisterForUpdate(ctx context.Context, id tlf.ID,
 // TruncateLock implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) TruncateLock(ctx context.Context, id tlf.ID) (
 	locked bool, err error) {
+	md.reconnectBackoff.Cancel()
 	md.log.LazyTrace(ctx, "MDServer: TruncateLock %s", id)
 	defer func() {
 		md.deferLog.LazyTrace(ctx, "MDServer: TruncateLock %s (err=%v)", id, err)
@@ -781,6 +795,7 @@ func (md *MDServerRemote) TruncateLock(ctx context.Context, id tlf.ID) (
 // TruncateUnlock implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) TruncateUnlock(ctx context.Context, id tlf.ID) (
 	unlocked bool, err error) {
+	md.reconnectBackoff.Cancel()
 	md.log.LazyTrace(ctx, "MDServer: TruncateUnlock %s", id)
 	defer func() {
 		md.deferLog.LazyTrace(ctx, "MDServer: TruncateUnlock %s (err=%v)", id, err)
@@ -791,6 +806,7 @@ func (md *MDServerRemote) TruncateUnlock(ctx context.Context, id tlf.ID) (
 // GetLatestHandleForTLF implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetLatestHandleForTLF(ctx context.Context, id tlf.ID) (
 	handle tlf.Handle, err error) {
+	md.reconnectBackoff.Cancel()
 	md.log.LazyTrace(ctx, "MDServer: GetLatestHandle %s", id)
 	defer func() {
 		md.deferLog.LazyTrace(ctx, "MDServer: GetLatestHandle %s (err=%v)", id, err)
@@ -889,6 +905,7 @@ func (md *MDServerRemote) GetTLFCryptKeyServerHalf(ctx context.Context,
 	serverHalfID TLFCryptKeyServerHalfID,
 	cryptKey kbfscrypto.CryptPublicKey) (
 	serverHalf kbfscrypto.TLFCryptKeyServerHalf, err error) {
+	md.reconnectBackoff.Cancel()
 	md.log.LazyTrace(ctx, "KeyServer: GetTLFCryptKeyServerHalf %s", serverHalfID)
 	defer func() {
 		md.deferLog.LazyTrace(ctx, "KeyServer: GetTLFCryptKeyServerHalf %s (err=%v)", serverHalfID, err)
@@ -923,6 +940,7 @@ func (md *MDServerRemote) GetTLFCryptKeyServerHalf(ctx context.Context,
 // PutTLFCryptKeyServerHalves is an implementation of the KeyServer interface.
 func (md *MDServerRemote) PutTLFCryptKeyServerHalves(ctx context.Context,
 	keyServerHalves UserDeviceKeyServerHalves) (err error) {
+	md.reconnectBackoff.Cancel()
 	md.log.LazyTrace(ctx, "KeyServer: PutTLFCryptKeyServerHalves %v", keyServerHalves)
 	defer func() {
 		md.deferLog.LazyTrace(ctx, "KeyServer: PutTLFCryptKeyServerHalves %v (err=%v)", keyServerHalves, err)
@@ -956,6 +974,7 @@ func (md *MDServerRemote) PutTLFCryptKeyServerHalves(ctx context.Context,
 func (md *MDServerRemote) DeleteTLFCryptKeyServerHalf(ctx context.Context,
 	uid keybase1.UID, key kbfscrypto.CryptPublicKey,
 	serverHalfID TLFCryptKeyServerHalfID) (err error) {
+	md.reconnectBackoff.Cancel()
 	md.log.LazyTrace(ctx, "KeyServer: DeleteTLFCryptKeyServerHalf %s %s", uid, serverHalfID)
 	defer func() {
 		md.deferLog.LazyTrace(ctx, "KeyServer: DeleteTLFCryptKeyServerHalf %s %s done (err=%v)", uid, serverHalfID, err)
@@ -1030,6 +1049,7 @@ func (md *MDServerRemote) backgroundRekeyChecker(ctx context.Context) {
 func (md *MDServerRemote) GetKeyBundles(ctx context.Context,
 	tlf tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
 	wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3, err error) {
+	md.reconnectBackoff.Cancel()
 	md.log.LazyTrace(ctx, "KeyServer: GetKeyBundles %s %s %s", tlf, wkbID, rkbID)
 	defer func() {
 		md.deferLog.LazyTrace(ctx, "KeyServer: GetKeyBundles %s %s %s done (err=%v)", tlf, wkbID, rkbID, err)
