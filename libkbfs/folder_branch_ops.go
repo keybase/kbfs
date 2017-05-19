@@ -1629,11 +1629,15 @@ func (fbo *folderBranchOps) SetInitialHeadFromServer(
 				return err
 			}
 
+			rev := kbfsmd.RevisionUninitialized
+			if mergedMD != (ImmutableRootMetadata{}) {
+				rev = mergedMD.Revision()
+			}
+
 			func() {
 				fbo.headLock.Lock(lState)
 				defer fbo.headLock.Unlock(lState)
-				fbo.setLatestMergedRevisionLocked(ctx, lState,
-					mergedMD.Revision(), false)
+				fbo.setLatestMergedRevisionLocked(ctx, lState, rev, false)
 			}()
 		}
 
