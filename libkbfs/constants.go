@@ -15,3 +15,7 @@ const rekeyRecheckInterval = 30 * time.Second
 
 // rekeyInitialTTL is the maximum number rechecks each rekey request can trigger.
 const rekeyInitialTTL = 4
+
+// mdserverReconnectBackoffWindow is a backoff window within which we try to
+// wait randomly for before reconnecting to MD server.
+const mdserverReconnectBackoffWindow = 2 * time.Minute
