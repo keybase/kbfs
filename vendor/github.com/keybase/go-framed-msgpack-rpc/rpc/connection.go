@@ -623,7 +623,7 @@ type connectionClient struct {
 var _ GenericClient = connectionClient{}
 
 func (c connectionClient) Call(ctx context.Context, s string, args interface{}, res interface{}) error {
-	if isWithFireNow(ctx) || c.conn.initialReconnectBackoffWindow != 0 {
+	if c.conn.initialReconnectBackoffWindow != 0 && isWithFireNow(ctx) {
 		c.conn.randomTimer.FireNow()
 	}
 	return c.conn.DoCommand(ctx, s, func(rawClient GenericClient) error {

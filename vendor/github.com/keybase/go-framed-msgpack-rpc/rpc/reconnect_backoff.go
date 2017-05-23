@@ -12,16 +12,16 @@ import (
 	"time"
 )
 
-// fireOnce is a construct to synchronize different go routines. Specifically,
+// fireOnce is a construct to synchronize different goroutines. Specifically,
 // one routine can use wait() to wait on a signal, and another routine can call
 // fire() to wake up the first routine. Only the first call to fire() is
-// effective, and multiple calls to fire() doesn't panic.
+// effective, and multiple calls to fire() don't panic.
 //
 // A zero value fireOnce is valid, and no-op for both fire() and wait(). Use
 // newFireOnce() to make one that's fire-able.
 //
-// This is to replace the use case where a channel may be used to sychronize
-// different go routines, and one routine waits on a channel read while another
+// This is to replace the use case where a channel may be used to synchronize
+// different goroutines, and one routine waits on a channel read while another
 // closes the channel to signal the first routine. fireOnce addresses the issue
 // where second call to close the channel can panic.
 type fireOnce struct {
@@ -123,7 +123,7 @@ type CtxFireNow struct{}
 // A bit more background: when random backoff is enabled, the RPC client waits
 // on a random timer before trying to reconnect to server in event of a
 // disconnection. However, we want this to happen only if the client device is
-// idling. User of this package should use WithFireNow to amend the context
+// idling. Users of this package should use WithFireNow to amend the context
 // passed into any RPC calls that should cause a reconnect immediately. In
 // general, that's all RPC calls except those that perform ping-like functions.
 func WithFireNow(ctx context.Context) context.Context {
