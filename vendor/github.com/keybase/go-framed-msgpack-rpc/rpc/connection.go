@@ -545,9 +545,12 @@ func (c *Connection) doReconnect(ctx context.Context, disconnectStatus Disconnec
 	reconnectChan chan struct{}, reconnectErrPtr *error) {
 	// inform the handler of our disconnected state
 	c.handler.OnDisconnected(ctx, disconnectStatus)
-	if c.initialReconnectBackoffWindow != 0 {
-		c.randomTimer.Start(c.initialReconnectBackoffWindow)
+	if c.initialReconnectBackoffWindow != 0 &&
+		disconnectStatus == StartingNonFirstConnection {
+		waitDur := c.randomTimer.Start(c.initialReconnectBackoffWindow)
+		c.log.Debug("starting random backoff: %s", waitDur)
 		c.randomTimer.Wait()
+		c.log.Debug("backoff done!")
 	}
 	err := backoff.RetryNotify(func() error {
 		// try to connect
@@ -620,10 +623,10 @@ type connectionClient struct {
 var _ GenericClient = connectionClient{}
 
 func (c connectionClient) Call(ctx context.Context, s string, args interface{}, res interface{}) error {
+	if isWithFireNow(ctx) || c.conn.initialReconnectBackoffWindow != 0 {
+		c.conn.randomTimer.FireNow()
+	}
 	return c.conn.DoCommand(ctx, s, func(rawClient GenericClient) error {
-		if isWithFireNow(ctx) || c.conn.initialReconnectBackoffWindow != 0 {
-			c.conn.randomTimer.FireNow()
-		}
 		return rawClient.Call(ctx, s, args, res)
 	})
 }

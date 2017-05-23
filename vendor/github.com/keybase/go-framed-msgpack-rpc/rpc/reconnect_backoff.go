@@ -80,7 +80,7 @@ func (b *CancellableRandomTimer) get() fireOnce {
 // It's OK to call b.Start() multiple times. It essentially resets the timer to
 // a new value, i.e., any pending b.Wait() waits until the last effective timer
 // completes.
-func (b *CancellableRandomTimer) Start(maxWait time.Duration) {
+func (b *CancellableRandomTimer) Start(maxWait time.Duration) time.Duration {
 	f := newFireOnce()
 	b.swap(f).fire()
 
@@ -88,10 +88,10 @@ func (b *CancellableRandomTimer) Start(maxWait time.Duration) {
 	if _, err := rand.Read(buf[:]); err != nil {
 		panic(err)
 	}
-	waitDur := time.Duration(
-		int64(binary.LittleEndian.Uint64(buf[:])) % int64(maxWait))
-
+	buf[0] &= 127 // so it's always positive
+	waitDur := time.Duration(binary.BigEndian.Uint64(buf[:])) % maxWait
 	time.AfterFunc(waitDur, f.fire)
+	return waitDur
 }
 
 // Wait waits on any existing random timer. If there isn't a timer
