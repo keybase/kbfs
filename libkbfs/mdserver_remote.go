@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/keybase/backoff"
@@ -51,8 +52,7 @@ type MDServerRemote struct {
 	squelchRekey  bool
 	pinger        pinger
 
-	authenticatedMtx sync.Mutex
-	isAuthenticated  bool
+	isAuthenticated int32
 
 	connMu sync.RWMutex
 	conn   *rpc.Connection
@@ -127,6 +127,30 @@ func NewMDServerRemote(config Config, srvAddr string,
 	go mdServer.backgroundRekeyChecker(rekeyCtx)
 
 	return mdServer
+}
+
+func (md *MDServerRemote) getIsAuthenticated() bool {
+	return atomic.LoadInt32(&md.isAuthenticated) == 1
+}
+
+func (md *MDServerRemote) setIsAuthenticated(isAuthenticated bool) {
+	if isAuthenticated {
+		atomic.StoreInt32(&md.isAuthenticated, 1)
+	} else {
+		atomic.StoreInt32(&md.isAuthenticated, 0)
+	}
+}
+
+func (md *MDServerRemote) compareAndSwapAuthenticated(
+	oldValue bool, newValue bool) (swapped bool) {
+	var oldI, newI int32
+	if oldValue {
+		oldI = 1
+	}
+	if newValue {
+		newI = 1
+	}
+	return atomic.CompareAndSwapInt32(&md.isAuthenticated, oldI, newI)
 }
 
 func (md *MDServerRemote) initNewConnection() {
@@ -204,9 +228,7 @@ func (md *MDServerRemote) resetAuth(
 
 	isAuthenticated := false
 	defer func() {
-		md.authenticatedMtx.Lock()
-		md.isAuthenticated = isAuthenticated
-		md.authenticatedMtx.Unlock()
+		defer md.setIsAuthenticated(isAuthenticated)
 	}()
 
 	session, err := md.config.KBPKI().GetCurrentSession(ctx)
@@ -243,8 +265,7 @@ func (md *MDServerRemote) resetAuth(
 
 	isAuthenticated = true
 
-	md.authenticatedMtx.Lock()
-	if !md.isAuthenticated {
+	if md.compareAndSwapAuthenticated(false, true) {
 		defer func() {
 			// request a list of folders needing rekey action
 			if err := md.getFoldersForRekey(ctx, c); err != nil {
@@ -253,10 +274,9 @@ func (md *MDServerRemote) resetAuth(
 			md.deferLog.CDebugf(ctx,
 				"requested list of folders for rekey")
 		}()
+	} else {
+		md.setIsAuthenticated(true)
 	}
-	// Need to ensure that any conflicting thread gets the updated value
-	md.isAuthenticated = true
-	md.authenticatedMtx.Unlock()
 
 	return pingIntervalSeconds, nil
 }
@@ -292,11 +312,7 @@ func (md *MDServerRemote) pingOnce(ctx context.Context) {
 	beforePing := clock.Now()
 	resp, err := md.getClient().Ping2(ctx)
 	if err == context.DeadlineExceeded {
-		if func() bool {
-			md.authenticatedMtx.Lock()
-			defer md.authenticatedMtx.Unlock()
-			return md.isAuthenticated
-		}() {
+		if md.getIsAuthenticated() {
 			md.log.CDebugf(ctx, "Ping timeout -- reinitializing connection")
 			md.initNewConnection()
 		} else {
@@ -371,9 +387,7 @@ func (md *MDServerRemote) OnDisconnected(ctx context.Context,
 		md.serverOffset = 0
 	}()
 
-	md.authenticatedMtx.Lock()
-	md.isAuthenticated = false
-	md.authenticatedMtx.Unlock()
+	md.setIsAuthenticated(false)
 
 	md.cancelObservers()
 	md.pinger.cancelTicker()
@@ -407,11 +421,7 @@ func (md *MDServerRemote) ShouldRetryOnConnect(err error) bool {
 func (md *MDServerRemote) CheckReachability(ctx context.Context) {
 	conn, err := net.DialTimeout("tcp", md.mdSrvAddr, MdServerPingTimeout)
 	if err != nil {
-		if func() bool {
-			md.authenticatedMtx.Lock()
-			defer md.authenticatedMtx.Unlock()
-			return md.isAuthenticated
-		}() {
+		if md.getIsAuthenticated() {
 			md.log.CDebugf(ctx, "MDServerRemote: CheckReachability(): "+
 				"failed to connect, reconnecting: %s", err.Error())
 			md.initNewConnection()

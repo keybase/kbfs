@@ -19,4 +19,4 @@ const rekeyInitialTTL = 4
 // mdserverReconnectBackoffWindow is a backoff window within which we try to
 // wait randomly for before reconnecting to MD server.
 // TODO: increase this to 5 min
-const mdserverReconnectBackoffWindow = 30 * time.Second
+const mdserverReconnectBackoffWindow = 5 * time.Minute
