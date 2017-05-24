@@ -292,8 +292,16 @@ func (md *MDServerRemote) pingOnce(ctx context.Context) {
 	beforePing := clock.Now()
 	resp, err := md.getClient().Ping2(ctx)
 	if err == context.DeadlineExceeded {
-		md.log.CDebugf(ctx, "Ping timeout -- reinitializing connection")
-		md.initNewConnection()
+		if func() bool {
+			md.authenticatedMtx.Lock()
+			defer md.authenticatedMtx.Unlock()
+			return md.isAuthenticated
+		}() {
+			md.log.CDebugf(ctx, "Ping timeout -- reinitializing connection")
+			md.initNewConnection()
+		} else {
+			md.log.CDebugf(ctx, "Ping timeout but not reinitializing")
+		}
 		return
 	} else if err != nil {
 		md.log.CDebugf(ctx, "MDServerRemote: ping error %s", err)
@@ -399,9 +407,18 @@ func (md *MDServerRemote) ShouldRetryOnConnect(err error) bool {
 func (md *MDServerRemote) CheckReachability(ctx context.Context) {
 	conn, err := net.DialTimeout("tcp", md.mdSrvAddr, MdServerPingTimeout)
 	if err != nil {
-		md.log.CDebugf(ctx,
-			"MDServerRemote: CheckReachability(): failed to connect, reconnecting: %s", err.Error())
-		md.initNewConnection()
+		if func() bool {
+			md.authenticatedMtx.Lock()
+			defer md.authenticatedMtx.Unlock()
+			return md.isAuthenticated
+		}() {
+			md.log.CDebugf(ctx, "MDServerRemote: CheckReachability(): "+
+				"failed to connect, reconnecting: %s", err.Error())
+			md.initNewConnection()
+		} else {
+			md.log.CDebugf(ctx, "MDServerRemote: CheckReachability(): "+
+				"failed to connect (%s), but not reconnecting", err.Error())
+		}
 	}
 	if conn != nil {
 		conn.Close()
