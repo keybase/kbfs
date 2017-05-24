@@ -1709,6 +1709,7 @@ func (fbo *folderBranchOps) GetDirChildren(ctx context.Context, dir Node) (
 	if err != nil {
 		return nil, err
 	}
+	fbo.config.MDServer().FastForwardBackoff()
 
 	err = runUnlessCanceled(ctx, func() error {
 		var err error
@@ -1755,6 +1756,7 @@ func (fbo *folderBranchOps) Lookup(ctx context.Context, dir Node, name string) (
 	if err != nil {
 		return nil, EntryInfo{}, err
 	}
+	fbo.config.MDServer().FastForwardBackoff()
 
 	var de DirEntry
 	err = runUnlessCanceled(ctx, func() error {
@@ -1790,6 +1792,7 @@ func (fbo *folderBranchOps) statEntry(ctx context.Context, node Node) (
 	if err != nil {
 		return DirEntry{}, err
 	}
+	fbo.config.MDServer().FastForwardBackoff()
 
 	lState := makeFBOLockState()
 
@@ -2772,6 +2775,7 @@ func (fbo *folderBranchOps) CreateDir(
 	if err != nil {
 		return nil, EntryInfo{}, err
 	}
+	fbo.config.MDServer().FastForwardBackoff()
 
 	var retNode Node
 	var retEntryInfo EntryInfo
@@ -2807,6 +2811,7 @@ func (fbo *folderBranchOps) CreateFile(
 	if err != nil {
 		return nil, EntryInfo{}, err
 	}
+	fbo.config.MDServer().FastForwardBackoff()
 
 	var entryType EntryType
 	if isExec {
@@ -2984,6 +2989,7 @@ func (fbo *folderBranchOps) CreateLink(
 	if err != nil {
 		return EntryInfo{}, err
 	}
+	fbo.config.MDServer().FastForwardBackoff()
 
 	var retEntryInfo EntryInfo
 	err = fbo.doMDWriteWithRetryUnlessCanceled(ctx,
@@ -3166,6 +3172,7 @@ func (fbo *folderBranchOps) RemoveDir(
 	if err != nil {
 		return
 	}
+	fbo.config.MDServer().FastForwardBackoff()
 
 	return fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
@@ -3185,6 +3192,7 @@ func (fbo *folderBranchOps) RemoveEntry(ctx context.Context, dir Node,
 	if err != nil {
 		return err
 	}
+	fbo.config.MDServer().FastForwardBackoff()
 
 	return fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
@@ -3307,6 +3315,7 @@ func (fbo *folderBranchOps) Rename(
 	if err != nil {
 		return err
 	}
+	fbo.config.MDServer().FastForwardBackoff()
 
 	return fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
@@ -3334,6 +3343,7 @@ func (fbo *folderBranchOps) Read(
 	if err != nil {
 		return 0, err
 	}
+	fbo.config.MDServer().FastForwardBackoff()
 
 	{
 		filePath, err := fbo.pathFromNodeForRead(file)
@@ -3400,6 +3410,7 @@ func (fbo *folderBranchOps) Write(
 	if err != nil {
 		return err
 	}
+	fbo.config.MDServer().FastForwardBackoff()
 
 	return runUnlessCanceled(ctx, func() error {
 		lState := makeFBOLockState()
@@ -3436,6 +3447,7 @@ func (fbo *folderBranchOps) Truncate(
 	if err != nil {
 		return err
 	}
+	fbo.config.MDServer().FastForwardBackoff()
 
 	return runUnlessCanceled(ctx, func() error {
 		lState := makeFBOLockState()
@@ -3539,6 +3551,7 @@ func (fbo *folderBranchOps) SetEx(
 	if err != nil {
 		return
 	}
+	fbo.config.MDServer().FastForwardBackoff()
 
 	return fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
@@ -3614,6 +3627,7 @@ func (fbo *folderBranchOps) SetMtime(
 	if err != nil {
 		return
 	}
+	fbo.config.MDServer().FastForwardBackoff()
 
 	return fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {

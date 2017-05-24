@@ -1128,6 +1128,11 @@ func (md *MDServerRemote) GetKeyBundles(ctx context.Context,
 	return wkb, rkb, nil
 }
 
+// FastForwardBackoff implements the MDServer interface for MDServerRemote.
+func (md *MDServerRemote) FastForwardBackoff() {
+	md.conn.FastForwardInitialBackoffTimer()
+}
+
 func (md *MDServerRemote) resetRekeyTimer() {
 	md.rekeyTimer.Reset(nextRekeyTime())
 }
