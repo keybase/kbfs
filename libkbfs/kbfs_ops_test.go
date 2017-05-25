@@ -706,7 +706,6 @@ func TestKBFSOpsGetBaseDirChildrenCacheSuccess(t *testing.T) {
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
 
-	config.mockMdserv.EXPECT().FastForwardBackoff().AnyTimes()
 	children, err := config.KBFSOps().GetDirChildren(ctx, n)
 	if err != nil {
 		t.Errorf("Got error on getdir: %+v", err)
@@ -740,7 +739,6 @@ func TestKBFSOpsGetBaseDirChildrenUncachedSuccess(t *testing.T) {
 	// cache miss means fetching metadata and getting read key
 	expectBlock(config, rmd, blockPtr, dirBlock, nil)
 
-	config.mockMdserv.EXPECT().FastForwardBackoff().AnyTimes()
 	if _, err := config.KBFSOps().GetDirChildren(ctx, n); err != nil {
 		t.Errorf("Got error on getdir: %+v", err)
 	}
@@ -776,7 +774,6 @@ func TestKBFSOpsGetBaseDirChildrenUncachedFailNonReader(t *testing.T) {
 	ops.headStatus = headTrusted
 	expectedErr := NewReadAccessError(h, "alice", "/keybase/private/bob#alice")
 
-	config.mockMdserv.EXPECT().FastForwardBackoff().AnyTimes()
 	if _, err := config.KBFSOps().GetDirChildren(ctx, n); err == nil {
 		t.Errorf("Got no expected error on getdir")
 	} else if err != expectedErr {
@@ -804,7 +801,6 @@ func TestKBFSOpsGetBaseDirChildrenUncachedFailMissingBlock(t *testing.T) {
 	err := NoSuchBlockError{rootID}
 	expectBlock(config, rmd, blockPtr, dirBlock, err)
 
-	config.mockMdserv.EXPECT().FastForwardBackoff().AnyTimes()
 	if _, err2 := config.KBFSOps().GetDirChildren(ctx, n); err2 == nil {
 		t.Errorf("Got no expected error on getdir")
 	} else if err2 != err {
@@ -840,7 +836,6 @@ func TestKBFSOpsGetNestedDirChildrenCacheSuccess(t *testing.T) {
 
 	testPutBlockInCache(t, config, bNode.BlockPointer, id, dirBlock)
 
-	config.mockMdserv.EXPECT().FastForwardBackoff().AnyTimes()
 	children, err := config.KBFSOps().GetDirChildren(ctx, n)
 	if err != nil {
 		t.Errorf("Got error on getdir: %+v", err)
@@ -886,7 +881,6 @@ func TestKBFSOpsLookupSuccess(t *testing.T) {
 
 	testPutBlockInCache(t, config, aNode.BlockPointer, id, dirBlock)
 
-	config.mockMdserv.EXPECT().FastForwardBackoff().AnyTimes()
 	bn, ei, err := config.KBFSOps().Lookup(ctx, n, "b")
 	if err != nil {
 		t.Errorf("Error on Lookup: %+v", err)
@@ -931,7 +925,6 @@ func TestKBFSOpsLookupSymlinkSuccess(t *testing.T) {
 
 	testPutBlockInCache(t, config, aNode.BlockPointer, id, dirBlock)
 
-	config.mockMdserv.EXPECT().FastForwardBackoff().AnyTimes()
 	bn, ei, err := config.KBFSOps().Lookup(ctx, n, "b")
 	if err != nil {
 		t.Errorf("Error on Lookup: %+v", err)
@@ -972,7 +965,6 @@ func TestKBFSOpsLookupNoSuchNameFail(t *testing.T) {
 
 	testPutBlockInCache(t, config, aNode.BlockPointer, id, dirBlock)
 
-	config.mockMdserv.EXPECT().FastForwardBackoff().AnyTimes()
 	expectedErr := NoSuchNameError{"c"}
 	_, _, err := config.KBFSOps().Lookup(ctx, n, "c")
 	if err == nil {
@@ -1017,7 +1009,6 @@ func TestKBFSOpsLookupNewDataVersionFail(t *testing.T) {
 		bInfo.DataVer,
 	}
 
-	config.mockMdserv.EXPECT().FastForwardBackoff().AnyTimes()
 	_, _, err := config.KBFSOps().Lookup(ctx, n, "b")
 	if err == nil {
 		t.Error("No expected error found on lookup")
@@ -1123,7 +1114,6 @@ func testCreateEntryFailDupName(t *testing.T, isDir bool) {
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 	expectedErr := NameExistsError{"a"}
 
-	config.mockMdserv.EXPECT().FastForwardBackoff().AnyTimes()
 	var err error
 	// dir and link have different checks for dup name
 	if isDir {
@@ -1165,7 +1155,6 @@ func testCreateEntryFailNameTooLong(t *testing.T, isDir bool) {
 	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
 	expectedErr := NameTooLongError{name, config.maxNameBytes}
 
-	config.mockMdserv.EXPECT().FastForwardBackoff().AnyTimes()
 	var err error
 	// dir and link have different checks for dup name
 	if isDir {
