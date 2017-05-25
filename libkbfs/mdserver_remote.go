@@ -1130,8 +1130,8 @@ func (md *MDServerRemote) GetKeyBundles(ctx context.Context,
 
 // FastForwardBackoff implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) FastForwardBackoff() {
-	md.connMu.Lock()
-	defer md.connMu.Unlock()
+	md.connMu.RLock()
+	defer md.connMu.RUnlock()
 	md.conn.FastForwardInitialBackoffTimer()
 }
 
