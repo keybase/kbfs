@@ -15,6 +15,7 @@ import (
 	"github.com/keybase/backoff"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/go-framed-msgpack-rpc/rpc"
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfsmd"
@@ -333,6 +334,14 @@ type folderBranchOps struct {
 	branchChanges      kbfssync.RepeatedWaitGroup
 	mdFlushes          kbfssync.RepeatedWaitGroup
 	forcedFastForwards kbfssync.RepeatedWaitGroup
+
+	muLastGetHead sync.Mutex
+	// We record a timestamp everytime getHead or getTrustedHead is called, and
+	// use this as a heuristic for whether user is actively using KBFS. If user
+	// has been generating KBFS activities recently, it makes sense to try to
+	// reconnect as soon as possible in case of a deployment causes
+	// disconnection.
+	lastGetHead time.Time
 }
 
 var _ KBFSOps = (*folderBranchOps)(nil)
@@ -557,6 +566,12 @@ func (fbo *folderBranchOps) doFavoritesOp(ctx context.Context,
 	}
 }
 
+func (fbo *folderBranchOps) updateLastGetHeadTimestamp() {
+	fbo.muLastGetHead.Lock()
+	defer fbo.muLastGetHead.Unlock()
+	fbo.lastGetHead = time.Now()
+}
+
 // getTrustedHead should not be called outside of folder_branch_ops.go.
 // Returns ImmutableRootMetadata{} when the head is not trusted.
 // See the comment on headTrustedStatus for more information.
@@ -566,6 +581,15 @@ func (fbo *folderBranchOps) getTrustedHead(lState *lockState) ImmutableRootMetad
 	if fbo.headStatus == headUntrusted {
 		return ImmutableRootMetadata{}
 	}
+
+	// This triggers any mdserver backoff timer to fast forward. In case of a
+	// deployment, this causes KBFS client to try to reconnect to mdserver
+	// immediately rather than waiting until the random backoff timer is up.
+	// Note that this doesn't necessarily guarantee that the fbo handler that
+	// called this method would get latest MD.
+	fbo.config.MDServer().FastForwardBackoff()
+	fbo.updateLastGetHeadTimestamp()
+
 	return fbo.head
 }
 
@@ -574,6 +598,11 @@ func (fbo *folderBranchOps) getHead(lState *lockState) (
 	ImmutableRootMetadata, headTrustStatus) {
 	fbo.headLock.RLock(lState)
 	defer fbo.headLock.RUnlock(lState)
+
+	// See getTrustedHead for explaination.
+	fbo.config.MDServer().FastForwardBackoff()
+	fbo.updateLastGetHeadTimestamp()
+
 	return fbo.head, fbo.headStatus
 }
 
@@ -1709,7 +1738,6 @@ func (fbo *folderBranchOps) GetDirChildren(ctx context.Context, dir Node) (
 	if err != nil {
 		return nil, err
 	}
-	fbo.config.MDServer().FastForwardBackoff()
 
 	err = runUnlessCanceled(ctx, func() error {
 		var err error
@@ -1756,7 +1784,6 @@ func (fbo *folderBranchOps) Lookup(ctx context.Context, dir Node, name string) (
 	if err != nil {
 		return nil, EntryInfo{}, err
 	}
-	fbo.config.MDServer().FastForwardBackoff()
 
 	var de DirEntry
 	err = runUnlessCanceled(ctx, func() error {
@@ -1792,7 +1819,6 @@ func (fbo *folderBranchOps) statEntry(ctx context.Context, node Node) (
 	if err != nil {
 		return DirEntry{}, err
 	}
-	fbo.config.MDServer().FastForwardBackoff()
 
 	lState := makeFBOLockState()
 
@@ -2775,7 +2801,6 @@ func (fbo *folderBranchOps) CreateDir(
 	if err != nil {
 		return nil, EntryInfo{}, err
 	}
-	fbo.config.MDServer().FastForwardBackoff()
 
 	var retNode Node
 	var retEntryInfo EntryInfo
@@ -2811,7 +2836,6 @@ func (fbo *folderBranchOps) CreateFile(
 	if err != nil {
 		return nil, EntryInfo{}, err
 	}
-	fbo.config.MDServer().FastForwardBackoff()
 
 	var entryType EntryType
 	if isExec {
@@ -2989,7 +3013,6 @@ func (fbo *folderBranchOps) CreateLink(
 	if err != nil {
 		return EntryInfo{}, err
 	}
-	fbo.config.MDServer().FastForwardBackoff()
 
 	var retEntryInfo EntryInfo
 	err = fbo.doMDWriteWithRetryUnlessCanceled(ctx,
@@ -3172,7 +3195,6 @@ func (fbo *folderBranchOps) RemoveDir(
 	if err != nil {
 		return
 	}
-	fbo.config.MDServer().FastForwardBackoff()
 
 	return fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
@@ -3192,7 +3214,6 @@ func (fbo *folderBranchOps) RemoveEntry(ctx context.Context, dir Node,
 	if err != nil {
 		return err
 	}
-	fbo.config.MDServer().FastForwardBackoff()
 
 	return fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
@@ -3315,7 +3336,6 @@ func (fbo *folderBranchOps) Rename(
 	if err != nil {
 		return err
 	}
-	fbo.config.MDServer().FastForwardBackoff()
 
 	return fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
@@ -3343,7 +3363,6 @@ func (fbo *folderBranchOps) Read(
 	if err != nil {
 		return 0, err
 	}
-	fbo.config.MDServer().FastForwardBackoff()
 
 	{
 		filePath, err := fbo.pathFromNodeForRead(file)
@@ -3410,7 +3429,6 @@ func (fbo *folderBranchOps) Write(
 	if err != nil {
 		return err
 	}
-	fbo.config.MDServer().FastForwardBackoff()
 
 	return runUnlessCanceled(ctx, func() error {
 		lState := makeFBOLockState()
@@ -3447,7 +3465,6 @@ func (fbo *folderBranchOps) Truncate(
 	if err != nil {
 		return err
 	}
-	fbo.config.MDServer().FastForwardBackoff()
 
 	return runUnlessCanceled(ctx, func() error {
 		lState := makeFBOLockState()
@@ -3551,7 +3568,6 @@ func (fbo *folderBranchOps) SetEx(
 	if err != nil {
 		return
 	}
-	fbo.config.MDServer().FastForwardBackoff()
 
 	return fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
@@ -3627,7 +3643,6 @@ func (fbo *folderBranchOps) SetMtime(
 	if err != nil {
 		return
 	}
-	fbo.config.MDServer().FastForwardBackoff()
 
 	return fbo.doMDWriteWithRetryUnlessCanceled(ctx,
 		func(lState *lockState) error {
@@ -5563,15 +5578,31 @@ func (fbo *folderBranchOps) registerAndWaitForUpdates() {
 	<-childDone
 }
 
+func (fbo *folderBranchOps) registerForUpdatesShouldFireNow() bool {
+	fbo.muLastGetHead.Lock()
+	defer fbo.muLastGetHead.Unlock()
+	return time.Since(fbo.lastGetHead) < registerForUpdatesFireNowThreshold
+}
+
 func (fbo *folderBranchOps) registerForUpdates(ctx context.Context) (
 	updateChan <-chan error, err error) {
 	lState := makeFBOLockState()
 	currRev := fbo.getLatestMergedRevision(lState)
-	fbo.log.CDebugf(ctx, "Registering for updates (curr rev = %d)", currRev)
+
+	fireNow := false
+	if fbo.registerForUpdatesShouldFireNow() {
+		fbo.log.CDebugf(ctx, "Registering for updates (curr rev = %d)", currRev)
+		ctx = rpc.WithFireNow(ctx)
+		fireNow = true
+	}
+
+	fbo.log.CDebugf(ctx,
+		"Registering for updates (curr rev = %d, fire now = %v)",
+		currRev, fireNow)
 	defer func() {
 		fbo.deferLog.CDebugf(ctx,
-			"Registering for updates (curr rev = %d) done: %+v",
-			currRev, err)
+			"Registering for updates (curr rev = %d, fire now = %v) done: %+v",
+			currRev, fireNow, err)
 	}()
 	// RegisterForUpdate will itself retry on connectivity issues
 	return fbo.config.MDServer().RegisterForUpdate(ctx, fbo.id(), currRev)
