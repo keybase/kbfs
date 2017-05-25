@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/keybase/backoff"
@@ -52,7 +51,8 @@ type MDServerRemote struct {
 	squelchRekey  bool
 	pinger        pinger
 
-	isAuthenticated int32
+	authenticatedMtx sync.RWMutex
+	isAuthenticated  bool
 
 	connMu sync.RWMutex
 	conn   *rpc.Connection
@@ -130,27 +130,15 @@ func NewMDServerRemote(config Config, srvAddr string,
 }
 
 func (md *MDServerRemote) getIsAuthenticated() bool {
-	return atomic.LoadInt32(&md.isAuthenticated) == 1
+	md.authenticatedMtx.RLock()
+	defer md.authenticatedMtx.RUnlock()
+	return md.isAuthenticated
 }
 
 func (md *MDServerRemote) setIsAuthenticated(isAuthenticated bool) {
-	if isAuthenticated {
-		atomic.StoreInt32(&md.isAuthenticated, 1)
-	} else {
-		atomic.StoreInt32(&md.isAuthenticated, 0)
-	}
-}
-
-func (md *MDServerRemote) compareAndSwapAuthenticated(
-	oldValue bool, newValue bool) (swapped bool) {
-	var oldI, newI int32
-	if oldValue {
-		oldI = 1
-	}
-	if newValue {
-		newI = 1
-	}
-	return atomic.CompareAndSwapInt32(&md.isAuthenticated, oldI, newI)
+	md.authenticatedMtx.Lock()
+	defer md.authenticatedMtx.Unlock()
+	md.isAuthenticated = isAuthenticated
 }
 
 func (md *MDServerRemote) initNewConnection() {
@@ -228,7 +216,7 @@ func (md *MDServerRemote) resetAuth(
 
 	isAuthenticated := false
 	defer func() {
-		defer md.setIsAuthenticated(isAuthenticated)
+		md.setIsAuthenticated(isAuthenticated)
 	}()
 
 	session, err := md.config.KBPKI().GetCurrentSession(ctx)
@@ -265,7 +253,8 @@ func (md *MDServerRemote) resetAuth(
 
 	isAuthenticated = true
 
-	if md.compareAndSwapAuthenticated(false, true) {
+	md.authenticatedMtx.Lock()
+	if !md.isAuthenticated {
 		defer func() {
 			// request a list of folders needing rekey action
 			if err := md.getFoldersForRekey(ctx, c); err != nil {
@@ -274,9 +263,10 @@ func (md *MDServerRemote) resetAuth(
 			md.deferLog.CDebugf(ctx,
 				"requested list of folders for rekey")
 		}()
-	} else {
-		md.setIsAuthenticated(true)
 	}
+	// Need to ensure that any conflicting thread gets the updated value
+	md.isAuthenticated = true
+	md.authenticatedMtx.Unlock()
 
 	return pingIntervalSeconds, nil
 }
