@@ -569,7 +569,7 @@ func (fbo *folderBranchOps) doFavoritesOp(ctx context.Context,
 func (fbo *folderBranchOps) updateLastGetHeadTimestamp() {
 	fbo.muLastGetHead.Lock()
 	defer fbo.muLastGetHead.Unlock()
-	fbo.lastGetHead = time.Now()
+	fbo.lastGetHead = fbo.config.Clock().Now()
 }
 
 // getTrustedHead should not be called outside of folder_branch_ops.go.
@@ -599,7 +599,7 @@ func (fbo *folderBranchOps) getHead(lState *lockState) (
 	fbo.headLock.RLock(lState)
 	defer fbo.headLock.RUnlock(lState)
 
-	// See getTrustedHead for explaination.
+	// See getTrustedHead for explanation.
 	fbo.config.MDServer().FastForwardBackoff()
 	fbo.updateLastGetHeadTimestamp()
 
@@ -5581,7 +5581,7 @@ func (fbo *folderBranchOps) registerAndWaitForUpdates() {
 func (fbo *folderBranchOps) registerForUpdatesShouldFireNow() bool {
 	fbo.muLastGetHead.Lock()
 	defer fbo.muLastGetHead.Unlock()
-	return time.Since(fbo.lastGetHead) < registerForUpdatesFireNowThreshold
+	return fbo.config.Clock().Now().Sub(fbo.lastGetHead) < registerForUpdatesFireNowThreshold
 }
 
 func (fbo *folderBranchOps) registerForUpdates(ctx context.Context) (
@@ -5591,7 +5591,6 @@ func (fbo *folderBranchOps) registerForUpdates(ctx context.Context) (
 
 	fireNow := false
 	if fbo.registerForUpdatesShouldFireNow() {
-		fbo.log.CDebugf(ctx, "Registering for updates (curr rev = %d)", currRev)
 		ctx = rpc.WithFireNow(ctx)
 		fireNow = true
 	}

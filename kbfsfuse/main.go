@@ -18,8 +18,6 @@ import (
 	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libfuse"
 	"github.com/keybase/kbfs/libkbfs"
-
-	_ "github.com/songgao/stacktraces/on/SIGUSR2"
 )
 
 var runtimeDir = flag.String("runtime-dir", os.Getenv("KEYBASE_RUNTIME_DIR"), "runtime directory")
