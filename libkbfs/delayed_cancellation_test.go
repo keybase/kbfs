@@ -134,14 +134,14 @@ func TestDelayedCancellationEnabled(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := makeContextWithDelayedCancellation(t)
-	EnableDelayedCancellationWithGracePeriod(ctx, 15*time.Millisecond)
+	EnableDelayedCancellationWithGracePeriod(ctx, 50*time.Millisecond)
 
 	cancel()
 
 	select {
 	case <-ctx.Done():
 		t.Fatalf("Cancellation is not delayed")
-	case <-time.After(10 * time.Millisecond):
+	case <-time.After(20 * time.Millisecond):
 	}
 
 	<-ctx.Done()
