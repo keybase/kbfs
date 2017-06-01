@@ -141,7 +141,7 @@ func TestDelayedCancellationEnabled(t *testing.T) {
 	select {
 	case <-ctx.Done():
 		t.Fatalf("Cancellation is not delayed")
-	case <-time.After(20 * time.Millisecond):
+	case <-time.After(10 * time.Millisecond):
 	}
 
 	<-ctx.Done()
