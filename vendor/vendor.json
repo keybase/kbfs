@@ -173,26 +173,26 @@
 		{
 			"checksumSHA1": "O1Q0NBB6o1mj4A+1uk1xgf7nw+c=",
 			"path": "github.com/keybase/client/go/protocol",
-			"revision": "60fd7317ee86a2522e798d1dfb61f3b6470a1c05",
-			"revisionTime": "2017-05-12T20:51:02Z"
+			"revision": "fab3c444f6ac4feb0b20895d63bb63080aa58f67",
+			"revisionTime": "2017-05-10T16:18:15Z"
 		},
 		{
-			"checksumSHA1": "3CKn7UMhFIwp7nl5u/FVifaM4GQ=",
+			"checksumSHA1": "fveRkcKmHXxgkg1BqRw9GQ4iQGk=",
 			"path": "github.com/keybase/client/go/protocol/chat1",
-			"revision": "60fd7317ee86a2522e798d1dfb61f3b6470a1c05",
-			"revisionTime": "2017-05-12T20:51:02Z"
+			"revision": "fab3c444f6ac4feb0b20895d63bb63080aa58f67",
+			"revisionTime": "2017-05-10T16:18:15Z"
 		},
 		{
-			"checksumSHA1": "Zs/+ETE26QsQgve/W5ehoKxRrEo=",
+			"checksumSHA1": "vxKm9yFU+ZdfxiO6CXGhBuyWeaE=",
 			"path": "github.com/keybase/client/go/protocol/gregor1",
-			"revision": "41a4d2201a2e47610a502fccf841164aac80e10a",
-			"revisionTime": "2017-05-26T23:09:42Z"
+			"revision": "fab3c444f6ac4feb0b20895d63bb63080aa58f67",
+			"revisionTime": "2017-05-10T16:18:15Z"
 		},
 		{
-			"checksumSHA1": "Yi7Th7BXezwLU6OD24RmSRi/6Ak=",
+			"checksumSHA1": "o8hy4on/EETrARQOHsV4KQIGMWc=",
 			"path": "github.com/keybase/client/go/protocol/keybase1",
-			"revision": "41a4d2201a2e47610a502fccf841164aac80e10a",
-			"revisionTime": "2017-05-26T23:09:42Z"
+			"revision": "fab3c444f6ac4feb0b20895d63bb63080aa58f67",
+			"revisionTime": "2017-05-10T16:18:15Z"
 		},
 		{
 			"checksumSHA1": "5jCtx/ogKTP/L08r9Vt2Z0e36i4=",
