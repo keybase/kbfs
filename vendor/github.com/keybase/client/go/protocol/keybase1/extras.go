@@ -4,6 +4,8 @@
 package keybase1
 
 import (
+	"bytes"
+	"crypto/hmac"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -60,6 +62,10 @@ func Unquote(data []byte) string {
 
 func Quote(s string) []byte {
 	return []byte("\"" + s + "\"")
+}
+
+func UnquoteBytes(data []byte) []byte {
+	return bytes.Trim(data, "\"")
 }
 
 func KIDFromSlice(b []byte) KID {
@@ -129,6 +135,10 @@ func (k KID) Equal(v KID) bool {
 
 func (k KID) NotEqual(v KID) bool {
 	return !k.Equal(v)
+}
+
+func (k KID) SecureEqual(v KID) bool {
+	return hmac.Equal(k.ToBytes(), v.ToBytes())
 }
 
 func (k KID) Match(q string, exact bool) bool {
@@ -297,17 +307,6 @@ func (u UID) Less(v UID) bool {
 	return u < v
 }
 
-// Returns a number in [0, shardCount) which can be treated as roughly
-// uniformly distributed. Used for things that need to shard by user.
-func (u UID) GetShard(shardCount int) (int, error) {
-	bytes, err := hex.DecodeString(string(u))
-	if err != nil {
-		return 0, err
-	}
-	n := binary.LittleEndian.Uint32(bytes)
-	return int(n % uint32(shardCount)), nil
-}
-
 func (u UID) AsUserOrTeam() UserOrTeamID {
 	return UserOrTeamID(u)
 }
@@ -321,6 +320,20 @@ func TeamIDFromString(s string) (TeamID, error) {
 		return "", fmt.Errorf("Bad TeamID '%s': must end in 0x%x or 0x%x", s, TEAMID_SUFFIX, SUB_TEAMID_SUFFIX)
 	}
 	return TeamID(s), nil
+}
+
+// Used by unit tests.
+func MakeTestTeamID(n uint32) TeamID {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint32(b, n)
+	s := hex.EncodeToString(b)
+	c := 2*TEAMID_LEN - len(TEAMID_SUFFIX_HEX) - len(s)
+	s += strings.Repeat("0", c) + TEAMID_SUFFIX_HEX
+	tid, err := TeamIDFromString(s)
+	if err != nil {
+		panic(err)
+	}
+	return tid
 }
 
 // Can panic if invalid
@@ -946,27 +959,6 @@ func (u UserPlusKeys) GetName() string {
 	return u.Username
 }
 
-func (u *UserPlusKeys) DeepCopy() UserPlusKeys {
-	return UserPlusKeys{
-		Uid:               u.Uid,
-		Username:          u.Username,
-		DeviceKeys:        append([]PublicKey{}, u.DeviceKeys...),
-		RevokedDeviceKeys: append([]RevokedKey{}, u.RevokedDeviceKeys...),
-		PGPKeyCount:       u.PGPKeyCount,
-		Uvv:               u.Uvv,
-		DeletedDeviceKeys: append([]PublicKey{}, u.DeletedDeviceKeys...),
-		PerUserKeys:       append([]PerUserKey{}, u.PerUserKeys...),
-	}
-}
-
-func (u *UserPlusAllKeys) DeepCopy() *UserPlusAllKeys {
-	return &UserPlusAllKeys{
-		Base:         u.Base.DeepCopy(),
-		PGPKeys:      append([]PublicKey{}, u.PGPKeys...),
-		RemoteTracks: append([]RemoteTrack{}, u.RemoteTracks...),
-	}
-}
-
 func (u UserPlusAllKeys) GetRemoteTrack(s string) *RemoteTrack {
 	i := sort.Search(len(u.RemoteTracks), func(j int) bool {
 		return u.RemoteTracks[j].Username >= s
@@ -1131,4 +1123,148 @@ func (ut UserOrTeamID) IsSubteam() bool {
 func (ut UserOrTeamID) IsTeamOrSubteam() bool {
 	suffix := ut[len(ut)-2:]
 	return suffix == TEAMID_SUFFIX_HEX || suffix == SUB_TEAMID_SUFFIX_HEX
+}
+
+// Returns a number in [0, shardCount) which can be treated as roughly
+// uniformly distributed. Used for things that need to shard by user.
+func (ut UserOrTeamID) GetShard(shardCount int) (int, error) {
+	bytes, err := hex.DecodeString(string(ut))
+	if err != nil {
+		return 0, err
+	}
+	n := binary.LittleEndian.Uint32(bytes)
+	return int(n % uint32(shardCount)), nil
+}
+
+func (m *MaskB64) UnmarshalJSON(b []byte) error {
+	unquoted := UnquoteBytes(b)
+	if len(unquoted) == 0 {
+		return nil
+	}
+	dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(unquoted)))
+	n, err := base64.StdEncoding.Decode(dbuf, unquoted)
+	if err != nil {
+		return err
+	}
+	*m = MaskB64(dbuf[:n])
+	return nil
+}
+
+func (m *MaskB64) MarshalJSON() ([]byte, error) {
+	s := Quote(base64.StdEncoding.EncodeToString([]byte(*m)))
+	return []byte(s), nil
+}
+
+func PublicKeyV1FromPGPKeyV2(keyV2 PublicKeyV2PGPSummary) PublicKey {
+	return PublicKey{
+		KID:            keyV2.Base.Kid,
+		PGPFingerprint: hex.EncodeToString(keyV2.Fingerprint[:]),
+		PGPIdentities:  keyV2.Identities,
+		IsSibkey:       keyV2.Base.IsSibkey,
+		IsEldest:       keyV2.Base.IsEldest,
+		CTime:          keyV2.Base.CTime,
+		ETime:          keyV2.Base.ETime,
+		IsRevoked:      (keyV2.Base.Revocation != nil),
+	}
+}
+
+func PublicKeyV1FromDeviceKeyV2(keyV2 PublicKeyV2NaCl) PublicKey {
+	parentID := ""
+	if keyV2.Parent != nil {
+		parentID = string(*keyV2.Parent)
+	}
+	return PublicKey{
+		KID:               keyV2.Base.Kid,
+		IsSibkey:          keyV2.Base.IsSibkey,
+		IsEldest:          keyV2.Base.IsEldest,
+		ParentID:          parentID,
+		DeviceID:          keyV2.DeviceID,
+		DeviceDescription: keyV2.DeviceDescription,
+		DeviceType:        keyV2.DeviceType,
+		CTime:             keyV2.Base.CTime,
+		ETime:             keyV2.Base.ETime,
+		IsRevoked:         (keyV2.Base.Revocation != nil),
+	}
+}
+
+func RevokedKeyV1FromDeviceKeyV2(keyV2 PublicKeyV2NaCl) RevokedKey {
+	return RevokedKey{
+		Key: PublicKeyV1FromDeviceKeyV2(keyV2),
+		Time: KeybaseTime{
+			Unix:  keyV2.Base.Revocation.Time,
+			Chain: int(keyV2.Base.Revocation.PrevMerkleRootSigned.Seqno),
+		},
+		By: keyV2.Base.Revocation.SigningKID,
+	}
+}
+
+// UPKV2 should supersede UPAK eventually, but lots of older code requires
+// UPAK. This is a simple converter function.
+func UPAKFromUPKV2AI(uV2 UserPlusKeysV2AllIncarnations) UserPlusAllKeys {
+	// Convert the PGP keys.
+	var pgpKeysV1 []PublicKey
+	for _, keyV2 := range uV2.Current.PGPKeys {
+		pgpKeysV1 = append(pgpKeysV1, PublicKeyV1FromPGPKeyV2(keyV2))
+	}
+
+	// Convert the device keys.
+	var deviceKeysV1 []PublicKey
+	var revokedDeviceKeysV1 []RevokedKey
+	for _, keyV2 := range uV2.Current.DeviceKeys {
+		if keyV2.Base.Revocation != nil {
+			revokedDeviceKeysV1 = append(revokedDeviceKeysV1, RevokedKeyV1FromDeviceKeyV2(keyV2))
+		} else {
+			deviceKeysV1 = append(deviceKeysV1, PublicKeyV1FromDeviceKeyV2(keyV2))
+		}
+	}
+
+	// Assemble the deleted device keys from past incarnations.
+	var deletedDeviceKeysV1 []PublicKey
+	for _, incarnation := range uV2.PastIncarnations {
+		for _, keyV2 := range incarnation.DeviceKeys {
+			deletedDeviceKeysV1 = append(deletedDeviceKeysV1, PublicKeyV1FromDeviceKeyV2(keyV2))
+		}
+	}
+
+	// Apart from all the key mangling above, everything else is just naming
+	// and layout changes. Assemble the final UPAK.
+	return UserPlusAllKeys{
+		Base: UserPlusKeys{
+			Uid:               uV2.Current.Uid,
+			Username:          uV2.Current.Username,
+			EldestSeqno:       uV2.Current.EldestSeqno,
+			DeviceKeys:        deviceKeysV1,
+			RevokedDeviceKeys: revokedDeviceKeysV1,
+			DeletedDeviceKeys: deletedDeviceKeysV1,
+			PGPKeyCount:       len(pgpKeysV1),
+			Uvv:               uV2.Current.Uvv,
+			PerUserKeys:       uV2.Current.PerUserKeys,
+		},
+		PGPKeys:      pgpKeysV1,
+		RemoteTracks: uV2.Current.RemoteTracks,
+	}
+}
+
+// "foo" for seqno 1 or "foo%6"
+func (u UserVersion) PercentForm() string {
+	if u.EldestSeqno == 1 {
+		return u.Username
+	}
+	return fmt.Sprintf("%s%%%d", u.Username, u.EldestSeqno)
+}
+
+func (k CryptKey) Material() Bytes32 {
+	return k.Key
+}
+
+func (k CryptKey) Generation() int {
+	return k.KeyGeneration
+}
+
+func (k TeamApplicationKey) Material() Bytes32 {
+	return k.Key
+}
+
+func (k TeamApplicationKey) Generation() int {
+	return k.KeyGeneration
 }
