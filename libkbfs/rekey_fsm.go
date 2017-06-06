@@ -262,11 +262,11 @@ func (r *rekeyStateScheduled) reactToEvent(event RekeyEvent) rekeyState {
 	case rekeyRequestEvent:
 		if r.task.promptPaper && !event.request.promptPaper {
 			// KBFS-2251: If fbo concludes that paper key would be needed in
-			// order for rekey to proceed, it write a MD to mdserver with rekey
-			// set at the same time. To prevent the FSM from being kicked of to
-			// rekeyStateStarted right away after receivng this update (through
-			// FoldersNeedRekey) from mdserver, we just reuse the same timer if
-			// r.task.promptPaper is set.
+			// order for rekey to proceed, it writes a MD to mdserver with
+			// rekey set at the same time. To prevent the FSM from being kicked
+			// of to rekeyStateStarted right away after receiving this update
+			// (through FoldersNeedRekey) from mdserver, we just reuse the same
+			// timer if r.task.promptPaper is set.
 			//
 			// If the request has promptPaper set, then it's from the KBFS
 			// client, likely due to a read request. In this case, we should
@@ -406,8 +406,8 @@ type rekeyFSMListener struct {
 }
 
 type rekeyFSM struct {
-	muReqs sync.RWMutex
-	reqs   chan RekeyEvent
+	reqs       chan RekeyEvent
+	shutdownCh chan struct{} // closed on rekeyShutdownEvent; never written
 
 	fbo *folderBranchOps
 	log logger.Logger
@@ -418,19 +418,13 @@ type rekeyFSM struct {
 	listeners   map[rekeyEventType][]rekeyFSMListener
 }
 
-func (m *rekeyFSM) closeReqsCh() {
-	m.muReqs.Lock()
-	defer m.muReqs.Unlock()
-	close(m.reqs)
-	m.reqs = nil
-}
-
 // NewRekeyFSM creates a new rekey FSM.
 func NewRekeyFSM(fbo *folderBranchOps) RekeyFSM {
 	fsm := &rekeyFSM{
-		reqs: make(chan RekeyEvent, rekeyQueueSize),
-		fbo:  fbo,
-		log:  fbo.config.MakeLogger("RekeyFSM"),
+		reqs:       make(chan RekeyEvent, rekeyQueueSize),
+		shutdownCh: make(chan struct{}),
+		fbo:        fbo,
+		log:        fbo.config.MakeLogger("RekeyFSM"),
 
 		listeners: make(map[rekeyEventType][]rekeyFSMListener),
 	}
@@ -440,38 +434,40 @@ func NewRekeyFSM(fbo *folderBranchOps) RekeyFSM {
 }
 
 func (m *rekeyFSM) loop() {
-	for e := range m.reqs {
-		if e.eventType == rekeyShutdownEvent {
-			m.closeReqsCh()
+	for {
+		select {
+		case e := <-m.reqs:
+			if e.eventType == rekeyShutdownEvent {
+				close(m.shutdownCh)
+			}
+
+			next := m.current.reactToEvent(e)
+			m.log.Debug("RekeyFSM transition: %T + %s -> %T",
+				m.current, e, next)
+			m.current = next
+
+			m.triggerCallbacksForTest(e)
+			continue
+		default:
 		}
-
-		next := m.current.reactToEvent(e)
-		m.log.Debug("RekeyFSM transition: %T + %s -> %T",
-			m.current, e, next)
-		m.current = next
-
-		m.triggerCallbacksForTest(e)
+		select {
+		case <-m.shutdownCh:
+			return
+		default:
+		}
 	}
 }
 
 // Event implements RekeyFSM interface for rekeyFSM.
 func (m *rekeyFSM) Event(event RekeyEvent) {
-	for {
-		// We use a spinning loop here to avoid doing a naked `m.reqs <-
-		// event`, which in racy conditions could cause a panic due to sending
-		// to closed channel. The spinning loop is fine here since reactToEvent
-		// implementations of states are supposed to consume events from m.reqs
-		// pretty fast.
-		m.muReqs.RLock()
-		if m.reqs == nil {
-			return
-		}
-		select {
-		case m.reqs <- event:
-			return
-		default:
-		}
-		m.muReqs.RUnlock()
+	select {
+	case <-m.shutdownCh:
+		return
+	default:
+	}
+	select {
+	case <-m.shutdownCh:
+	case m.reqs <- event:
 	}
 }
 
