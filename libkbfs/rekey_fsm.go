@@ -260,13 +260,17 @@ func (r *rekeyStateScheduled) reactToEvent(event RekeyEvent) rekeyState {
 	case rekeyTimeupEvent:
 		return newRekeyStateStarted(r.fsm, r.task)
 	case rekeyRequestEvent:
-		if r.task.promptPaper {
+		if r.task.promptPaper && !event.request.promptPaper {
 			// KBFS-2251: If fbo concludes that paper key would be needed in
 			// order for rekey to proceed, it write a MD to mdserver with rekey
 			// set at the same time. To prevent the FSM from being kicked of to
 			// rekeyStateStarted right away after receivng this update (through
 			// FoldersNeedRekey) from mdserver, we just reuse the same timer if
 			// r.task.promptPaper is set.
+			//
+			// If the request has promptPaper set, then it's from the KBFS
+			// client, likely due to a read request. In this case, we should
+			// shorten the wait timer according the the request.
 			r.fsm.log.CDebugf(r.task.ctx.context(), "Reusing existing timer "+
 				"without possibly shortening due to r.task.promptPaper==true")
 			return r
