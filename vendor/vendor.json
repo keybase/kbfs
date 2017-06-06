@@ -231,6 +231,12 @@
 			"revisionTime": "2017-06-05T20:14:08Z"
 		},
 		{
+			"checksumSHA1": "F5++ZQS5Vt7hd6lxPCKTffvph1A=",
+			"path": "github.com/keybase/go-crypto/curve25519",
+			"revision": "00ac4db533f63ef97576cbc7b07939ff7daf7329",
+			"revisionTime": "2017-06-05T14:56:57Z"
+		},
+		{
 			"checksumSHA1": "IvrDXwIixB5yPPbo6tq1/1cSn78=",
 			"path": "github.com/keybase/go-crypto/ed25519",
 			"revision": "00ac4db533f63ef97576cbc7b07939ff7daf7329",
