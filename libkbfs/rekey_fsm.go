@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/keybase/client/go/logger"
@@ -261,6 +260,18 @@ func (r *rekeyStateScheduled) reactToEvent(event RekeyEvent) rekeyState {
 	case rekeyTimeupEvent:
 		return newRekeyStateStarted(r.fsm, r.task)
 	case rekeyRequestEvent:
+		if r.task.promptPaper {
+			// KBFS-2251: If fbo concludes that paper key would be needed in
+			// order for rekey to proceed, it write a MD to mdserver with rekey
+			// set at the same time. To prevent the FSM from being kicked of to
+			// rekeyStateStarted right away after receivng this update (through
+			// FoldersNeedRekey) from mdserver, we just reuse the same timer if
+			// r.task.promptPaper is set.
+			r.fsm.log.CDebugf(r.task.ctx.context(), "Reusing existing timer "+
+				"without possibly shortening due to r.task.promptPaper==true")
+			return r
+		}
+
 		task := r.task
 		task.promptPaper = task.promptPaper || event.request.promptPaper
 		if task.timeout == nil {
@@ -391,8 +402,8 @@ type rekeyFSMListener struct {
 }
 
 type rekeyFSM struct {
-	reqs       chan RekeyEvent
-	reqsClosed int32
+	muReqs sync.RWMutex
+	reqs   chan RekeyEvent
 
 	fbo *folderBranchOps
 	log logger.Logger
@@ -401,6 +412,13 @@ type rekeyFSM struct {
 
 	muListeners sync.Mutex
 	listeners   map[rekeyEventType][]rekeyFSMListener
+}
+
+func (m *rekeyFSM) closeReqsCh() {
+	m.muReqs.Lock()
+	defer m.muReqs.Unlock()
+	close(m.reqs)
+	m.reqs = nil
 }
 
 // NewRekeyFSM creates a new rekey FSM.
@@ -420,8 +438,7 @@ func NewRekeyFSM(fbo *folderBranchOps) RekeyFSM {
 func (m *rekeyFSM) loop() {
 	for e := range m.reqs {
 		if e.eventType == rekeyShutdownEvent {
-			atomic.StoreInt32(&m.reqsClosed, 1)
-			close(m.reqs)
+			m.closeReqsCh()
 		}
 
 		next := m.current.reactToEvent(e)
@@ -435,25 +452,23 @@ func (m *rekeyFSM) loop() {
 
 // Event implements RekeyFSM interface for rekeyFSM.
 func (m *rekeyFSM) Event(event RekeyEvent) {
-	select {
-	case m.reqs <- event:
-		return
-	default:
-	}
-	go func() {
-		// We use a spinning loop here to avoid doing a naked `m.reqs <- event`,
-		// which in racy conditions could cause a panic due to sending to closed
-		// channel. The spinning loop is fine here since reactToEvent
+	for {
+		// We use a spinning loop here to avoid doing a naked `m.reqs <-
+		// event`, which in racy conditions could cause a panic due to sending
+		// to closed channel. The spinning loop is fine here since reactToEvent
 		// implementations of states are supposed to consume events from m.reqs
 		// pretty fast.
-		for atomic.LoadInt32(&m.reqsClosed) == 0 {
-			select {
-			case m.reqs <- event:
-				return
-			default:
-			}
+		m.muReqs.RLock()
+		if m.reqs == nil {
+			return
 		}
-	}()
+		select {
+		case m.reqs <- event:
+			return
+		default:
+		}
+		m.muReqs.RUnlock()
+	}
 }
 
 // Shutdown implements RekeyFSM interface for rekeyFSM.
