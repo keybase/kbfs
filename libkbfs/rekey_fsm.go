@@ -434,15 +434,16 @@ func NewRekeyFSM(fbo *folderBranchOps) RekeyFSM {
 }
 
 func (m *rekeyFSM) loop() {
+	reqs := m.reqs
 	for {
 		select {
-		case e := <-m.reqs:
+		case e := <-reqs:
 			if e.eventType == rekeyShutdownEvent {
-				// Set m.reqs to nil so on next iteration, we will skip any
-				// content in m.reqs. So if there are multiple
+				// Set reqs to nil so on next iteration, we will skip any
+				// content in reqs. So if there are multiple
 				// rekeyShutdownEvent, we won't close m.shutdownCh multiple
 				// times.
-				m.reqs = nil
+				reqs = nil
 				close(m.shutdownCh)
 			}
 
