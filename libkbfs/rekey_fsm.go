@@ -437,6 +437,15 @@ func (m *rekeyFSM) loop() {
 	for {
 		select {
 		case e := <-m.reqs:
+			if e.eventType == rekeyShutdownEvent {
+				// Set m.reqs to nil so on next iteration, we will skip any
+				// content in m.reqs. So if there are multiple
+				// rekeyShutdownEvent, we won't close m.shutdownCh multiple
+				// times.
+				m.reqs = nil
+				close(m.shutdownCh)
+			}
+
 			next := m.current.reactToEvent(e)
 			m.log.Debug("RekeyFSM transition: %T + %s -> %T",
 				m.current, e, next)
@@ -453,9 +462,6 @@ func (m *rekeyFSM) loop() {
 func (m *rekeyFSM) Event(event RekeyEvent) {
 	select {
 	case m.reqs <- event:
-		if event.eventType == rekeyShutdownEvent {
-			close(m.shutdownCh)
-		}
 	case <-m.shutdownCh:
 	}
 }
