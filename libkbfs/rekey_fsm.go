@@ -406,8 +406,8 @@ type rekeyFSMListener struct {
 }
 
 type rekeyFSM struct {
-	reqsMtx sync.Mutex
-	reqs    chan RekeyEvent
+	shutdownCh chan struct{}
+	reqs       chan RekeyEvent
 
 	shutdownMtx sync.Mutex
 	shutdown    bool
@@ -424,40 +424,42 @@ type rekeyFSM struct {
 // NewRekeyFSM creates a new rekey FSM.
 func NewRekeyFSM(fbo *folderBranchOps) RekeyFSM {
 	fsm := &rekeyFSM{
-		reqs: make(chan RekeyEvent, rekeyQueueSize),
-		fbo:  fbo,
-		log:  fbo.config.MakeLogger("RekeyFSM"),
+		reqs:       make(chan RekeyEvent, rekeyQueueSize),
+		shutdownCh: make(chan struct{}),
+		fbo:        fbo,
+		log:        fbo.config.MakeLogger("RekeyFSM"),
 
 		listeners: make(map[rekeyEventType][]rekeyFSMListener),
 	}
 	fsm.current = newRekeyStateIdle(fsm)
-	go fsm.loop()
+	go fsm.loop(fsm.reqs, fsm.shutdownCh)
 	return fsm
 }
 
-func (m *rekeyFSM) loop() {
-	for e := range m.reqs {
-		next := m.current.reactToEvent(e)
-		m.log.Debug("RekeyFSM transition: %T + %s -> %T",
-			m.current, e, next)
-		m.current = next
+func (m *rekeyFSM) loop(reqs <-chan RekeyEvent, shutdownCh chan struct{}) {
+	for {
+		select {
+		case e := <-reqs:
+			next := m.current.reactToEvent(e)
+			m.log.Debug("RekeyFSM transition: %T + %s -> %T",
+				m.current, e, next)
+			m.current = next
 
-		m.triggerCallbacksForTest(e)
-		continue
+			m.triggerCallbacksForTest(e)
+		case <-shutdownCh:
+			return
+		}
 	}
 }
 
 // Event implements RekeyFSM interface for rekeyFSM.
 func (m *rekeyFSM) Event(event RekeyEvent) {
-	m.reqsMtx.Lock()
-	defer m.reqsMtx.Unlock()
-	if m.reqs == nil {
-		return
-	}
-	m.reqs <- event
-	if event.eventType == rekeyShutdownEvent {
-		close(m.reqs)
-		m.reqs = nil
+	select {
+	case m.reqs <- event:
+		if event.eventType == rekeyShutdownEvent {
+			close(m.shutdownCh)
+		}
+	case <-m.shutdownCh:
 	}
 }
 
