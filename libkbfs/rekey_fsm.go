@@ -409,9 +409,6 @@ type rekeyFSM struct {
 	shutdownCh chan struct{}
 	reqs       chan RekeyEvent
 
-	shutdownMtx sync.Mutex
-	shutdown    bool
-
 	fbo *folderBranchOps
 	log logger.Logger
 
@@ -432,21 +429,21 @@ func NewRekeyFSM(fbo *folderBranchOps) RekeyFSM {
 		listeners: make(map[rekeyEventType][]rekeyFSMListener),
 	}
 	fsm.current = newRekeyStateIdle(fsm)
-	go fsm.loop(fsm.reqs, fsm.shutdownCh)
+	go fsm.loop()
 	return fsm
 }
 
-func (m *rekeyFSM) loop(reqs <-chan RekeyEvent, shutdownCh chan struct{}) {
+func (m *rekeyFSM) loop() {
 	for {
 		select {
-		case e := <-reqs:
+		case e := <-m.reqs:
 			next := m.current.reactToEvent(e)
 			m.log.Debug("RekeyFSM transition: %T + %s -> %T",
 				m.current, e, next)
 			m.current = next
 
 			m.triggerCallbacksForTest(e)
-		case <-shutdownCh:
+		case <-m.shutdownCh:
 			return
 		}
 	}
