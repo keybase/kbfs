@@ -4704,6 +4704,11 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 				return err
 			}
 		}
+		if rmd.IsRekeySet() {
+			fbo.rekeyFSM.Event(NewRekeyRequestEvent())
+		} else {
+			fbo.rekeyFSM.Event(NewRekeyNotNeededEvent())
+		}
 		appliedRevs = append(appliedRevs, rmd)
 	}
 	if len(appliedRevs) > 0 {
