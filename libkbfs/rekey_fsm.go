@@ -29,7 +29,7 @@ digraph rekeyFSM {
 
   start -> Idle
   Idle -> Scheduled [label=Request]
-  Scheduled -> Scheduled [label=Request]
+  Scheduled -> Scheduled [label="Request,RekeyNotNeeded"]
   Scheduled -> Started [label=Timeup]
   Started -> Scheduled [label="Finished(TTL valid && (rekey done || needs paper))"]
   Started -> Idle [label="Finished (*)"]
@@ -307,7 +307,7 @@ func (r *rekeyStateScheduled) reactToEvent(event RekeyEvent) rekeyState {
 		return newRekeyStateScheduled(r.fsm, event.request.delay, task)
 	case rekeyNotNeededEvent:
 		// KBFS-2254: if another device finished rekey, we should unset the
-		// paperkey prompt so that if this other deivce goes offline before a
+		// paperkey prompt so that if this other device goes offline before a
 		// third device triggers a rekey request, the timer can be preempted.
 		// What if the FoldersNeedRekey call comes in before this and we still
 		// miss the rekey request? Well now we also send a rekey request into
