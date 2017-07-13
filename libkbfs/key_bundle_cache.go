@@ -6,10 +6,8 @@ package libkbfs
 
 import (
 	"errors"
-	"strconv"
 
 	"github.com/keybase/kbfs/cache"
-	"github.com/keybase/kbfs/tlf"
 )
 
 // KeyBundleCacheStandard is an LRU-based implementation of the KeyBundleCache interface.
@@ -18,16 +16,6 @@ type KeyBundleCacheStandard struct {
 }
 
 var _ KeyBundleCache = (*KeyBundleCacheStandard)(nil)
-
-type keyBundleCacheKey struct {
-	tlf         tlf.ID
-	bundleIDStr string
-	isWriter    bool
-}
-
-func (k keyBundleCacheKey) str() string {
-	return k.tlf.String() + k.bundleIDStr + strconv.FormatBool(k.isWriter)
-}
 
 // NewKeyBundleCacheLRU constructs a new KeyBundleCacheStandard with LRU
 // eviction strategy. The capacity of the cache is set to capacityBytes bytes.
@@ -43,8 +31,8 @@ func NewKeyBundleCacheRandom(capacityBytes int) *KeyBundleCacheStandard {
 
 // GetTLFReaderKeyBundle implements the KeyBundleCache interface for KeyBundleCacheStandard.
 func (k *KeyBundleCacheStandard) GetTLFReaderKeyBundle(
-	tlf tlf.ID, bundleID TLFReaderKeyBundleID) (*TLFReaderKeyBundleV3, error) {
-	cacheKey := keyBundleCacheKey{tlf, bundleID.String(), false}.str()
+	bundleID TLFReaderKeyBundleID) (*TLFReaderKeyBundleV3, error) {
+	cacheKey := bundleID.String()
 	if entry, ok := k.cache.Get(cacheKey); ok {
 		if rkb, ok := entry.(TLFReaderKeyBundleV3); ok {
 			return &rkb, nil
@@ -57,8 +45,8 @@ func (k *KeyBundleCacheStandard) GetTLFReaderKeyBundle(
 
 // GetTLFWriterKeyBundle implements the KeyBundleCache interface for KeyBundleCacheStandard.
 func (k *KeyBundleCacheStandard) GetTLFWriterKeyBundle(
-	tlf tlf.ID, bundleID TLFWriterKeyBundleID) (*TLFWriterKeyBundleV3, error) {
-	cacheKey := keyBundleCacheKey{tlf, bundleID.String(), true}.str()
+	bundleID TLFWriterKeyBundleID) (*TLFWriterKeyBundleV3, error) {
+	cacheKey := bundleID.String()
 	if entry, ok := k.cache.Get(cacheKey); ok {
 		if wkb, ok := entry.(TLFWriterKeyBundleV3); ok {
 			return &wkb, nil
@@ -71,14 +59,14 @@ func (k *KeyBundleCacheStandard) GetTLFWriterKeyBundle(
 
 // PutTLFReaderKeyBundle implements the KeyBundleCache interface for KeyBundleCacheStandard.
 func (k *KeyBundleCacheStandard) PutTLFReaderKeyBundle(
-	tlf tlf.ID, bundleID TLFReaderKeyBundleID, rkb TLFReaderKeyBundleV3) {
-	cacheKey := keyBundleCacheKey{tlf, bundleID.String(), false}.str()
+	bundleID TLFReaderKeyBundleID, rkb TLFReaderKeyBundleV3) {
+	cacheKey := bundleID.String()
 	k.cache.Add(cacheKey, rkb)
 }
 
 // PutTLFWriterKeyBundle implements the KeyBundleCache interface for KeyBundleCacheStandard.
 func (k *KeyBundleCacheStandard) PutTLFWriterKeyBundle(
-	tlf tlf.ID, bundleID TLFWriterKeyBundleID, wkb TLFWriterKeyBundleV3) {
-	cacheKey := keyBundleCacheKey{tlf, bundleID.String(), true}.str()
+	bundleID TLFWriterKeyBundleID, wkb TLFWriterKeyBundleV3) {
+	cacheKey := bundleID.String()
 	k.cache.Add(cacheKey, wkb)
 }
