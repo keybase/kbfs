@@ -103,9 +103,9 @@ type encryptedData struct {
 }
 
 // Size implements the cache.Measurable interface.
-func (d encryptedData) Size() int {
-	return int(unsafe.Sizeof(d.Version)) +
-		cache.PtrSize + len(d.EncryptedData) + cache.PtrSize + len(d.Nonce)
+func (ed encryptedData) Size() int {
+	return int(unsafe.Sizeof(ed.Version)) +
+		cache.PtrSize + len(ed.EncryptedData) + cache.PtrSize + len(ed.Nonce)
 }
 
 func (ed encryptedData) String() string {
