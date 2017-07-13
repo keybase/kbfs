@@ -13,6 +13,10 @@ type Measurable interface {
 
 // memorizedMeasurable is a wrapper around a Measurable that memorizes the size
 // to avoid frequent size calculations.
+//
+// Note that if the size of the Measurable
+// changes after memorizedMeasurable memorizes the size, it won't be updated
+// automatically.
 type memorizedMeasurable struct {
 	m    Measurable
 	size int

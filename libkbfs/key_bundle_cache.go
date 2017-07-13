@@ -8,7 +8,7 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/keybase/kbfs/libkbfs/cache"
+	"github.com/keybase/kbfs/cache"
 	"github.com/keybase/kbfs/tlf"
 )
 

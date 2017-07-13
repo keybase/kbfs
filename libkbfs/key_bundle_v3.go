@@ -7,14 +7,13 @@ package libkbfs
 import (
 	"encoding"
 	"fmt"
-	"unsafe"
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
+	"github.com/keybase/kbfs/cache"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
-	"github.com/keybase/kbfs/libkbfs/cache"
 	"github.com/pkg/errors"
 )
 
@@ -253,26 +252,21 @@ func DeserializeTLFWriterKeyBundleV3(codec kbfscodec.Codec, path string) (
 	return wkb, nil
 }
 
-func tlfEphemeralPublicKeysSize(keys kbfscrypto.TLFEphemeralPublicKeys) int {
-	pkSize := int(unsafe.Sizeof(kbfscrypto.TLFEphemeralPublicKey{}))
-	return cache.PtrSize + len(keys)*(cache.PtrSize+pkSize)
-}
-
 // Size implements the cache.Measurable interface.
 func (wkb TLFWriterKeyBundleV3) Size() (bytes int) {
 	bytes += cache.PtrSize + wkb.Keys.Size() // Keys
 
 	// TLFPublicKey is essentially a 32-byte array.
-	bytes += int(unsafe.Sizeof(wkb.TLFPublicKey))
+	bytes += kbfscrypto.TLFPublicKey{}.Size()
 
 	// TLFEphemeralPublicKeys
-	bytes += tlfEphemeralPublicKeysSize(wkb.TLFEphemeralPublicKeys)
+	bytes += wkb.TLFEphemeralPublicKeys.Size()
 
 	// EncryptedHistoricTLFCryptKeys
 	bytes += wkb.EncryptedHistoricTLFCryptKeys.encryptedData.Size()
 
 	// For codec.UnknownFieldSetHandler. It has a private map field which we
-	// can inspect unless extending the codec package. Just assume it's empty
+	// can't inspect unless extending the codec package. Just assume it's empty
 	// for now.
 	bytes += cache.PtrSize
 
@@ -396,10 +390,10 @@ func (rkb TLFReaderKeyBundleV3) Size() (bytes int) {
 	bytes += cache.PtrSize + rkb.Keys.Size() // Keys
 
 	// TLFEphemeralPublicKeys
-	bytes += tlfEphemeralPublicKeysSize(rkb.TLFEphemeralPublicKeys)
+	bytes += rkb.TLFEphemeralPublicKeys.Size()
 
 	// For codec.UnknownFieldSetHandler. It has a private map field which we
-	// can inspect unless extending the codec package. Just assume it's empty
+	// can't inspect unless extending the codec package. Just assume it's empty
 	// for now.
 	bytes += cache.PtrSize
 

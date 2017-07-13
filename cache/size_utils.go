@@ -79,8 +79,7 @@ const (
 	bucketSizeWithoutIndirectPointerOverhead = 8 // tophash only
 )
 
-func sizeWithIndirectPointerOverhead(zeroValue interface{}) int {
-	rawSize := int(reflect.TypeOf(zeroValue).Size())
+func mapKeyOrValueSizeWithIndirectPointerOverhead(rawSize int) int {
 	if rawSize > 128 {
 		// In Go maps, if key or value is larger than 128 bytes, a pointer type
 		// is used.
@@ -96,8 +95,17 @@ func sizeWithIndirectPointerOverhead(zeroValue interface{}) int {
 // content should be calculated separately by caller.
 func StaticSizeOfMap(
 	zeroValueKey, zeroValueValue interface{}, count int) (bytes int) {
-	keySize := sizeWithIndirectPointerOverhead(zeroValueKey)
-	valueSize := sizeWithIndirectPointerOverhead(zeroValueValue)
+	return StaticSizeOfMapWithSize(int(reflect.TypeOf(zeroValueKey).Size()),
+		int(reflect.TypeOf(zeroValueValue).Size()), count)
+}
+
+// StaticSizeOfMapWithSize is a slightly more efficient version of
+// StaticSizeOfMap for when the caller knows the static size of key and value
+// without having to use `reflect`.
+func StaticSizeOfMapWithSize(
+	keyStaticSize, valueStaticSize int, count int) (bytes int) {
+	keySize := mapKeyOrValueSizeWithIndirectPointerOverhead(keyStaticSize)
+	valueSize := mapKeyOrValueSizeWithIndirectPointerOverhead(valueStaticSize)
 
 	B := math.Ceil(math.Log2(float64(count) / 6.5 /* load factor */))
 	numBuckets := int(math.Exp2(B))

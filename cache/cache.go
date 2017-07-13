@@ -33,6 +33,15 @@ type randomEvictedCache struct {
 //
 // Internally we store a memorizing wrapper for the raw Mesurable to avoid
 // unnecessarily frequent size calculations.
+//
+// Note:
+//
+// 1) Memorizing size means once the entry is in the cache, we never bother
+//    recalculating their size. It's fine if the size changes, but the cache
+//    eviction will continue using the old size.
+// 2) We are relying the fact that Go's map iteration is random to make
+//    eviction random. But it's not in the language spec. If that changes in
+//    the future, we'd have to figure something else out.
 func NewRandomEvictedCache(maxBytes int) Cache {
 	return &randomEvictedCache{
 		maxBytes: maxBytes,
@@ -75,14 +84,14 @@ func (c *randomEvictedCache) Add(key string, data Measurable) {
 }
 
 // lruEvictedCache is a thin layer wrapped around
-// github.com/golang/groupcache/lru.Cache that 1) makes it routine-safe; 2)
+// github.com/golang/groupcache/lru.Cache that 1) makes it goroutine-safe; 2)
 // caps on bytes; and 2) returns Measurable instead of interface{}
 type lruEvictedCache struct {
 	maxBytes int
 
 	mu          sync.Mutex
 	cachedBytes int
-	data        *lru.Cache // not routine-safe; protected by mu
+	data        *lru.Cache // not goroutine-safe; protected by mu
 }
 
 // NewLRUEvictedCache returns a Cache that uses LRU eviction strategy.
@@ -91,6 +100,10 @@ type lruEvictedCache struct {
 //
 // Internally we store a memorizing wrapper for the raw Mesurable to avoid
 // unnecessarily frequent size calculations.
+//
+// Note that this means once the entry is in the cache, we never bother
+// recalculating their size. It's fine if the size changes, but the cache
+// eviction will continue using the old size.
 func NewLRUEvictedCache(maxBytes int) Cache {
 	c := &lruEvictedCache{
 		maxBytes: maxBytes,
@@ -99,7 +112,7 @@ func NewLRUEvictedCache(maxBytes int) Cache {
 		OnEvicted: func(key lru.Key, value interface{}) {
 			if memorized, ok := value.(memorizedMeasurable); ok {
 				if k, ok := key.(string); ok {
-					// no locking here as we do them in public methods Get/Add.
+					// No locking here as we do them in public methods Get/Add.
 					c.cachedBytes -= len(k) + memorized.Size()
 				}
 			}
@@ -142,16 +155,3 @@ func (c *lruEvictedCache) Add(key string, data Measurable) {
 	}
 	c.data.Add(lru.Key(key), memorized)
 }
-
-// notReallyACache is not really a cache but satisfies the cache interface.
-type notReallyACache struct{}
-
-// Get implements the Cache interface.
-func (notReallyACache) Get(string) (Measurable, bool) { return nil, false }
-
-// Add implements the Cache interface.
-func (notReallyACache) Add(string, Measurable) { return }
-
-// NewNotReallyACache returns a Cache that doesn't cache anything and always
-// returns <nil, false> on Get.
-func NewNotReallyACache() Cache { return notReallyACache{} }
