@@ -11,6 +11,8 @@ import (
 )
 
 // Cache defines an interface for a cache that stores Measurable content.
+// Eviction only happens when Add() is called, and there's no background
+// goroutine for eviction.
 type Cache interface {
 	// Get tries to find and return data assiciated with key.
 	Get(key string) (data Measurable, ok bool)
@@ -39,7 +41,7 @@ type randomEvictedCache struct {
 // 1) Memorizing size means once the entry is in the cache, we never bother
 //    recalculating their size. It's fine if the size changes, but the cache
 //    eviction will continue using the old size.
-// 2) We are relying the fact that Go's map iteration is random to make
+// 2) We are relying on the fact that Go's map iteration is random to make
 //    eviction random. But it's not in the language spec. If that changes in
 //    the future, we'd have to figure something else out.
 func NewRandomEvictedCache(maxBytes int) Cache {
@@ -110,9 +112,11 @@ func NewLRUEvictedCache(maxBytes int) Cache {
 	}
 	c.data = &lru.Cache{
 		OnEvicted: func(key lru.Key, value interface{}) {
+			// No locking is needed in this function because we do them in
+			// public methods Get/Add, and that RemoveOldest() is only called
+			// in the Add method.
 			if memorized, ok := value.(memorizedMeasurable); ok {
 				if k, ok := key.(string); ok {
-					// No locking here as we do them in public methods Get/Add.
 					c.cachedBytes -= len(k) + memorized.Size()
 				}
 			}

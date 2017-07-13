@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"encoding"
 	"fmt"
+	"reflect"
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-codec/codec"
@@ -26,11 +27,17 @@ import (
 // key information.
 type DeviceKeyInfoMapV3 map[kbfscrypto.CryptPublicKey]TLFCryptKeyInfo
 
+// static sizes in DeviceKeyInfoMapV3
+var (
+	ssCryptPublicKey  = int(reflect.TypeOf(kbfscrypto.CryptPublicKey{}).Size())
+	ssTLFCryptKeyInfo = int(reflect.TypeOf(TLFCryptKeyInfo{}).Size())
+)
+
 // Size implements the cache.Measurable interface.
 func (dkimV3 DeviceKeyInfoMapV3) Size() int {
 	// statically-sized part
-	mapSize := cache.StaticSizeOfMap(
-		kbfscrypto.CryptPublicKey{}, TLFCryptKeyInfo{}, len(dkimV3))
+	mapSize := cache.StaticSizeOfMapWithSize(
+		ssCryptPublicKey, ssTLFCryptKeyInfo, len(dkimV3))
 
 	// go through pointer type content
 	var contentSize int
@@ -40,7 +47,7 @@ func (dkimV3 DeviceKeyInfoMapV3) Size() int {
 
 		// We are not using v.ClientHalf.encryptedData here since that would
 		// include the size of struct itself which is already counted in
-		// cache.StaticSizeOfMap.
+		// cache.StaticSizeOfMapWithSize.
 		contentSize += len(v.ClientHalf.encryptedData.EncryptedData) +
 			len(v.ClientHalf.encryptedData.Nonce)
 	}
@@ -89,8 +96,8 @@ type UserDeviceKeyInfoMapV3 map[keybase1.UID]DeviceKeyInfoMapV3
 // Size implements the cache.Measurable interface.
 func (udkimV3 UserDeviceKeyInfoMapV3) Size() int {
 	// statically-sized part
-	mapSize := cache.StaticSizeOfMap(
-		keybase1.UID(""), DeviceKeyInfoMapV3(nil), len(udkimV3))
+	mapSize := cache.StaticSizeOfMapWithSize(
+		cache.PtrSize, cache.PtrSize, len(udkimV3))
 
 	// go through pointer type content
 	var contentSize int
