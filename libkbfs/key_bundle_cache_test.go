@@ -36,7 +36,12 @@ func TestKeyBundleCacheBasic(t *testing.T) {
 	tlf2, wkbID2, wkb2, rkbID2, rkb2 := getKeyBundlesForTesting(t, config, 2, "bob,charlie#alice")
 	tlf3, wkbID3, wkb3, rkbID3, rkb3 := getKeyBundlesForTesting(t, config, 3, "alice,charlie#bob")
 
-	cache := NewKeyBundleCacheStandard(4)
+	wkbEntrySize := len(keyBundleCacheKey{tlf, wkbID.String(), true}.str()) +
+		wkb.Size()
+	rkbEntrySize := len(keyBundleCacheKey{tlf, rkbID.String(), false}.str()) +
+		rkb.Size()
+	// Assuming all are the same size (or slightly smaller)
+	cache := NewKeyBundleCacheLRU(2*wkbEntrySize + 2*rkbEntrySize)
 
 	checkWkb, err := cache.GetTLFWriterKeyBundle(tlf, wkbID)
 	require.NoError(t, err)

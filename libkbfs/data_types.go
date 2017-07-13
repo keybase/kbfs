@@ -10,12 +10,14 @@ import (
 	"reflect"
 	"strings"
 	"time"
+	"unsafe"
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfsmd"
+	"github.com/keybase/kbfs/libkbfs/cache"
 	"github.com/keybase/kbfs/tlf"
 )
 
@@ -98,6 +100,12 @@ type encryptedData struct {
 	Version       EncryptionVer `codec:"v"`
 	EncryptedData []byte        `codec:"e"`
 	Nonce         []byte        `codec:"n"`
+}
+
+// Size implements the cache.Measurable interface.
+func (d encryptedData) Size() int {
+	return int(unsafe.Sizeof(d.Version)) +
+		cache.PtrSize + len(d.EncryptedData) + cache.PtrSize + len(d.Nonce)
 }
 
 func (ed encryptedData) String() string {
