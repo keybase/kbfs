@@ -10,7 +10,9 @@ import (
 )
 
 /*
-From src/runtime/hashmap.go:
+
+Following struct/const definitions are from src/runtime/hashmap.go. We don't
+use them directly, but the estimation of map size is based on them.
 
 const (
 	// Maximum number of key/value pairs a bucket can hold.
@@ -76,7 +78,9 @@ const (
 		PtrSize*3 + // buckets, oldbuckets, nevacuate
 		PtrSize + 2*PtrSize // overflow (estimate; not counting the slice)
 
-	bucketSizeWithoutIndirectPointerOverhead = 8 // tophash only
+	bucketSizeWithoutIndirectPointerOverhead = 1 << 3 // tophash only
+
+	mapLoadFactor = 6.5
 )
 
 func mapKeyOrValueSizeWithIndirectPointerOverhead(rawSize int) int {
@@ -107,7 +111,8 @@ func StaticSizeOfMapWithSize(
 	keySize := mapKeyOrValueSizeWithIndirectPointerOverhead(keyStaticSize)
 	valueSize := mapKeyOrValueSizeWithIndirectPointerOverhead(valueStaticSize)
 
-	B := math.Ceil(math.Log2(float64(count) / 6.5 /* load factor */))
+	// See the comment of `B` field of `hmap` struct above.
+	B := math.Ceil(math.Log2(float64(count) / mapLoadFactor))
 	numBuckets := int(math.Exp2(B))
 
 	return hmapStructSize +

@@ -5,6 +5,7 @@
 package cache
 
 import (
+	"math/rand"
 	"sync"
 
 	"github.com/golang/groupcache/lru"
@@ -26,19 +27,20 @@ type randomEvictedCache struct {
 
 	mu          sync.RWMutex
 	cachedBytes int
-	data        map[string]memorizedMeasurable
+	data        map[string]memoizedMeasurable
+	keys        []string
 }
 
 // NewRandomEvictedCache returns a Cache that uses random eviction strategy.
 // The cache will have a capacity of maxBytes bytes. A zero-byte capacity cache
 // is valid.
 //
-// Internally we store a memorizing wrapper for the raw Mesurable to avoid
+// Internally we store a memoizing wrapper for the raw Measurable to avoid
 // unnecessarily frequent size calculations.
 //
 // Note:
 //
-// 1) Memorizing size means once the entry is in the cache, we never bother
+// 1) Memoizing size means once the entry is in the cache, we never bother
 //    recalculating their size. It's fine if the size changes, but the cache
 //    eviction will continue using the old size.
 // 2) We are relying on the fact that Go's map iteration is random to make
@@ -47,42 +49,48 @@ type randomEvictedCache struct {
 func NewRandomEvictedCache(maxBytes int) Cache {
 	return &randomEvictedCache{
 		maxBytes: maxBytes,
-		data:     make(map[string]memorizedMeasurable),
+		data:     make(map[string]memoizedMeasurable),
 	}
+}
+
+func (c *randomEvictedCache) evictOneLocked() {
+	i := int(rand.Int63()) % len(c.keys)
+	last := len(c.keys) - 1
+	var toRemove string
+	toRemove, c.keys[i] = c.keys[i], c.keys[last]
+	c.cachedBytes -= 2*len(toRemove) + c.data[toRemove].Size()
+	delete(c.data, toRemove)
+	c.keys = c.keys[:last]
 }
 
 // Get impelments the Cache interface.
 func (c *randomEvictedCache) Get(key string) (data Measurable, ok bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	memorized, ok := c.data[key]
+	memoized, ok := c.data[key]
 	if !ok {
 		return nil, false
 	}
-	return memorized.m, ok
+	return memoized.m, ok
 }
 
 // Add implements the Cache interface.
 func (c *randomEvictedCache) Add(key string, data Measurable) {
-	memorized := memorizedMeasurable{m: data}
-	if len(key)+memorized.Size() > c.maxBytes {
+	memoized := memoizedMeasurable{m: data}
+	increase := 2*len(key) + memoized.Size()
+	if increase > c.maxBytes {
 		return
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if _, ok := c.data[key]; !ok {
-		c.cachedBytes += len(key) + memorized.Size()
+		c.cachedBytes += increase
 	}
-	if c.cachedBytes > c.maxBytes {
-		for k, v := range c.data {
-			delete(c.data, key)
-			c.cachedBytes -= len(k) + v.Size()
-			if c.cachedBytes <= c.maxBytes {
-				break
-			}
-		}
+	for c.cachedBytes > c.maxBytes {
+		c.evictOneLocked()
 	}
-	c.data[key] = memorized
+	c.data[key] = memoized
+	c.keys = append(c.keys, key)
 }
 
 // lruEvictedCache is a thin layer wrapped around
@@ -100,7 +108,7 @@ type lruEvictedCache struct {
 // The cache will have a capacity of maxBytes bytes. A zero-byte capacity cache
 // is valid.
 //
-// Internally we store a memorizing wrapper for the raw Mesurable to avoid
+// Internally we store a memoizing wrapper for the raw Measurable to avoid
 // unnecessarily frequent size calculations.
 //
 // Note that this means once the entry is in the cache, we never bother
@@ -115,9 +123,9 @@ func NewLRUEvictedCache(maxBytes int) Cache {
 			// No locking is needed in this function because we do them in
 			// public methods Get/Add, and that RemoveOldest() is only called
 			// in the Add method.
-			if memorized, ok := value.(memorizedMeasurable); ok {
+			if memoized, ok := value.(memoizedMeasurable); ok {
 				if k, ok := key.(string); ok {
-					c.cachedBytes -= len(k) + memorized.Size()
+					c.cachedBytes -= len(k) + memoized.Size()
 				}
 			}
 		},
@@ -133,29 +141,29 @@ func (c *lruEvictedCache) Get(key string) (data Measurable, ok bool) {
 	if !ok {
 		return nil, false
 	}
-	memorized, ok := d.(memorizedMeasurable)
+	memoized, ok := d.(memoizedMeasurable)
 	if !ok {
 		return nil, false
 	}
-	return memorized.m, ok
+	return memoized.m, ok
 }
 
 // Add implements the Cache interface.
 func (c *lruEvictedCache) Add(key string, data Measurable) {
-	memorized := memorizedMeasurable{m: data}
-	if len(key)+memorized.Size() > c.maxBytes {
+	memoized := memoizedMeasurable{m: data}
+	if len(key)+memoized.Size() > c.maxBytes {
 		return
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if v, ok := c.data.Get(lru.Key(key)); ok {
-		if m, ok := v.(memorizedMeasurable); ok {
+		if m, ok := v.(memoizedMeasurable); ok {
 			c.cachedBytes -= len(key) + m.Size()
 		}
 	}
-	c.cachedBytes += len(key) + memorized.Size()
+	c.cachedBytes += len(key) + memoized.Size()
 	for c.cachedBytes > c.maxBytes {
 		c.data.RemoveOldest()
 	}
-	c.data.Add(lru.Key(key), memorized)
+	c.data.Add(lru.Key(key), memoized)
 }

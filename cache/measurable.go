@@ -11,19 +11,19 @@ type Measurable interface {
 	Size() int
 }
 
-// memorizedMeasurable is a wrapper around a Measurable that memorizes the size
+// memoizedMeasurable is a wrapper around a Measurable that memoizes the size
 // to avoid frequent size calculations.
 //
 // Note that if the size of the Measurable
-// changes after memorizedMeasurable memorizes the size, it won't be updated
+// changes after memoizedMeasurable memoizes the size, it won't be updated
 // automatically.
-type memorizedMeasurable struct {
+type memoizedMeasurable struct {
 	m    Measurable
 	size int
 }
 
 // Size implements the Measurable interface.
-func (m memorizedMeasurable) Size() int {
+func (m memoizedMeasurable) Size() int {
 	if m.size <= 0 {
 		m.size = m.m.Size()
 	}
