@@ -38,14 +38,9 @@ type randomEvictedCache struct {
 // Internally we store a memoizing wrapper for the raw Measurable to avoid
 // unnecessarily frequent size calculations.
 //
-// Note:
-//
-// 1) Memoizing size means once the entry is in the cache, we never bother
-//    recalculating their size. It's fine if the size changes, but the cache
-//    eviction will continue using the old size.
-// 2) We are relying on the fact that Go's map iteration is random to make
-//    eviction random. But it's not in the language spec. If that changes in
-//    the future, we'd have to figure something else out.
+// Note that memoizing size means once the entry is in the cache, we never
+// bother recalculating their size. It's fine if the size changes, but the
+// cache eviction will continue using the old size.
 func NewRandomEvictedCache(maxBytes int) Cache {
 	return &randomEvictedCache{
 		maxBytes: maxBytes,
@@ -121,8 +116,8 @@ func NewLRUEvictedCache(maxBytes int) Cache {
 	c.data = &lru.Cache{
 		OnEvicted: func(key lru.Key, value interface{}) {
 			// No locking is needed in this function because we do them in
-			// public methods Get/Add, and that RemoveOldest() is only called
-			// in the Add method.
+			// public methods Get/Add, and RemoveOldest() is only called in the
+			// Add method.
 			if memoized, ok := value.(memoizedMeasurable); ok {
 				if k, ok := key.(string); ok {
 					c.cachedBytes -= len(k) + memoized.Size()
