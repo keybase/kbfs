@@ -1003,6 +1003,14 @@ func (_mr *_MockKBFSOpsRecorder) ForceFastForward(arg0 interface{}) *gomock.Call
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ForceFastForward", arg0)
 }
 
+func (_m *MockKBFSOps) TeamNameChanged(ctx context.Context, tid keybase1.TeamID) {
+	_m.ctrl.Call(_m, "TeamNameChanged", ctx, tid)
+}
+
+func (_mr *_MockKBFSOpsRecorder) TeamNameChanged(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "TeamNameChanged", arg0, arg1)
+}
+
 // Mock of merkleSeqNoGetter interface
 type MockmerkleSeqNoGetter struct {
 	ctrl     *gomock.Controller
@@ -1113,15 +1121,15 @@ func (_mr *_MockKeybaseServiceRecorder) LoadUnverifiedKeys(arg0, arg1 interface{
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "LoadUnverifiedKeys", arg0, arg1)
 }
 
-func (_m *MockKeybaseService) LoadTeamPlusKeys(ctx context.Context, tid keybase1.TeamID) (TeamInfo, error) {
-	ret := _m.ctrl.Call(_m, "LoadTeamPlusKeys", ctx, tid)
+func (_m *MockKeybaseService) LoadTeamPlusKeys(ctx context.Context, tid keybase1.TeamID, desiredKeyGen KeyGen, desiredUser keybase1.UserVersion, desiredRole keybase1.TeamRole) (TeamInfo, error) {
+	ret := _m.ctrl.Call(_m, "LoadTeamPlusKeys", ctx, tid, desiredKeyGen, desiredUser, desiredRole)
 	ret0, _ := ret[0].(TeamInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockKeybaseServiceRecorder) LoadTeamPlusKeys(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "LoadTeamPlusKeys", arg0, arg1)
+func (_mr *_MockKeybaseServiceRecorder) LoadTeamPlusKeys(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "LoadTeamPlusKeys", arg0, arg1, arg2, arg3, arg4)
 }
 
 func (_m *MockKeybaseService) CurrentSession(ctx context.Context, sessionID int) (SessionInfo, error) {
@@ -1415,15 +1423,15 @@ func (_m *MockTeamMembershipChecker) EXPECT() *_MockTeamMembershipCheckerRecorde
 	return _m.recorder
 }
 
-func (_m *MockTeamMembershipChecker) IsTeamWriter(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID) (bool, error) {
-	ret := _m.ctrl.Call(_m, "IsTeamWriter", ctx, tid, uid)
+func (_m *MockTeamMembershipChecker) IsTeamWriter(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID, verifyingKey kbfscrypto.VerifyingKey) (bool, error) {
+	ret := _m.ctrl.Call(_m, "IsTeamWriter", ctx, tid, uid, verifyingKey)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockTeamMembershipCheckerRecorder) IsTeamWriter(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsTeamWriter", arg0, arg1, arg2)
+func (_mr *_MockTeamMembershipCheckerRecorder) IsTeamWriter(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsTeamWriter", arg0, arg1, arg2, arg3)
 }
 
 func (_m *MockTeamMembershipChecker) IsTeamReader(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID) (bool, error) {
@@ -1458,16 +1466,16 @@ func (_m *MockteamKeysGetter) EXPECT() *_MockteamKeysGetterRecorder {
 	return _m.recorder
 }
 
-func (_m *MockteamKeysGetter) GetTeamTLFCryptKeys(ctx context.Context, tid keybase1.TeamID) (map[KeyGen]kbfscrypto.TLFCryptKey, KeyGen, error) {
-	ret := _m.ctrl.Call(_m, "GetTeamTLFCryptKeys", ctx, tid)
+func (_m *MockteamKeysGetter) GetTeamTLFCryptKeys(ctx context.Context, tid keybase1.TeamID, desiredKeyGen KeyGen) (map[KeyGen]kbfscrypto.TLFCryptKey, KeyGen, error) {
+	ret := _m.ctrl.Call(_m, "GetTeamTLFCryptKeys", ctx, tid, desiredKeyGen)
 	ret0, _ := ret[0].(map[KeyGen]kbfscrypto.TLFCryptKey)
 	ret1, _ := ret[1].(KeyGen)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
-func (_mr *_MockteamKeysGetterRecorder) GetTeamTLFCryptKeys(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTeamTLFCryptKeys", arg0, arg1)
+func (_mr *_MockteamKeysGetterRecorder) GetTeamTLFCryptKeys(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTeamTLFCryptKeys", arg0, arg1, arg2)
 }
 
 // Mock of KBPKI interface
@@ -1548,15 +1556,15 @@ func (_mr *_MockKBPKIRecorder) GetCurrentMerkleSeqNo(arg0 interface{}) *gomock.C
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetCurrentMerkleSeqNo", arg0)
 }
 
-func (_m *MockKBPKI) IsTeamWriter(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID) (bool, error) {
-	ret := _m.ctrl.Call(_m, "IsTeamWriter", ctx, tid, uid)
+func (_m *MockKBPKI) IsTeamWriter(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID, verifyingKey kbfscrypto.VerifyingKey) (bool, error) {
+	ret := _m.ctrl.Call(_m, "IsTeamWriter", ctx, tid, uid, verifyingKey)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockKBPKIRecorder) IsTeamWriter(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsTeamWriter", arg0, arg1, arg2)
+func (_mr *_MockKBPKIRecorder) IsTeamWriter(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsTeamWriter", arg0, arg1, arg2, arg3)
 }
 
 func (_m *MockKBPKI) IsTeamReader(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID) (bool, error) {
@@ -1570,16 +1578,16 @@ func (_mr *_MockKBPKIRecorder) IsTeamReader(arg0, arg1, arg2 interface{}) *gomoc
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsTeamReader", arg0, arg1, arg2)
 }
 
-func (_m *MockKBPKI) GetTeamTLFCryptKeys(ctx context.Context, tid keybase1.TeamID) (map[KeyGen]kbfscrypto.TLFCryptKey, KeyGen, error) {
-	ret := _m.ctrl.Call(_m, "GetTeamTLFCryptKeys", ctx, tid)
+func (_m *MockKBPKI) GetTeamTLFCryptKeys(ctx context.Context, tid keybase1.TeamID, desiredKeyGen KeyGen) (map[KeyGen]kbfscrypto.TLFCryptKey, KeyGen, error) {
+	ret := _m.ctrl.Call(_m, "GetTeamTLFCryptKeys", ctx, tid, desiredKeyGen)
 	ret0, _ := ret[0].(map[KeyGen]kbfscrypto.TLFCryptKey)
 	ret1, _ := ret[1].(KeyGen)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
-func (_mr *_MockKBPKIRecorder) GetTeamTLFCryptKeys(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTeamTLFCryptKeys", arg0, arg1)
+func (_mr *_MockKBPKIRecorder) GetTeamTLFCryptKeys(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTeamTLFCryptKeys", arg0, arg1, arg2)
 }
 
 func (_m *MockKBPKI) HasVerifyingKey(ctx context.Context, uid keybase1.UID, verifyingKey kbfscrypto.VerifyingKey, atServerTime time.Time) error {
@@ -1705,15 +1713,15 @@ func (_mr *_MockKeyMetadataRecorder) GetTlfHandle() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTlfHandle")
 }
 
-func (_m *MockKeyMetadata) IsWriter(ctx context.Context, checker TeamMembershipChecker, uid keybase1.UID) (bool, error) {
-	ret := _m.ctrl.Call(_m, "IsWriter", ctx, checker, uid)
+func (_m *MockKeyMetadata) IsWriter(ctx context.Context, checker TeamMembershipChecker, uid keybase1.UID, verifyingKey kbfscrypto.VerifyingKey) (bool, error) {
+	ret := _m.ctrl.Call(_m, "IsWriter", ctx, checker, uid, verifyingKey)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockKeyMetadataRecorder) IsWriter(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsWriter", arg0, arg1, arg2)
+func (_mr *_MockKeyMetadataRecorder) IsWriter(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsWriter", arg0, arg1, arg2, arg3)
 }
 
 func (_m *MockKeyMetadata) HasKeyForUser(user keybase1.UID) (bool, error) {
@@ -2520,14 +2528,14 @@ func (_mr *_MockDiskBlockCacheRecorder) Size() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Size")
 }
 
-func (_m *MockDiskBlockCache) Status() *DiskBlockCacheStatus {
-	ret := _m.ctrl.Call(_m, "Status")
+func (_m *MockDiskBlockCache) Status(ctx context.Context) *DiskBlockCacheStatus {
+	ret := _m.ctrl.Call(_m, "Status", ctx)
 	ret0, _ := ret[0].(*DiskBlockCacheStatus)
 	return ret0
 }
 
-func (_mr *_MockDiskBlockCacheRecorder) Status() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Status")
+func (_mr *_MockDiskBlockCacheRecorder) Status(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Status", arg0)
 }
 
 func (_m *MockDiskBlockCache) Shutdown(ctx context.Context) {
@@ -5681,15 +5689,15 @@ func (_mr *_MockBareRootMetadataRecorder) IsFinal() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsFinal")
 }
 
-func (_m *MockBareRootMetadata) IsWriter(ctx context.Context, user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, teamMemChecker TeamMembershipChecker, extra ExtraMetadata) (bool, error) {
-	ret := _m.ctrl.Call(_m, "IsWriter", ctx, user, deviceKey, teamMemChecker, extra)
+func (_m *MockBareRootMetadata) IsWriter(ctx context.Context, user keybase1.UID, cryptKey kbfscrypto.CryptPublicKey, verifyingKey kbfscrypto.VerifyingKey, teamMemChecker TeamMembershipChecker, extra ExtraMetadata) (bool, error) {
+	ret := _m.ctrl.Call(_m, "IsWriter", ctx, user, cryptKey, verifyingKey, teamMemChecker, extra)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockBareRootMetadataRecorder) IsWriter(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsWriter", arg0, arg1, arg2, arg3, arg4)
+func (_mr *_MockBareRootMetadataRecorder) IsWriter(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsWriter", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
 func (_m *MockBareRootMetadata) IsReader(ctx context.Context, user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, teamMemChecker TeamMembershipChecker, extra ExtraMetadata) (bool, error) {
@@ -5793,14 +5801,14 @@ func (_mr *_MockBareRootMetadataRecorder) GetTLFCryptKeyParams(arg0, arg1, arg2,
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyParams", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockBareRootMetadata) IsValidAndSigned(ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, teamMemChecker TeamMembershipChecker, extra ExtraMetadata) error {
-	ret := _m.ctrl.Call(_m, "IsValidAndSigned", ctx, codec, crypto, teamMemChecker, extra)
+func (_m *MockBareRootMetadata) IsValidAndSigned(ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, teamMemChecker TeamMembershipChecker, extra ExtraMetadata, writerVerifyingKey kbfscrypto.VerifyingKey) error {
+	ret := _m.ctrl.Call(_m, "IsValidAndSigned", ctx, codec, crypto, teamMemChecker, extra, writerVerifyingKey)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockBareRootMetadataRecorder) IsValidAndSigned(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsValidAndSigned", arg0, arg1, arg2, arg3, arg4)
+func (_mr *_MockBareRootMetadataRecorder) IsValidAndSigned(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsValidAndSigned", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
 func (_m *MockBareRootMetadata) IsLastModifiedBy(uid keybase1.UID, key kbfscrypto.VerifyingKey) error {
@@ -6129,15 +6137,15 @@ func (_mr *_MockMutableBareRootMetadataRecorder) IsFinal() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsFinal")
 }
 
-func (_m *MockMutableBareRootMetadata) IsWriter(ctx context.Context, user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, teamMemChecker TeamMembershipChecker, extra ExtraMetadata) (bool, error) {
-	ret := _m.ctrl.Call(_m, "IsWriter", ctx, user, deviceKey, teamMemChecker, extra)
+func (_m *MockMutableBareRootMetadata) IsWriter(ctx context.Context, user keybase1.UID, cryptKey kbfscrypto.CryptPublicKey, verifyingKey kbfscrypto.VerifyingKey, teamMemChecker TeamMembershipChecker, extra ExtraMetadata) (bool, error) {
+	ret := _m.ctrl.Call(_m, "IsWriter", ctx, user, cryptKey, verifyingKey, teamMemChecker, extra)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockMutableBareRootMetadataRecorder) IsWriter(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsWriter", arg0, arg1, arg2, arg3, arg4)
+func (_mr *_MockMutableBareRootMetadataRecorder) IsWriter(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsWriter", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
 func (_m *MockMutableBareRootMetadata) IsReader(ctx context.Context, user keybase1.UID, deviceKey kbfscrypto.CryptPublicKey, teamMemChecker TeamMembershipChecker, extra ExtraMetadata) (bool, error) {
@@ -6241,14 +6249,14 @@ func (_mr *_MockMutableBareRootMetadataRecorder) GetTLFCryptKeyParams(arg0, arg1
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTLFCryptKeyParams", arg0, arg1, arg2, arg3)
 }
 
-func (_m *MockMutableBareRootMetadata) IsValidAndSigned(ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, teamMemChecker TeamMembershipChecker, extra ExtraMetadata) error {
-	ret := _m.ctrl.Call(_m, "IsValidAndSigned", ctx, codec, crypto, teamMemChecker, extra)
+func (_m *MockMutableBareRootMetadata) IsValidAndSigned(ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, teamMemChecker TeamMembershipChecker, extra ExtraMetadata, writerVerifyingKey kbfscrypto.VerifyingKey) error {
+	ret := _m.ctrl.Call(_m, "IsValidAndSigned", ctx, codec, crypto, teamMemChecker, extra, writerVerifyingKey)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockMutableBareRootMetadataRecorder) IsValidAndSigned(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsValidAndSigned", arg0, arg1, arg2, arg3, arg4)
+func (_mr *_MockMutableBareRootMetadataRecorder) IsValidAndSigned(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "IsValidAndSigned", arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
 func (_m *MockMutableBareRootMetadata) IsLastModifiedBy(uid keybase1.UID, key kbfscrypto.VerifyingKey) error {

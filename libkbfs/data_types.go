@@ -42,6 +42,7 @@ type UserInfo struct {
 	VerifyingKeys   []kbfscrypto.VerifyingKey
 	CryptPublicKeys []kbfscrypto.CryptPublicKey
 	KIDNames        map[keybase1.KID]string
+	EldestSeqno     keybase1.Seqno
 
 	// Revoked keys, and the time at which they were revoked.
 	RevokedVerifyingKeys   map[kbfscrypto.VerifyingKey]keybase1.KeybaseTime
@@ -162,6 +163,10 @@ const (
 	// PublicKeyGen is the value used for public TLFs. Note that
 	// it is not considered a valid key generation.
 	PublicKeyGen KeyGen = -1
+	// UnspecifiedKeyGen indicates that the application doesn't have a
+	// particular keygen in mind when requesting keys; any keygen will
+	// do.
+	UnspecifiedKeyGen KeyGen = 0
 	// FirstValidKeyGen is the first value that is considered a
 	// valid key generation. Note that the nil value is not
 	// considered valid.
@@ -630,6 +635,9 @@ type EntryInfo struct {
 	Mtime int64
 	// Ctime is in unix nanoseconds
 	Ctime int64
+	// If this is a team TLF, we want to track the last writer of an
+	// entry, since in the block, only the team ID will be tracked.
+	TeamWriter keybase1.UID `codec:"tw,omitempty"`
 }
 
 // ReportedError represents an error reported by KBFS.

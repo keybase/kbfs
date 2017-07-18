@@ -86,31 +86,29 @@ func (k *KBPKIClient) hasVerifyingKey(ctx context.Context, uid keybase1.UID,
 		}
 	}
 
-	for key, t := range userInfo.RevokedVerifyingKeys {
-		if !verifyingKey.KID().Equal(key.KID()) {
-			continue
-		}
-		// We add some slack to the revoke time, because the MD server
-		// won't instanteneously find out about the revoke -- it might
-		// keep accepting writes from the revoked device for a short
-		// period of time until it learns about the revoke.
-		const revokeSlack = 1 * time.Minute
-		revokedTime := keybase1.FromTime(t.Unix)
-		// Trust the server times -- if the key was valid at the given
-		// time, we are good to go.  TODO: use Merkle data to check
-		// the server timestamps, to prove the server isn't lying.
-		if atServerTime.Before(revokedTime.Add(revokeSlack)) {
-			k.log.CDebugf(ctx, "Trusting revoked verifying key %s for user %s "+
-				"(revoked time: %v vs. server time %v, slack=%s)",
-				verifyingKey.KID(), uid, revokedTime, atServerTime, revokeSlack)
-			return true, nil
-		}
-		k.log.CDebugf(ctx, "Not trusting revoked verifying key %s for "+
-			"user %s (revoked time: %v vs. server time %v, slack=%s)",
-			verifyingKey.KID(), uid, revokedTime, atServerTime, revokeSlack)
+	t, ok := userInfo.RevokedVerifyingKeys[verifyingKey]
+	if !ok {
 		return false, nil
 	}
 
+	// We add some slack to the revoke time, because the MD server
+	// won't instanteneously find out about the revoke -- it might
+	// keep accepting writes from the revoked device for a short
+	// period of time until it learns about the revoke.
+	const revokeSlack = 1 * time.Minute
+	revokedTime := keybase1.FromTime(t.Unix)
+	// Trust the server times -- if the key was valid at the given
+	// time, we are good to go.  TODO: use Merkle data to check
+	// the server timestamps, to prove the server isn't lying.
+	if atServerTime.Before(revokedTime.Add(revokeSlack)) {
+		k.log.CDebugf(ctx, "Trusting revoked verifying key %s for user %s "+
+			"(revoked time: %v vs. server time %v, slack=%s)",
+			verifyingKey.KID(), uid, revokedTime, atServerTime, revokeSlack)
+		return true, nil
+	}
+	k.log.CDebugf(ctx, "Not trusting revoked verifying key %s for "+
+		"user %s (revoked time: %v vs. server time %v, slack=%s)",
+		verifyingKey.KID(), uid, revokedTime, atServerTime, revokeSlack)
 	return false, nil
 }
 
@@ -199,9 +197,10 @@ func (k *KBPKIClient) GetCryptPublicKeys(ctx context.Context,
 
 // GetTeamTLFCryptKeys implements the KBPKI interface for KBPKIClient.
 func (k *KBPKIClient) GetTeamTLFCryptKeys(
-	ctx context.Context, tid keybase1.TeamID) (
+	ctx context.Context, tid keybase1.TeamID, desiredKeyGen KeyGen) (
 	map[KeyGen]kbfscrypto.TLFCryptKey, KeyGen, error) {
-	teamInfo, err := k.serviceOwner.KeybaseService().LoadTeamPlusKeys(ctx, tid)
+	teamInfo, err := k.serviceOwner.KeybaseService().LoadTeamPlusKeys(
+		ctx, tid, desiredKeyGen, keybase1.UserVersion{}, keybase1.TeamRole_NONE)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -216,8 +215,44 @@ func (k *KBPKIClient) GetCurrentMerkleSeqNo(ctx context.Context) (
 
 // IsTeamWriter implements the KBPKI interface for KBPKIClient.
 func (k *KBPKIClient) IsTeamWriter(
-	ctx context.Context, tid keybase1.TeamID, uid keybase1.UID) (bool, error) {
-	teamInfo, err := k.serviceOwner.KeybaseService().LoadTeamPlusKeys(ctx, tid)
+	ctx context.Context, tid keybase1.TeamID, uid keybase1.UID,
+	verifyingKey kbfscrypto.VerifyingKey) (bool, error) {
+	// Use the verifying key to find out the eldest seqno of the user.
+	userInfo, err := k.loadUserPlusKeys(ctx, uid, verifyingKey.KID())
+	if err != nil {
+		return false, err
+	}
+
+	found := false
+	for _, key := range userInfo.VerifyingKeys {
+		if verifyingKey.KID().Equal(key.KID()) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		// For the purposes of finding the eldest seqno, we need to
+		// check the verified key against the list of revoked keys as
+		// well.  (The caller should use `HasVerifyingKey` later to
+		// check whether the revoked key was valid at the time of the
+		// update or not.)
+		_, found = userInfo.RevokedVerifyingKeys[verifyingKey]
+	}
+	if !found {
+		// The user doesn't currently have this KID, therefore they
+		// shouldn't be treated as a writer.  The caller should check
+		// historical device records and team membership.
+		k.log.CDebugf(ctx, "User %s doesn't currently have verifying key %s",
+			uid, verifyingKey.KID())
+		return false, nil
+	}
+
+	desiredUser := keybase1.UserVersion{
+		Uid:         uid,
+		EldestSeqno: userInfo.EldestSeqno,
+	}
+	teamInfo, err := k.serviceOwner.KeybaseService().LoadTeamPlusKeys(
+		ctx, tid, UnspecifiedKeyGen, desiredUser, keybase1.TeamRole_WRITER)
 	if err != nil {
 		return false, err
 	}
@@ -227,7 +262,9 @@ func (k *KBPKIClient) IsTeamWriter(
 // IsTeamReader implements the KBPKI interface for KBPKIClient.
 func (k *KBPKIClient) IsTeamReader(
 	ctx context.Context, tid keybase1.TeamID, uid keybase1.UID) (bool, error) {
-	teamInfo, err := k.serviceOwner.KeybaseService().LoadTeamPlusKeys(ctx, tid)
+	desiredUser := keybase1.UserVersion{Uid: uid}
+	teamInfo, err := k.serviceOwner.KeybaseService().LoadTeamPlusKeys(
+		ctx, tid, UnspecifiedKeyGen, desiredUser, keybase1.TeamRole_READER)
 	if err != nil {
 		return false, err
 	}

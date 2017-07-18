@@ -1233,7 +1233,8 @@ func (fbo *folderBranchOps) getMDForWriteLockedForFilename(
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
-	isWriter, err := md.IsWriter(ctx, fbo.config.KBPKI(), session.UID)
+	isWriter, err := md.IsWriter(
+		ctx, fbo.config.KBPKI(), session.UID, session.VerifyingKey)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
@@ -1410,7 +1411,8 @@ func (fbo *folderBranchOps) initMDLocked(
 	handle := md.GetTlfHandle()
 
 	// make sure we're a writer before rekeying or putting any blocks.
-	isWriter, err := md.IsWriter(ctx, fbo.config.KBPKI(), session.UID)
+	isWriter, err := md.IsWriter(
+		ctx, fbo.config.KBPKI(), session.UID, session.VerifyingKey)
 	if err != nil {
 		return err
 	}
@@ -1443,7 +1445,8 @@ func (fbo *folderBranchOps) initMDLocked(
 		if err != nil {
 			return err
 		}
-		keys, keyGen, err := fbo.config.KBPKI().GetTeamTLFCryptKeys(ctx, tid)
+		keys, keyGen, err := fbo.config.KBPKI().GetTeamTLFCryptKeys(
+			ctx, tid, UnspecifiedKeyGen)
 		if err != nil {
 			return err
 		}
@@ -1945,8 +1948,12 @@ func (fbo *folderBranchOps) GetNodeMetadata(ctx context.Context, node Node) (
 		return res, err
 	}
 	res.BlockInfo = de.BlockInfo
-	id := de.Writer
-	if id == keybase1.UserOrTeamID("") {
+
+	id := de.TeamWriter.AsUserOrTeam()
+	if id.IsNil() {
+		id = de.Writer
+	}
+	if id.IsNil() {
 		id = de.Creator
 	}
 	res.LastWriterUnverified, err =
@@ -5950,6 +5957,20 @@ func (fbo *folderBranchOps) unstageAfterFailedResolution(ctx context.Context,
 	default:
 	}
 
+	// We don't want context cancellation after this point, so use a linked
+	// context. There is no race since the linked context has an independent
+	// Done channel.
+	//
+	// Generally we don't want to have any errors in unstageLocked since and
+	// this solution is chosen because:
+	// * If the error is caused by a cancelled context then the recovery (archiving)
+	//   would need to use a separate context anyways.
+	// * In such cases we would have to be very careful where the error occurs
+	//   and what to archive, making that solution much more complicated.
+	// * The other "common" error case is losing server connection and after
+	//   detecting that we won't have much luck archiving things anyways.
+
+	ctx = newLinkedContext(ctx)
 	fbo.log.CWarningf(ctx, "Unstaging branch %s after a resolution failure",
 		fbo.bid)
 	return fbo.unstageLocked(ctx, lState)
@@ -6071,6 +6092,69 @@ func (fbo *folderBranchOps) onMDFlush(bid BranchID, rev kbfsmd.Revision) {
 
 		fbo.handleMDFlush(ctx, bid, rev)
 	}()
+}
+
+// TeamNameChanged implements the KBFSOps interface for folderBranchOps
+func (fbo *folderBranchOps) TeamNameChanged(
+	ctx context.Context, tid keybase1.TeamID) {
+	ctx, cancelFunc := fbo.newCtxWithFBOID()
+	defer cancelFunc()
+	fbo.log.CDebugf(ctx, "Starting name change for team %s", tid)
+
+	newName, err := fbo.config.KBPKI().GetNormalizedUsername(
+		ctx, tid.AsUserOrTeam())
+	if err != nil {
+		fbo.log.CWarningf(ctx, "Error getting new team name: %+v", err)
+		return
+	}
+
+	lState := makeFBOLockState()
+	fbo.mdWriterLock.Lock(lState)
+	defer fbo.mdWriterLock.Unlock(lState)
+	fbo.headLock.Lock(lState)
+	defer fbo.headLock.Unlock(lState)
+
+	if fbo.head == (ImmutableRootMetadata{}) {
+		fbo.log.CWarningf(ctx, "No head to update")
+		return
+	}
+
+	oldHandle := fbo.head.GetTlfHandle()
+
+	if string(oldHandle.GetCanonicalName()) == string(newName) {
+		fbo.log.CDebugf(ctx, "Name didn't change: %s", newName)
+		return
+	}
+
+	if oldHandle.FirstResolvedWriter() != tid.AsUserOrTeam() {
+		fbo.log.CWarningf(ctx,
+			"Old handle doesn't include changed team ID: %s",
+			oldHandle.FirstResolvedWriter())
+		return
+	}
+
+	// Make a copy of `head` with the new handle.
+	newHandle := oldHandle.deepCopy()
+	newHandle.name = CanonicalTlfName(newName)
+	newHandle.resolvedWriters[tid.AsUserOrTeam()] = newName
+	newHead, err := fbo.head.deepCopy(fbo.config.Codec())
+	if err != nil {
+		fbo.log.CWarningf(ctx, "Error copying head: %+v", err)
+		return
+	}
+	newHead.tlfHandle = newHandle
+
+	fbo.log.CDebugf(ctx, "Team name changed from %s to %s",
+		oldHandle.GetCanonicalName(), newHandle.GetCanonicalName())
+	fbo.head = MakeImmutableRootMetadata(
+		newHead, fbo.head.lastWriterVerifyingKey, fbo.head.mdID,
+		fbo.head.localTimestamp)
+	if err != nil {
+		fbo.log.CWarningf(ctx, "Error setting head: %+v", err)
+		return
+	}
+
+	fbo.observers.tlfHandleChange(ctx, newHandle)
 }
 
 // GetUpdateHistory implements the KBFSOps interface for folderBranchOps

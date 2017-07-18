@@ -471,7 +471,9 @@ func AddTeamKeyForTest(config Config, tid keybase1.TeamID) error {
 		return errors.New("Bad keybase daemon")
 	}
 
-	ti, err := kbd.LoadTeamPlusKeys(context.Background(), tid)
+	ti, err := kbd.LoadTeamPlusKeys(
+		context.Background(), tid, UnspecifiedKeyGen, keybase1.UserVersion{},
+		keybase1.TeamRole_NONE)
 	if err != nil {
 		return err
 	}
@@ -517,6 +519,33 @@ func AddEmptyTeamsForTestOrBust(t logger.TestLogBackend,
 		t.Fatal(err)
 	}
 	return teamInfos
+}
+
+// ChangeTeamNameForTest renames a team.
+func ChangeTeamNameForTest(
+	config Config, oldName, newName string) error {
+	kbd, ok := config.KeybaseService().(*KeybaseDaemonLocal)
+	if !ok {
+		return errors.New("Bad keybase daemon")
+	}
+
+	tid, err := kbd.changeTeamNameForTest(oldName, newName)
+	if err != nil {
+		return err
+	}
+
+	config.KBFSOps().TeamNameChanged(context.Background(), tid)
+	return nil
+}
+
+// ChangeTeamNameForTestOrBust is like ChangeTeamNameForTest, but dies
+// if there's an error.
+func ChangeTeamNameForTestOrBust(t logger.TestLogBackend, config Config,
+	oldName, newName string) {
+	err := ChangeTeamNameForTest(config, oldName, newName)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func testRPCWithCanceledContext(t logger.TestLogBackend,

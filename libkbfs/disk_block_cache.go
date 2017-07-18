@@ -65,15 +65,15 @@ type DiskBlockCacheStandard struct {
 	tlfSizes  map[tlf.ID]uint64
 	currBytes uint64
 	// Track the cache hit rate and eviction rate
-	hitMeter         metrics.Meter
-	missMeter        metrics.Meter
-	putMeter         metrics.Meter
-	updateMeter      metrics.Meter
-	evictCountMeter  metrics.Meter
-	evictSizeMeter   metrics.Meter
-	deleteCountMeter metrics.Meter
-	deleteSizeMeter  metrics.Meter
-	// This protects the disk caches from being shutdown while they're being
+	hitMeter         *CountMeter
+	missMeter        *CountMeter
+	putMeter         *CountMeter
+	updateMeter      *CountMeter
+	evictCountMeter  *CountMeter
+	evictSizeMeter   *CountMeter
+	deleteCountMeter *CountMeter
+	deleteSizeMeter  *CountMeter
+	// Protect the disk caches from being shutdown while they're being
 	// accessed.
 	lock    sync.RWMutex
 	blockDb *leveldb.DB
@@ -92,15 +92,16 @@ type MeterStatus struct {
 	Minutes1  float64
 	Minutes5  float64
 	Minutes15 float64
-	Mean      float64
+	Count     int64
 }
 
 func rateMeterToStatus(m metrics.Meter) MeterStatus {
+	s := m.Snapshot()
 	return MeterStatus{
-		m.Rate1(),
-		m.Rate5(),
-		m.Rate15(),
-		m.RateMean(),
+		s.Rate1(),
+		s.Rate5(),
+		s.Rate15(),
+		s.Count(),
 	}
 }
 
@@ -192,14 +193,14 @@ func newDiskBlockCacheStandardFromStorage(config diskBlockCacheConfig,
 		maxBlockID:       maxBlockID.Bytes(),
 		tlfCounts:        map[tlf.ID]int{},
 		tlfSizes:         map[tlf.ID]uint64{},
-		hitMeter:         metrics.NewMeter(),
-		missMeter:        metrics.NewMeter(),
-		putMeter:         metrics.NewMeter(),
-		updateMeter:      metrics.NewMeter(),
-		evictCountMeter:  metrics.NewMeter(),
-		evictSizeMeter:   metrics.NewMeter(),
-		deleteCountMeter: metrics.NewMeter(),
-		deleteSizeMeter:  metrics.NewMeter(),
+		hitMeter:         NewCountMeter(),
+		missMeter:        NewCountMeter(),
+		putMeter:         NewCountMeter(),
+		updateMeter:      NewCountMeter(),
+		evictCountMeter:  NewCountMeter(),
+		evictSizeMeter:   NewCountMeter(),
+		deleteCountMeter: NewCountMeter(),
+		deleteSizeMeter:  NewCountMeter(),
 		log:              log,
 		blockDb:          blockDb,
 		metaDb:           metaDb,
@@ -225,8 +226,8 @@ func newDiskBlockCacheStandardFromStorage(config diskBlockCacheConfig,
 			// Notify the disk limiter of the disk cache's size once we've
 			// determined it.
 			ctx := context.Background()
-			cache.config.DiskLimiter().onDiskBlockCacheEnable(ctx,
-				int64(cache.currBytes))
+			cache.config.DiskLimiter().onSimpleByteTrackerEnable(ctx,
+				workingSetCacheLimitTrackerType, int64(cache.currBytes))
 		}
 		close(startedCh)
 	}()
@@ -566,9 +567,8 @@ func (cache *DiskBlockCacheStandard) Put(ctx context.Context, tlfID tlf.ID,
 				return ctx.Err()
 			default:
 			}
-			bytesAvailable, err :=
-				cache.config.DiskLimiter().beforeDiskBlockCachePut(ctx,
-					encodedLen)
+			bytesAvailable, err := cache.config.DiskLimiter().reserveBytes(
+				ctx, workingSetCacheLimitTrackerType, encodedLen)
 			if err != nil {
 				cache.log.CWarningf(ctx, "Error obtaining space for the disk "+
 					"block cache: %+v", err)
@@ -577,6 +577,8 @@ func (cache *DiskBlockCacheStandard) Put(ctx context.Context, tlfID tlf.ID,
 			if bytesAvailable >= 0 {
 				break
 			}
+			cache.log.CDebugf(ctx, "Need more bytes. Available: %d",
+				bytesAvailable)
 			numRemoved, _, err := cache.evictLocked(ctx,
 				defaultNumBlocksToEvict)
 			if err != nil {
@@ -592,11 +594,12 @@ func (cache *DiskBlockCacheStandard) Put(ctx context.Context, tlfID tlf.ID,
 		}
 		err = cache.blockDb.Put(blockKey, entry, nil)
 		if err != nil {
-			cache.config.DiskLimiter().afterDiskBlockCachePut(ctx, encodedLen,
-				false)
+			cache.config.DiskLimiter().commitOrRollback(ctx,
+				workingSetCacheLimitTrackerType, encodedLen, 0, false, "")
 			return err
 		}
-		cache.config.DiskLimiter().afterDiskBlockCachePut(ctx, encodedLen, true)
+		cache.config.DiskLimiter().commitOrRollback(ctx, workingSetCacheLimitTrackerType,
+			encodedLen, 0, true, "")
 		cache.tlfCounts[tlfID]++
 		cache.numBlocks++
 		encodedLenUint := uint64(encodedLen)
@@ -731,7 +734,8 @@ func (cache *DiskBlockCacheStandard) deleteLocked(ctx context.Context,
 		cache.tlfSizes[k] -= removalSizes[k]
 		cache.currBytes -= removalSizes[k]
 	}
-	cache.config.DiskLimiter().onDiskBlockCacheDelete(ctx, sizeRemoved)
+	cache.config.DiskLimiter().release(ctx, workingSetCacheLimitTrackerType,
+		sizeRemoved, 0)
 
 	return numRemoved, sizeRemoved, nil
 }
@@ -900,7 +904,8 @@ func (cache *DiskBlockCacheStandard) evictLocked(ctx context.Context,
 }
 
 // Status implements the DiskBlockCache interface for DiskBlockCacheStandard.
-func (cache *DiskBlockCacheStandard) Status() *DiskBlockCacheStatus {
+func (cache *DiskBlockCacheStandard) Status(
+	ctx context.Context) *DiskBlockCacheStatus {
 	select {
 	case <-cache.startedCh:
 	default:
@@ -912,7 +917,7 @@ func (cache *DiskBlockCacheStandard) Status() *DiskBlockCacheStatus {
 	// we don't have easy access to the UID here, so pass in a dummy.
 	limiterStatus :=
 		cache.config.DiskLimiter().getStatus(
-			keybase1.UserOrTeamID("")).(backpressureDiskLimiterStatus)
+			ctx, keybase1.UserOrTeamID("")).(backpressureDiskLimiterStatus)
 	return &DiskBlockCacheStatus{
 		NumBlocks:       uint64(cache.numBlocks),
 		BlockBytes:      cache.currBytes,
@@ -963,6 +968,14 @@ func (cache *DiskBlockCacheStandard) Shutdown(ctx context.Context) {
 		cache.log.CWarningf(ctx, "Error closing tlfDb: %+v", err)
 	}
 	cache.tlfDb = nil
-	cache.config.DiskLimiter().onDiskBlockCacheDisable(ctx,
-		int64(cache.currBytes))
+	cache.config.DiskLimiter().onSimpleByteTrackerDisable(ctx,
+		workingSetCacheLimitTrackerType, int64(cache.currBytes))
+	cache.hitMeter.Shutdown()
+	cache.missMeter.Shutdown()
+	cache.putMeter.Shutdown()
+	cache.updateMeter.Shutdown()
+	cache.evictCountMeter.Shutdown()
+	cache.evictSizeMeter.Shutdown()
+	cache.deleteCountMeter.Shutdown()
+	cache.deleteSizeMeter.Shutdown()
 }

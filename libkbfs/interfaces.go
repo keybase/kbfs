@@ -355,6 +355,10 @@ type KBFSOps interface {
 	// newest version.  It works asynchronously, so no error is
 	// returned.
 	ForceFastForward(ctx context.Context)
+	// TeamNameChanged indicates that a team has changed its name, and
+	// we should clean up any outstanding handle info associated with
+	// the team ID.
+	TeamNameChanged(ctx context.Context, tid keybase1.TeamID)
 }
 
 type merkleSeqNoGetter interface {
@@ -407,8 +411,16 @@ type KeybaseService interface {
 		[]keybase1.PublicKey, error)
 
 	// LoadTeamPlusKeys returns a TeamInfo struct for a team with the
-	// specified TeamID.
-	LoadTeamPlusKeys(ctx context.Context, tid keybase1.TeamID) (TeamInfo, error)
+	// specified TeamID.  The caller can specify `desiredKeyGen` to
+	// force a server check if that particular key gen isn't yet
+	// known; it may be set to UnspecifiedKeyGen if no server check is
+	// required.  The caller can specify `desiredUID` and
+	// `desiredRole` to force a server check if that particular UID
+	// isn't a member of the team yet according to local caches; it
+	// may be set to "" if no server check is required.
+	LoadTeamPlusKeys(ctx context.Context, tid keybase1.TeamID,
+		desiredKeyGen KeyGen, desiredUser keybase1.UserVersion,
+		desiredRole keybase1.TeamRole) (TeamInfo, error)
 
 	// CurrentSession returns a SessionInfo struct with all the
 	// information for the current session, or an error otherwise.
@@ -505,10 +517,10 @@ type CurrentSessionGetter interface {
 // TeamMembershipChecker is an interface for objects that can check
 // the writer/reader membership of teams.
 type TeamMembershipChecker interface {
-	// IsTeamWriter checks whether the given user is a writer of the
-	// given team right now.
-	IsTeamWriter(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID) (
-		bool, error)
+	// IsTeamWriter checks whether the given user (with the given
+	// verifying key) is a writer of the given team right now.
+	IsTeamWriter(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID,
+		verifyingKey kbfscrypto.VerifyingKey) (bool, error)
 	// IsTeamReader checks whether the given user is a reader of the
 	// given team right now.
 	IsTeamReader(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID) (
@@ -523,8 +535,11 @@ type TeamMembershipChecker interface {
 type teamKeysGetter interface {
 	// GetTeamTLFCryptKeys gets all of a team's secret crypt keys, by
 	// generation, as well as the latest key generation number for the
-	// team.
-	GetTeamTLFCryptKeys(ctx context.Context, tid keybase1.TeamID) (
+	// team.  The caller can specify `desiredKeyGen` to force a server
+	// check if that particular key gen isn't yet known; it may be set
+	// to UnspecifiedKeyGen if no server check is required.
+	GetTeamTLFCryptKeys(ctx context.Context, tid keybase1.TeamID,
+		desiredKeyGen KeyGen) (
 		map[KeyGen]kbfscrypto.TLFCryptKey, KeyGen, error)
 }
 
@@ -600,7 +615,8 @@ type KeyMetadata interface {
 	// IsWriter checks that the given user is a valid writer of the TLF
 	// right now.
 	IsWriter(
-		ctx context.Context, checker TeamMembershipChecker, uid keybase1.UID) (
+		ctx context.Context, checker TeamMembershipChecker, uid keybase1.UID,
+		verifyingKey kbfscrypto.VerifyingKey) (
 		bool, error)
 
 	// HasKeyForUser returns whether or not the given user has
@@ -908,7 +924,7 @@ type DiskBlockCache interface {
 	// Size returns the size in bytes of the disk cache.
 	Size() int64
 	// Status returns the current status of the disk cache.
-	Status() *DiskBlockCacheStatus
+	Status(ctx context.Context) *DiskBlockCacheStatus
 	// Shutdown cleanly shuts down the disk block cache.
 	Shutdown(ctx context.Context)
 }
@@ -1889,11 +1905,12 @@ type BareRootMetadata interface {
 	IsFinal() bool
 	// IsWriter returns whether or not the user+device is an authorized writer.
 	IsWriter(ctx context.Context, user keybase1.UID,
-		deviceKey kbfscrypto.CryptPublicKey,
+		cryptKey kbfscrypto.CryptPublicKey,
+		verifyingKey kbfscrypto.VerifyingKey,
 		teamMemChecker TeamMembershipChecker, extra ExtraMetadata) (bool, error)
 	// IsReader returns whether or not the user+device is an authorized reader.
 	IsReader(ctx context.Context, user keybase1.UID,
-		deviceKey kbfscrypto.CryptPublicKey,
+		cryptKey kbfscrypto.CryptPublicKey,
 		teamMemChecker TeamMembershipChecker, extra ExtraMetadata) (bool, error)
 	// DeepCopy returns a deep copy of the underlying data structure.
 	DeepCopy(codec kbfscodec.Codec) (MutableBareRootMetadata, error)
@@ -1942,7 +1959,7 @@ type BareRootMetadata interface {
 	// checking with KBPKI.
 	IsValidAndSigned(ctx context.Context, codec kbfscodec.Codec,
 		crypto cryptoPure, teamMemChecker TeamMembershipChecker,
-		extra ExtraMetadata) error
+		extra ExtraMetadata, writerVerifyingKey kbfscrypto.VerifyingKey) error
 	// IsLastModifiedBy verifies that the BareRootMetadata is
 	// written by the given user and device (identified by the
 	// device verifying key), and returns an error if not.

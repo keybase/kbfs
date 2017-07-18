@@ -89,9 +89,11 @@ func (k KeybaseServiceMeasured) LoadUserPlusKeys(ctx context.Context,
 
 // LoadTeamPlusKeys implements the KeybaseService interface for KeybaseServiceMeasured.
 func (k KeybaseServiceMeasured) LoadTeamPlusKeys(ctx context.Context,
-	tid keybase1.TeamID) (teamInfo TeamInfo, err error) {
+	tid keybase1.TeamID, desiredKeyGen KeyGen, desiredUser keybase1.UserVersion,
+	desiredRole keybase1.TeamRole) (teamInfo TeamInfo, err error) {
 	k.loadTeamPlusKeysTimer.Time(func() {
-		teamInfo, err = k.delegate.LoadTeamPlusKeys(ctx, tid)
+		teamInfo, err = k.delegate.LoadTeamPlusKeys(
+			ctx, tid, desiredKeyGen, desiredUser, desiredRole)
 	})
 	return teamInfo, err
 }

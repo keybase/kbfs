@@ -42,6 +42,10 @@ type KeybaseServiceBase struct {
 	userCache               map[keybase1.UID]UserInfo
 	userCacheUnverifiedKeys map[keybase1.UID][]keybase1.PublicKey
 
+	teamCacheLock sync.RWMutex
+	// Map entries are removed when invalidated.
+	teamCache map[keybase1.TeamID]TeamInfo
+
 	lastNotificationFilenameLock sync.Mutex
 	lastNotificationFilename     string
 	lastSyncNotificationPath     string
@@ -55,6 +59,7 @@ func NewKeybaseServiceBase(config Config, kbCtx Context, log logger.Logger) *Key
 		log:                     log,
 		userCache:               make(map[keybase1.UID]UserInfo),
 		userCacheUnverifiedKeys: make(map[keybase1.UID][]keybase1.PublicKey),
+		teamCache:               make(map[keybase1.TeamID]TeamInfo),
 	}
 	return &k
 }
@@ -132,12 +137,11 @@ func updateKIDNamesFromParents(kidNames map[keybase1.KID]string,
 }
 
 func filterKeys(keys []keybase1.PublicKey) (
-	[]kbfscrypto.VerifyingKey, []kbfscrypto.CryptPublicKey,
-	map[keybase1.KID]string, error) {
-	var verifyingKeys []kbfscrypto.VerifyingKey
-	var cryptPublicKeys []kbfscrypto.CryptPublicKey
-	var kidNames = map[keybase1.KID]string{}
-	var parents = map[keybase1.KID]keybase1.KID{}
+	verifyingKeys []kbfscrypto.VerifyingKey,
+	cryptPublicKeys []kbfscrypto.CryptPublicKey,
+	kidNames map[keybase1.KID]string, err error) {
+	kidNames = make(map[keybase1.KID]string, len(keys))
+	parents := make(map[keybase1.KID]keybase1.KID, len(keys))
 
 	addVerifyingKey := func(key kbfscrypto.VerifyingKey) {
 		verifyingKeys = append(verifyingKeys, key)
@@ -234,12 +238,34 @@ func (k *KeybaseServiceBase) clearCachedUnverifiedKeys(uid keybase1.UID) {
 	delete(k.userCacheUnverifiedKeys, uid)
 }
 
+func (k *KeybaseServiceBase) getCachedTeamInfo(tid keybase1.TeamID) TeamInfo {
+	k.teamCacheLock.RLock()
+	defer k.teamCacheLock.RUnlock()
+	return k.teamCache[tid]
+}
+
+func (k *KeybaseServiceBase) setCachedTeamInfo(
+	tid keybase1.TeamID, info TeamInfo) {
+	k.teamCacheLock.Lock()
+	defer k.teamCacheLock.Unlock()
+	if info.Name == libkb.NormalizedUsername("") {
+		delete(k.teamCache, tid)
+	} else {
+		k.teamCache[tid] = info
+	}
+}
+
 func (k *KeybaseServiceBase) clearCaches() {
 	k.setCachedCurrentSession(SessionInfo{})
-	k.userCacheLock.Lock()
-	defer k.userCacheLock.Unlock()
-	k.userCache = make(map[keybase1.UID]UserInfo)
-	k.userCacheUnverifiedKeys = make(map[keybase1.UID][]keybase1.PublicKey)
+	func() {
+		k.userCacheLock.Lock()
+		defer k.userCacheLock.Unlock()
+		k.userCache = make(map[keybase1.UID]UserInfo)
+		k.userCacheUnverifiedKeys = make(map[keybase1.UID][]keybase1.PublicKey)
+	}()
+	k.teamCacheLock.Lock()
+	defer k.teamCacheLock.Unlock()
+	k.teamCache = make(map[keybase1.TeamID]TeamInfo)
 }
 
 // LoggedIn implements keybase1.NotifySessionInterface.
@@ -398,7 +424,15 @@ func (k *KeybaseServiceBase) LoadUserPlusKeys(ctx context.Context,
 	uid keybase1.UID, pollForKID keybase1.KID) (UserInfo, error) {
 	cachedUserInfo := k.getCachedUserInfo(uid)
 	if cachedUserInfo.Name != libkb.NormalizedUsername("") {
-		return cachedUserInfo, nil
+		if pollForKID == keybase1.KID("") {
+			return cachedUserInfo, nil
+		}
+		// Skip the cache if pollForKID isn't present in `VerifyingKeys`.
+		for _, key := range cachedUserInfo.VerifyingKeys {
+			if key.KID().Equal(pollForKID) {
+				return cachedUserInfo, nil
+			}
+		}
 	}
 
 	arg := keybase1.LoadUserPlusKeysArg{Uid: uid, PollForKID: pollForKID}
@@ -410,16 +444,68 @@ func (k *KeybaseServiceBase) LoadUserPlusKeys(ctx context.Context,
 	return k.processUserPlusKeys(res)
 }
 
+var allowedLoadTeamRoles = map[keybase1.TeamRole]bool{
+	keybase1.TeamRole_NONE:   true,
+	keybase1.TeamRole_WRITER: true,
+	keybase1.TeamRole_READER: true,
+}
+
 // LoadTeamPlusKeys implements the KeybaseService interface for
 // KeybaseServiceBase.
 func (k *KeybaseServiceBase) LoadTeamPlusKeys(
-	ctx context.Context, tid keybase1.TeamID) (TeamInfo, error) {
-	// No caching until the invalidations are ready.
+	ctx context.Context, tid keybase1.TeamID, desiredKeyGen KeyGen,
+	desiredUser keybase1.UserVersion, desiredRole keybase1.TeamRole) (
+	TeamInfo, error) {
+	if !allowedLoadTeamRoles[desiredRole] {
+		panic(fmt.Sprintf("Disallowed team role: %v", desiredRole))
+	}
+
+	cachedTeamInfo := k.getCachedTeamInfo(tid)
+	if cachedTeamInfo.Name != libkb.NormalizedUsername("") {
+		// If the cached team info doesn't satisfy our desires, don't
+		// use it.
+		satisfiesDesires := true
+		if desiredKeyGen >= FirstValidKeyGen {
+			// If `desiredKeyGen` is at most as large as the keygen in
+			// the cached latest team info, then our cached info
+			// satisfies our desires.
+			satisfiesDesires = desiredKeyGen <= cachedTeamInfo.LatestKeyGen
+		}
+
+		if satisfiesDesires && desiredUser.Uid.Exists() {
+			// If the user is in the writer map, that satisfies none, reader
+			// or writer desires.
+			satisfiesDesires = cachedTeamInfo.Writers[desiredUser.Uid]
+			// If not, and the desire role is a reader, we need to
+			// check the reader map explicitly.
+			if !satisfiesDesires &&
+				(desiredRole == keybase1.TeamRole_NONE ||
+					desiredRole == keybase1.TeamRole_READER) {
+				satisfiesDesires = cachedTeamInfo.Readers[desiredUser.Uid]
+			}
+		}
+
+		if satisfiesDesires {
+			return cachedTeamInfo, nil
+		}
+	}
 
 	arg := keybase1.LoadTeamPlusApplicationKeysArg{
 		Id:          tid,
 		Application: keybase1.TeamApplication_KBFS,
 	}
+
+	if desiredKeyGen >= FirstValidKeyGen {
+		arg.Refreshers.NeedKeyGeneration =
+			keybase1.PerTeamKeyGeneration(desiredKeyGen)
+	}
+
+	if desiredUser.Uid.Exists() {
+		arg.Refreshers.WantMembers = append(
+			arg.Refreshers.WantMembers, desiredUser)
+		arg.Refreshers.WantMembersRole = desiredRole
+	}
+
 	res, err := k.teamsClient.LoadTeamPlusApplicationKeys(ctx, arg)
 	if err != nil {
 		return TeamInfo{}, err
@@ -452,6 +538,7 @@ func (k *KeybaseServiceBase) LoadTeamPlusKeys(
 	for _, user := range res.OnlyReaders {
 		info.Readers[user.Uid] = true
 	}
+	k.setCachedTeamInfo(tid, info)
 	return info, nil
 }
 
@@ -500,6 +587,7 @@ func (k *KeybaseServiceBase) processUserPlusKeys(upk keybase1.UserPlusKeys) (
 		VerifyingKeys:          verifyingKeys,
 		CryptPublicKeys:        cryptPublicKeys,
 		KIDNames:               kidNames,
+		EldestSeqno:            upk.EldestSeqno,
 		RevokedVerifyingKeys:   revokedVerifyingKeys,
 		RevokedCryptPublicKeys: revokedCryptPublicKeys,
 	}
@@ -739,6 +827,22 @@ func (k *KeybaseServiceBase) FSSyncStatusRequest(ctx context.Context,
 	}
 
 	return k.kbfsClient.FSSyncStatus(ctx, resp)
+}
+
+// TeamChanged implements keybase1.NotifyTeamInterface for
+// KeybaseServiceBase.
+func (k *KeybaseServiceBase) TeamChanged(
+	ctx context.Context, arg keybase1.TeamChangedArg) error {
+	k.log.CDebugf(ctx, "Flushing cache for team %s/%s "+
+		"(membershipChange=%t, keyRotated=%t, renamed=%t)",
+		arg.TeamName, arg.TeamID, arg.Changes.MembershipChanged,
+		arg.Changes.KeyRotated, arg.Changes.Renamed)
+	k.setCachedTeamInfo(arg.TeamID, TeamInfo{})
+
+	if arg.Changes.Renamed {
+		k.config.KBFSOps().TeamNameChanged(ctx, arg.TeamID)
+	}
+	return nil
 }
 
 // GetTLFCryptKeys implements the TlfKeysInterface interface for
