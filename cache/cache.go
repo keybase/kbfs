@@ -17,8 +17,8 @@ import (
 type Cache interface {
 	// Get tries to find and return data assiciated with key.
 	Get(key string) (data Measurable, ok bool)
-	// Add adds data into the cache, associating it with key. Entries are
-	// evicted when necessary.
+	// Add adds or replaces data into the cache, associating it with key.
+	// Entries are evicted when necessary.
 	Add(key string, data Measurable)
 }
 
@@ -78,9 +78,11 @@ func (c *randomEvictedCache) Add(key string, data Measurable) {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if _, ok := c.data[key]; !ok {
-		c.cachedBytes += increase
+	if v, ok := c.data[key]; ok {
+		decrease := 2*len(key) + v.Size()
+		c.cachedBytes -= decrease
 	}
+	c.cachedBytes += increase
 	for c.cachedBytes > c.maxBytes {
 		c.evictOneLocked()
 	}
