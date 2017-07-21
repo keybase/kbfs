@@ -48,14 +48,10 @@ func NewRandomEvictedCache(maxBytes int) Cache {
 	}
 }
 
-func (c *randomEvictedCache) entrySize(key *string, value Measurable) int {
-	vsize := value.Size()
-	if key == nil {
-		return vsize
-	}
+func (c *randomEvictedCache) entrySize(key string, value Measurable) int {
 	// Key size needs to be counted twice since they take space in both c.data
 	// and c.keys. Note that we are ignoring the map overhead from c.data here.
-	return 2*len(*key) + vsize
+	return 2*len(key) + value.Size()
 }
 
 func (c *randomEvictedCache) evictOneLocked() {
@@ -63,7 +59,7 @@ func (c *randomEvictedCache) evictOneLocked() {
 	last := len(c.keys) - 1
 	var toRemove string
 	toRemove, c.keys[i] = c.keys[i], c.keys[last]
-	c.cachedBytes -= c.entrySize(&toRemove, c.data[toRemove])
+	c.cachedBytes -= c.entrySize(toRemove, c.data[toRemove])
 	delete(c.data, toRemove)
 	c.keys = c.keys[:last]
 }
@@ -82,14 +78,14 @@ func (c *randomEvictedCache) Get(key string) (data Measurable, ok bool) {
 // Add implements the Cache interface.
 func (c *randomEvictedCache) Add(key string, data Measurable) {
 	memoized := memoizedMeasurable{m: data}
-	increase := c.entrySize(&key, memoized)
+	increase := c.entrySize(key, memoized)
 	if increase > c.maxBytes {
 		return
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if v, ok := c.data[key]; ok {
-		decrease := c.entrySize(&key, v)
+		decrease := c.entrySize(key, v)
 		c.cachedBytes -= decrease
 	}
 	c.cachedBytes += increase
