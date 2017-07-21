@@ -53,6 +53,8 @@ func (c *randomEvictedCache) entrySize(key *string, value Measurable) int {
 	if key == nil {
 		return vsize
 	}
+	// Key size needs to be counted twice since they take space in both c.data
+	// and c.keys. Note that we are ignoring the map overhead from c.data here.
 	return 2*len(*key) + vsize
 }
 
