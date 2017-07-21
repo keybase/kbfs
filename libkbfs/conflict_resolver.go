@@ -1002,7 +1002,7 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 	// re-created.
 	var recreateOps []*createOp
 	createsSeen := make(map[createMapKey]bool)
-	// maps a merged most recent pointer to the set of unmerged most
+	// Maps a merged most recent pointer to the set of unmerged most
 	// recent pointers that need some of their path filled in.
 	for _, p := range unmergedPaths {
 		mergedPath, mostRecent, ops, err := cr.resolveMergedPathTail(
@@ -1019,7 +1019,41 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 				continue
 			}
 			createsSeen[key] = true
-			recreateOps = append(recreateOps, op)
+			cr.log.CDebugf(ctx, "Checking recreate op %s", op.StringWithRefs(0))
+
+			// See if the merged path has this create already.
+			parentOrig, err := unmergedChains.originalFromMostRecentOrSame(
+				op.Dir.Unref)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			cr.log.CDebugf(ctx, "Looking for merged chain for %s", parentOrig)
+			mergedChain, ok := mergedChains.byOriginal[parentOrig]
+			addRecreate := true
+			if ok {
+				for _, mergedOp := range mergedChain.ops {
+					mergedCop, ok := mergedOp.(*createOp)
+					if !ok {
+						continue
+					}
+
+					if mergedCop.NewName == op.NewName &&
+						mergedCop.Type == op.Type {
+						cr.log.CDebugf(ctx, "Matching merged create: %s", mergedCop.StringWithRefs(0))
+						addRecreate = false
+						err = unmergedChains.changeOriginal(
+							op.Refs()[0], mergedCop.Refs()[0])
+						if err != nil {
+							return nil, nil, nil, err
+						}
+						// XXX
+					}
+				}
+			}
+
+			if addRecreate {
+				recreateOps = append(recreateOps, op)
+			}
 		}
 
 		// At the end of this process, we are left with a merged path
