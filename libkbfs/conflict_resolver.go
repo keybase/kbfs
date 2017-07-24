@@ -1012,6 +1012,8 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 			return nil, nil, nil, err
 		}
 
+		cr.log.CDebugf(ctx, "mergedPath=%v, p=%v, %d recreate ops", mergedPath.path, p.path, len(ops))
+
 		// Save any recreateOps we've haven't seen yet.
 		for _, op := range ops {
 			key := createMapKey{op.Dir.Unref, op.NewName}
@@ -1022,10 +1024,9 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 			cr.log.CDebugf(ctx, "Checking recreate op %s", op.StringWithRefs(0))
 
 			// See if the merged path has this create already.
-			parentOrig, err := unmergedChains.originalFromMostRecentOrSame(
-				op.Dir.Unref)
-			if err != nil {
-				return nil, nil, nil, err
+			parentOrig, ok := unmergedChains.originals[op.Dir.Unref]
+			if !ok {
+				parentOrig = op.Dir.Unref
 			}
 			cr.log.CDebugf(ctx, "Looking for merged chain for %s", parentOrig)
 			mergedChain, ok := mergedChains.byOriginal[parentOrig]
@@ -1046,7 +1047,6 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 						if err != nil {
 							return nil, nil, nil, err
 						}
-						// XXX
 					}
 				}
 			}
@@ -1110,6 +1110,7 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 			copy(newPath[len(p.path):], mergedPath.path)
 			mergedPath.path = newPath
 			mergedPaths[unmergedMostRecent] = mergedPath
+			cr.log.CDebugf(ctx, "Merged path for %v -> %v", unmergedMostRecent, mergedPath.path)
 
 			// update the final paths for those corresponding merged
 			// chains
