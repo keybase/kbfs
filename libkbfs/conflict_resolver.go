@@ -1047,6 +1047,11 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 						if err != nil {
 							return nil, nil, nil, err
 						}
+						for i, pn := range mergedPath.path {
+							if pn.BlockPointer == op.Refs()[0] {
+								mergedPath.path[i].BlockPointer = mergedCop.Refs()[0]
+							}
+						}
 					}
 				}
 			}
@@ -1055,6 +1060,8 @@ func (cr *ConflictResolver) resolveMergedPaths(ctx context.Context,
 				recreateOps = append(recreateOps, op)
 			}
 		}
+
+		cr.log.CDebugf(ctx, "Merged path: %v", mergedPath.path)
 
 		// At the end of this process, we are left with a merged path
 		// that begins just after mostRecent.  We will fill this in
