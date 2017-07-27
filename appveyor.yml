@@ -25,8 +25,8 @@ install:
   - ps: Start-Sleep -s 10
   - cd C:\dokany\Win32\Release
   - dokanctl /i d
-  - sc create dokan1 type= kernel binPath= system32\drivers\dokan1.sys
-  - sc start dokan1
+  #- sc create dokan1 type= kernel binPath= system32\drivers\dokan1.sys
+  #- sc start dokan1
   - sc query dokan1
 
 # clone directory
