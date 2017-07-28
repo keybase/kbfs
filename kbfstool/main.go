@@ -101,6 +101,8 @@ func realMain() (exitStatus int) {
 		return ls(ctx, config, args)
 	case "mkdir":
 		return mkdir(ctx, config, args)
+	case "rmfav":
+		return rmfav(ctx, config, args)
 	case "read":
 		return read(ctx, config, args)
 	case "write":
@@ -108,7 +110,7 @@ func realMain() (exitStatus int) {
 	case "md":
 		return mdMain(ctx, config, args)
 	default:
-		printError("kbfs", fmt.Errorf("unknown command '%s'", cmd))
+		printError("kbfs", fmt.Errorf("unknown command %q", cmd))
 		return 1
 	}
 }
