@@ -38,7 +38,6 @@ The possible commands are:
   stat		Display file status
   ls		List directory contents
   mkdir		Make directories
-  rmfav		Remove favorites
   read		Dump file to stdout
   write		Write stdin to file
   md            Operate on metadata objects
@@ -100,8 +99,6 @@ func realMain() (exitStatus int) {
 		return ls(ctx, config, args)
 	case "mkdir":
 		return mkdir(ctx, config, args)
-	case "rmfav":
-		return rmfav(ctx, config, args)
 	case "read":
 		return read(ctx, config, args)
 	case "write":
