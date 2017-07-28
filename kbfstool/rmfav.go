@@ -5,21 +5,16 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/pkg/errors"
 
 	"github.com/keybase/kbfs/fsrpc"
 	"github.com/keybase/kbfs/libkbfs"
 	"golang.org/x/net/context"
 )
-
-func maybePrintPath(path string, err error, verbose bool) {
-	if err == nil && verbose {
-		fmt.Fprintf(os.Stderr, "rmfav: created directory '%s'\n", path)
-	}
-}
 
 func rmfavOne(ctx context.Context, config libkbfs.Config, dirPathStr string, verbose bool) error {
 	p, err := fsrpc.NewPath(dirPathStr)
@@ -34,10 +29,9 @@ func rmfavOne(ctx context.Context, config libkbfs.Config, dirPathStr string, ver
 		return errors.Errorf("%q is not a favorite", dirPathStr)
 	}
 
-	kbfsOps := config.KBFSOps()
-	err := config.KBFSOps().DeleteFavorite(ctx, libkbfs.Favorite{
-		Name: p.Name,
-		Type: p.Type,
+	err = config.KBFSOps().DeleteFavorite(ctx, libkbfs.Favorite{
+		Name: p.TLFName,
+		Type: p.TLFType,
 	})
 	if err != nil {
 		return err
