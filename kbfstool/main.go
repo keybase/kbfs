@@ -38,6 +38,7 @@ The possible commands are:
   stat		Display file status
   ls		List directory contents
   mkdir		Make directories
+  rmfav		Remove favorites
   read		Dump file to stdout
   write		Write stdin to file
   md            Operate on metadata objects
