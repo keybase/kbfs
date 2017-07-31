@@ -1,6 +1,8 @@
 package main
 
 import (
+       "fmt"
+       
 	"gopkg.in/src-d/go-billy.v3/osfs"
 	gogit "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/config"
@@ -8,28 +10,33 @@ import (
 )
 
 func main() {
-	dot := osfs.New("/tmp/gittest")
+	dot := osfs.New("gittest")
 	s, err := filesystem.NewStorage(dot)
 	if err != nil {
 		panic(err)
 	}
-	repo, err := gogit.Init(s, nil)
+	fmt.Println("HERE1")
+	repo, err := gogit.Open(s, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	config := &config.RemoteConfig{
+	fmt.Println("HERE2")
+
+/**
+	c := &config.RemoteConfig{
 		Name: "t",
-		URL:  "/tmp/testcheckout/",
+		URL:  "gitcheckout",
 	}
-	_, err = repo.CreateRemote(config)
+	_, err = repo.CreateRemote(c)
 	if err != nil {
 		panic(err)
 	}
+*/
 
 	o := &gogit.FetchOptions{
 		RemoteName: "t",
-		RefSpecs:   []config.RefSpec{"master:master"},
+		RefSpecs:   []config.RefSpec{"refs/heads/master:refs/heads/master"},
 	}
 	err = repo.Fetch(o)
 	if err != nil {
