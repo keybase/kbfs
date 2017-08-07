@@ -803,7 +803,7 @@ func (fbo *folderBranchOps) setHeadLocked(
 		// Start registering for updates right away, using this MD
 		// as a starting point. For now only the master branch can
 		// get updates
-		if fbo.branch() == MasterBranch {
+		if fbo.branch() == MasterBranch && fbo.config.Mode() != InitSingleOp {
 			fbo.updateDoneChan = make(chan struct{})
 			go fbo.registerAndWaitForUpdates()
 		}
@@ -2446,7 +2446,12 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *GCOp) (
 	return fbo.notifyBatchLocked(ctx, lState, irmd)
 }
 
-func checkDisallowedPrefixes(name string) error {
+func checkDisallowedPrefixes(name string, mode InitMode) error {
+	if mode == InitSingleOp {
+		// Allow specialized, single-op KBFS programs (like the kbgit
+		// remote helper) to bypass the disallowed prefix check.
+		return nil
+	}
 	for _, prefix := range disallowedPrefixes {
 		if strings.HasPrefix(name, prefix) {
 			return DisallowedPrefixError{name, prefix}
@@ -2551,7 +2556,7 @@ func (fbo *folderBranchOps) createEntryLocked(
 	entryType EntryType, excl Excl) (childNode Node, de DirEntry, err error) {
 	fbo.mdWriterLock.AssertLocked(lState)
 
-	if err := checkDisallowedPrefixes(name); err != nil {
+	if err := checkDisallowedPrefixes(name, fbo.config.Mode()); err != nil {
 		return nil, DirEntry{}, err
 	}
 
@@ -2988,7 +2993,7 @@ func (fbo *folderBranchOps) createLinkLocked(
 	toPath string) (DirEntry, error) {
 	fbo.mdWriterLock.AssertLocked(lState)
 
-	if err := checkDisallowedPrefixes(fromName); err != nil {
+	if err := checkDisallowedPrefixes(fromName, fbo.config.Mode()); err != nil {
 		return DirEntry{}, err
 	}
 
@@ -3314,7 +3319,7 @@ func (fbo *folderBranchOps) renameLocked(
 		return err
 	}
 
-	if err := checkDisallowedPrefixes(newName); err != nil {
+	if err := checkDisallowedPrefixes(newName, fbo.config.Mode()); err != nil {
 		return err
 	}
 
