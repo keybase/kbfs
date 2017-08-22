@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sync"
 	"time"
 
@@ -341,7 +342,11 @@ func newRekeyStateStarted(fsm *rekeyFSM, task rekeyTask) *rekeyStateStarted {
 	if task.timeout != nil {
 		ctx, cancel = context.WithTimeout(task.ctx.context(), *task.timeout)
 	}
+	// This blocks (which inheritently blocks the entire FSM) if too many are
+	// active.
+	fsm.limiter.WaitToStart()
 	go func() {
+		defer fsm.limiter.Done()
 		if cancel != nil {
 			defer cancel()
 		}
@@ -442,6 +447,8 @@ type rekeyFSM struct {
 
 	muListeners sync.Mutex
 	listeners   map[rekeyEventType][]rekeyFSMListener
+
+	limiter *OngoingWorkLimiter
 }
 
 // NewRekeyFSM creates a new rekey FSM.
@@ -453,6 +460,21 @@ func NewRekeyFSM(fbo *folderBranchOps) RekeyFSM {
 		log:        fbo.config.MakeLogger("RekeyFSM"),
 
 		listeners: make(map[rekeyEventType][]rekeyFSMListener),
+	}
+	switch fbo.config.Mode() {
+	case InitDefault:
+		// In normal desktop app, we limit to 16*runtime.NumCPU() routines.
+		// That means on a typical dual-Core laptop (that has hyper-threading),
+		// we allow 64 ongoing rekeys happen at the same time.
+		fsm.limiter = NewOngoingWorkLimiter(16 * runtime.NumCPU())
+	case InitMinimal:
+		// This is likely mobile. Limit it to 4.
+		fsm.limiter = NewOngoingWorkLimiter(4)
+	case InitSingleOp:
+		// Just block all rekeys and don't bother cleaning up requests since the process is short lived anyway.
+		fsm.limiter = NewOngoingWorkLimiter(0)
+	default:
+		panic("😱")
 	}
 	fsm.current = newRekeyStateIdle(fsm)
 	go fsm.loop()
