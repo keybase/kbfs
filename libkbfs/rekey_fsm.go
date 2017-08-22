@@ -7,7 +7,6 @@ package libkbfs
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"sync"
 	"time"
 
@@ -463,10 +462,8 @@ func NewRekeyFSM(fbo *folderBranchOps) RekeyFSM {
 	}
 	switch fbo.config.Mode() {
 	case InitDefault:
-		// In normal desktop app, we limit to 16*runtime.NumCPU() routines.
-		// That means on a typical dual-Core laptop (that has hyper-threading),
-		// we allow 64 ongoing rekeys happen at the same time.
-		fsm.limiter = NewOngoingWorkLimiter(16 * runtime.NumCPU())
+		// In normal desktop app, we limit to 16 routines.
+		fsm.limiter = NewOngoingWorkLimiter(16)
 	case InitMinimal:
 		// This is likely mobile. Limit it to 4.
 		fsm.limiter = NewOngoingWorkLimiter(4)
