@@ -273,6 +273,12 @@ func newRekeyStateScheduled(
 func (r *rekeyStateScheduled) reactToEvent(event RekeyEvent) rekeyState {
 	switch event.eventType {
 	case rekeyTimeupEvent:
+		// This blocks (which inheritently blocks the entire FSM) if too many
+		// are active.
+		if r.fsm.fbo.config.GetRekeyFSMLimiter().WaitToStart(
+			r.task.ctx.context()) != nil {
+			return r
+		}
 		return newRekeyStateStarted(r.fsm, r.task)
 	case rekeyRequestEvent:
 		if r.task.promptPaper && !event.request.promptPaper {
@@ -341,11 +347,8 @@ func newRekeyStateStarted(fsm *rekeyFSM, task rekeyTask) *rekeyStateStarted {
 	if task.timeout != nil {
 		ctx, cancel = context.WithTimeout(task.ctx.context(), *task.timeout)
 	}
-	// This blocks (which inheritently blocks the entire FSM) if too many are
-	// active.
-	fsm.limiter.WaitToStart()
 	go func() {
-		defer fsm.limiter.Done()
+		defer fsm.fbo.config.GetRekeyFSMLimiter().Done()
 		if cancel != nil {
 			defer cancel()
 		}
@@ -446,8 +449,6 @@ type rekeyFSM struct {
 
 	muListeners sync.Mutex
 	listeners   map[rekeyEventType][]rekeyFSMListener
-
-	limiter *OngoingWorkLimiter
 }
 
 // NewRekeyFSM creates a new rekey FSM.
@@ -459,19 +460,6 @@ func NewRekeyFSM(fbo *folderBranchOps) RekeyFSM {
 		log:        fbo.config.MakeLogger("RekeyFSM"),
 
 		listeners: make(map[rekeyEventType][]rekeyFSMListener),
-	}
-	switch fbo.config.Mode() {
-	case InitDefault:
-		// In normal desktop app, we limit to 16 routines.
-		fsm.limiter = NewOngoingWorkLimiter(16)
-	case InitMinimal:
-		// This is likely mobile. Limit it to 4.
-		fsm.limiter = NewOngoingWorkLimiter(4)
-	case InitSingleOp:
-		// Just block all rekeys and don't bother cleaning up requests since the process is short lived anyway.
-		fsm.limiter = NewOngoingWorkLimiter(0)
-	default:
-		panic("😱")
 	}
 	fsm.current = newRekeyStateIdle(fsm)
 	go fsm.loop()
