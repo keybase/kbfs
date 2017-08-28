@@ -15,8 +15,15 @@ import (
 // StartOptions are options for starting up.
 type StartOptions struct {
 	KbfsParams libkbfs.InitParams
-	Remote     string
-	Repo       string
+	// Remote is the name that the caller's repo (on local disk) has
+	// assigned to the KBFS-based repo.
+	Remote string
+	// Repo is the URL the caller's repo (on local disk) is trying to
+	// access, in the form "keybase://private/user/reponame".
+	Repo string
+	// GitDir is the filepath leading to the .git directory of the
+	// caller's local on-disk repo.
+	GitDir string
 }
 
 const (
@@ -60,7 +67,9 @@ func Start(ctx context.Context, options StartOptions,
 	}
 	defer config.Shutdown(ctx)
 
-	r, err := newRunner(ctx, config, options.Repo, input, output)
+	r, err := newRunner(
+		ctx, config, options.Remote, options.Repo, options.GitDir,
+		input, output)
 	if err != nil {
 		return libfs.InitError(err.Error())
 	}
