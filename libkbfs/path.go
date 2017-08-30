@@ -103,6 +103,13 @@ func (p path) isValidForNotification() bool {
 		return false
 	}
 
+	if p.Tlf == (tlf.ID{}) {
+		return false
+	}
+	if _, err := p.Tlf.SafeType(); err != nil {
+		return false
+	}
+
 	return len(p.path[0].Name) > 0 && !strings.HasPrefix(p.path[0].Name, "<")
 }
 
