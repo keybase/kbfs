@@ -103,10 +103,7 @@ func (p path) isValidForNotification() bool {
 		return false
 	}
 
-	if p.Tlf == (tlf.ID{}) {
-		return false
-	}
-	if _, err := p.Tlf.SafeType(); err != nil {
+	if p.Tlf == (tlf.NullID) {
 		return false
 	}
 
