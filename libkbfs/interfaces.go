@@ -1122,18 +1122,25 @@ type MDOps interface {
 	// the folder.  It creates the folder if one doesn't exist
 	// yet, and the logged-in user has permission to do so.
 	//
+	// If lockBeforeGet is not nil, it causes mdserver to take the lock on the
+	// lock ID before the get.
+	//
 	// If there is no returned error, then the returned ID must
 	// always be non-null. An empty ImmutableRootMetadata may be
 	// returned, but if it is non-empty, then its ID must match
 	// the returned ID.
 	GetForHandle(
-		ctx context.Context, handle *TlfHandle, mStatus MergeStatus) (
-		tlf.ID, ImmutableRootMetadata, error)
+		ctx context.Context, handle *TlfHandle, mStatus MergeStatus,
+		lockBeforeGet *keybase1.LockID) (tlf.ID, ImmutableRootMetadata, error)
 
 	// GetForTLF returns the current metadata object
 	// corresponding to the given top-level folder, if the logged-in
 	// user has read permission on the folder.
-	GetForTLF(ctx context.Context, id tlf.ID) (ImmutableRootMetadata, error)
+	//
+	// If lockBeforeGet is not nil, it causes mdserver to take the lock on the
+	// lock ID before the get.
+	GetForTLF(ctx context.Context, id tlf.ID, lockBeforeGet *keybase1.LockID) (
+		ImmutableRootMetadata, error)
 
 	// GetUnmergedForTLF is the same as the above but for unmerged
 	// metadata.
@@ -1142,8 +1149,11 @@ type MDOps interface {
 
 	// GetRange returns a range of metadata objects corresponding to
 	// the passed revision numbers (inclusive).
-	GetRange(ctx context.Context, id tlf.ID, start, stop kbfsmd.Revision) (
-		[]ImmutableRootMetadata, error)
+	//
+	// If lockBeforeGet is not nil, it causes mdserver to take the lock on the
+	// lock ID before the get.
+	GetRange(ctx context.Context, id tlf.ID, start, stop kbfsmd.Revision,
+		lockID *keybase1.LockID) ([]ImmutableRootMetadata, error)
 
 	// GetUnmergedRange is the same as the above but for unmerged
 	// metadata history (inclusive).
@@ -1156,8 +1166,15 @@ type MDOps interface {
 	// the ImmutableRootMetadata requires knowing the verifying key,
 	// which might not be the same as the local user's verifying key
 	// if the MD has been copied from a previous update.
+	//
+	// If lockContext is not nil, it causes the mdserver to check a lockID at
+	// the time of the put, and optionally (if specified in lockContext)
+	// releases the lock on the lock ID if the put is successful. Releasing the
+	// lock in mdserver is idempotent.
 	Put(ctx context.Context, rmd *RootMetadata,
-		verifyingKey kbfscrypto.VerifyingKey) (ImmutableRootMetadata, error)
+		verifyingKey kbfscrypto.VerifyingKey,
+		lockContext *keybase1.LockContext, priority keybase1.MDPriority) (
+		ImmutableRootMetadata, error)
 
 	// PutUnmerged is the same as the above but for unmerged metadata
 	// history.  This also adds the resulting ImmutableRootMetadata
@@ -1189,8 +1206,7 @@ type MDOps interface {
 	// GetLatestHandleForTLF returns the server's idea of the latest handle for the TLF,
 	// which may not yet be reflected in the MD if the TLF hasn't been rekeyed since it
 	// entered into a conflicting state.
-	GetLatestHandleForTLF(ctx context.Context, id tlf.ID) (
-		tlf.Handle, error)
+	GetLatestHandleForTLF(ctx context.Context, id tlf.ID) (tlf.Handle, error)
 }
 
 // KeyOps fetches server-side key halves from the key server.
@@ -1319,29 +1335,56 @@ type MDServer interface {
 	// creates the folder if one doesn't exist yet, and the logged-in
 	// user has permission to do so.
 	//
+	// If lockBeforeGet is not nil, it takes a lock on the lock ID before
+	// trying to get anything. If taking the lock fails, an error is returned.
+	// Note that taking a lock from the mdserver is idempotent.
+	//
 	// If there is no returned error, then the returned ID must
 	// always be non-null. A nil *RootMetadataSigned may be
 	// returned, but if it is non-nil, then its ID must match the
 	// returned ID.
 	GetForHandle(ctx context.Context, handle tlf.Handle,
-		mStatus MergeStatus) (tlf.ID, *RootMetadataSigned, error)
+		mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (
+		tlf.ID, *RootMetadataSigned, error)
 
 	// GetForTLF returns the current (signed/encrypted) metadata object
 	// corresponding to the given top-level folder, if the logged-in
 	// user has read permission on the folder.
-	GetForTLF(ctx context.Context, id tlf.ID, bid BranchID, mStatus MergeStatus) (
-		*RootMetadataSigned, error)
+	//
+	// If lockBeforeGet is not nil, it takes a lock on the lock ID before
+	// trying to get anything. If taking the lock fails, an error is returned.
+	// Note that taking a lock from the mdserver is idempotent.
+	GetForTLF(ctx context.Context, id tlf.ID, bid BranchID, mStatus MergeStatus,
+		lockBeforeGet *keybase1.LockID) (*RootMetadataSigned, error)
 
 	// GetRange returns a range of (signed/encrypted) metadata objects
 	// corresponding to the passed revision numbers (inclusive).
+	//
+	// If lockBeforeGet is not nil, it takes a lock on the lock ID before
+	// trying to get anything. If taking the lock fails, an error is returned.
+	// Note that taking a lock from the mdserver is idempotent.
 	GetRange(ctx context.Context, id tlf.ID, bid BranchID, mStatus MergeStatus,
-		start, stop kbfsmd.Revision) ([]*RootMetadataSigned, error)
+		start, stop kbfsmd.Revision, lockBeforeGet *keybase1.LockID) (
+		[]*RootMetadataSigned, error)
 
 	// Put stores the (signed/encrypted) metadata object for the given
 	// top-level folder. Note: If the unmerged bit is set in the metadata
 	// block's flags bitmask it will be appended to the unmerged per-device
 	// history.
-	Put(ctx context.Context, rmds *RootMetadataSigned, extra ExtraMetadata) error
+	//
+	// If lockContext is not nil, it causes the mdserver to check a lockID at
+	// the time of the put, and optionally (if specified in lockContext)
+	// releases the lock on the lock ID if the put is successful. Releasing the
+	// lock in mdserver is idempotent.
+	Put(ctx context.Context, rmds *RootMetadataSigned, extra ExtraMetadata,
+		lockContext *keybase1.LockContext, priority keybase1.MDPriority) error
+
+	// LockOps performs a locking operation with a mdserver. If isTake is true, it
+	// ensures lockID for tlfID is taken by this device, i.e., idempotently
+	// take the lock. If isTake is false, it ensures lockID for tlfID is not taken
+	// by this device, i.e., idmpotently release the lock.
+	LockOp(ctx context.Context,
+		tlfID tlf.ID, lockID keybase1.LockID, isTake bool) error
 
 	// PruneBranch prunes all unmerged history for the given TLF branch.
 	PruneBranch(ctx context.Context, id tlf.ID, bid BranchID) error
@@ -1395,8 +1438,7 @@ type MDServer interface {
 	// which may not yet be reflected in the MD if the TLF hasn't been rekeyed since it
 	// entered into a conflicting state.  For the highest level of confidence, the caller
 	// should verify the mapping with a Merkle tree lookup.
-	GetLatestHandleForTLF(ctx context.Context, id tlf.ID) (
-		tlf.Handle, error)
+	GetLatestHandleForTLF(ctx context.Context, id tlf.ID) (tlf.Handle, error)
 
 	// OffsetFromServerTime is the current estimate for how off our
 	// local clock is from the mdserver clock.  Add this to any
