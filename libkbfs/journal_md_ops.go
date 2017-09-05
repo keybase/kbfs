@@ -223,7 +223,7 @@ func (j journalMDOps) getRangeFromJournal(
 }
 
 func (j journalMDOps) GetForHandle(ctx context.Context, handle *TlfHandle,
-	mStatus MergeStatus, lockBeforeLock *keybase1.LockID) (
+	mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (
 	tlfID tlf.ID, rmd ImmutableRootMetadata, err error) {
 	// TODO: Ideally, *TlfHandle would have a nicer String() function.
 	j.jServer.log.LazyTrace(ctx, "jMDOps: GetForHandle %+v %s", handle, mStatus)
@@ -247,7 +247,7 @@ func (j journalMDOps) GetForHandle(ctx context.Context, handle *TlfHandle,
 		return tlf.ID{}, ImmutableRootMetadata{}, err
 	}
 	tlfID, _, err = j.jServer.config.MDServer().GetForHandle(
-		ctx, bh, Merged, lockBeforeLock)
+		ctx, bh, Merged, lockBeforeGet)
 	if err != nil {
 		return tlf.ID{}, ImmutableRootMetadata{}, err
 	}
@@ -272,7 +272,7 @@ func (j journalMDOps) GetForHandle(ctx context.Context, handle *TlfHandle,
 	// Otherwise, use the server's head.  It's ok to let it be cached
 	// this time, since there's nothing to conflict with in the
 	// journal.
-	_, rmd, err = j.MDOps.GetForHandle(ctx, handle, mStatus, lockBeforeLock)
+	_, rmd, err = j.MDOps.GetForHandle(ctx, handle, mStatus, lockBeforeGet)
 	if err != nil {
 		return tlf.ID{}, ImmutableRootMetadata{}, err
 	}
@@ -289,7 +289,7 @@ func (j journalMDOps) GetForHandle(ctx context.Context, handle *TlfHandle,
 // TODO: Combine the two GetForTLF functions in MDOps to avoid the
 // need for this helper function.
 func (j journalMDOps) getForTLF(ctx context.Context, id tlf.ID, bid BranchID,
-	mStatus MergeStatus, lockBeforeLock *keybase1.LockID,
+	mStatus MergeStatus, lockBeforeGet *keybase1.LockID,
 	delegateFn func(context.Context, tlf.ID, *keybase1.LockID) (
 		ImmutableRootMetadata, error)) (ImmutableRootMetadata, error) {
 	// If the journal has a head, use that.
@@ -302,11 +302,11 @@ func (j journalMDOps) getForTLF(ctx context.Context, id tlf.ID, bid BranchID,
 	}
 
 	// Otherwise, consult the server instead.
-	return delegateFn(ctx, id, lockBeforeLock)
+	return delegateFn(ctx, id, lockBeforeGet)
 }
 
 func (j journalMDOps) GetForTLF(
-	ctx context.Context, id tlf.ID, lockBeforeLock *keybase1.LockID) (
+	ctx context.Context, id tlf.ID, lockBeforeGet *keybase1.LockID) (
 	irmd ImmutableRootMetadata, err error) {
 	j.jServer.log.LazyTrace(ctx, "jMDOps: GetForTLF %s", id)
 	defer func() {
@@ -314,7 +314,7 @@ func (j journalMDOps) GetForTLF(
 	}()
 
 	return j.getForTLF(
-		ctx, id, NullBranchID, Merged, lockBeforeLock, j.MDOps.GetForTLF)
+		ctx, id, NullBranchID, Merged, lockBeforeGet, j.MDOps.GetForTLF)
 }
 
 func (j journalMDOps) GetUnmergedForTLF(
@@ -336,9 +336,9 @@ func (j journalMDOps) GetUnmergedForTLF(
 // for this helper function.
 func (j journalMDOps) getRange(
 	ctx context.Context, id tlf.ID, bid BranchID, mStatus MergeStatus,
-	start, stop kbfsmd.Revision, lockBeforeLock *keybase1.LockID,
+	start, stop kbfsmd.Revision, lockBeforeGet *keybase1.LockID,
 	delegateFn func(ctx context.Context, id tlf.ID,
-		start, stop kbfsmd.Revision, lockBeforeLock *keybase1.LockID) (
+		start, stop kbfsmd.Revision, lockBeforeGet *keybase1.LockID) (
 		[]ImmutableRootMetadata, error)) (
 	[]ImmutableRootMetadata, error) {
 	// Grab the range from the journal first.
@@ -348,7 +348,7 @@ func (j journalMDOps) getRange(
 		break
 	case errTLFJournalDisabled:
 		// Fall back to the server.
-		return delegateFn(ctx, id, start, stop, lockBeforeLock)
+		return delegateFn(ctx, id, start, stop, lockBeforeGet)
 	default:
 		return nil, err
 	}
@@ -362,7 +362,7 @@ func (j journalMDOps) getRange(
 		if bid == PendingLocalSquashBranchID {
 			return jirmds, nil
 		}
-		return delegateFn(ctx, id, start, stop, lockBeforeLock)
+		return delegateFn(ctx, id, start, stop, lockBeforeGet)
 	}
 
 	// If the first revision from the journal is the first revision we
@@ -376,7 +376,7 @@ func (j journalMDOps) getRange(
 
 	// Otherwise, fetch the rest from the server and prepend them.
 	serverStop := jirmds[0].Revision() - 1
-	irmds, err := delegateFn(ctx, id, start, serverStop, lockBeforeLock)
+	irmds, err := delegateFn(ctx, id, start, serverStop, lockBeforeGet)
 	if err != nil {
 		return nil, err
 	}
@@ -396,14 +396,14 @@ func (j journalMDOps) getRange(
 }
 
 func (j journalMDOps) GetRange(ctx context.Context, id tlf.ID, start,
-	stop kbfsmd.Revision, lockBeforeLock *keybase1.LockID) (
+	stop kbfsmd.Revision, lockBeforeGet *keybase1.LockID) (
 	irmds []ImmutableRootMetadata, err error) {
 	j.jServer.log.LazyTrace(ctx, "jMDOps: GetRange %s %d-%d", id, start, stop)
 	defer func() {
 		j.jServer.deferLog.LazyTrace(ctx, "jMDOps: GetRange %s %d-%d done (err=%v)", id, start, stop, err)
 	}()
 
-	return j.getRange(ctx, id, NullBranchID, Merged, start, stop, lockBeforeLock,
+	return j.getRange(ctx, id, NullBranchID, Merged, start, stop, lockBeforeGet,
 		j.MDOps.GetRange)
 }
 

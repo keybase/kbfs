@@ -526,13 +526,10 @@ func (md *MDServerRemote) GetForHandle(ctx context.Context,
 	// NullBranchID signals that the folder's current branch ID
 	// should be looked up.
 	arg := keybase1.GetMetadataArg{
-		FolderHandle: encodedHandle,
-		BranchID:     NullBranchID.String(),
-		Unmerged:     mStatus == Unmerged,
-	}
-	if lockBeforeGet != nil {
-		copied := *lockBeforeGet
-		arg.LockBeforeGet = &copied
+		FolderHandle:  encodedHandle,
+		BranchID:      NullBranchID.String(),
+		Unmerged:      mStatus == Unmerged,
+		LockBeforeGet: lockBeforeGet,
 	}
 
 	id, rmdses, err := md.get(ctx, arg)
@@ -556,13 +553,10 @@ func (md *MDServerRemote) GetForTLF(ctx context.Context, id tlf.ID,
 	}()
 
 	arg := keybase1.GetMetadataArg{
-		FolderID: id.String(),
-		BranchID: bid.String(),
-		Unmerged: mStatus == Unmerged,
-	}
-	if lockBeforeGet != nil {
-		copied := *lockBeforeGet
-		arg.LockBeforeGet = &copied
+		FolderID:      id.String(),
+		BranchID:      bid.String(),
+		Unmerged:      mStatus == Unmerged,
+		LockBeforeGet: lockBeforeGet,
 	}
 
 	_, rmdses, err := md.get(ctx, arg)
@@ -592,10 +586,7 @@ func (md *MDServerRemote) GetRange(ctx context.Context, id tlf.ID,
 		Unmerged:      mStatus == Unmerged,
 		StartRevision: start.Number(),
 		StopRevision:  stop.Number(),
-	}
-	if lockBeforeGet != nil {
-		copied := *lockBeforeGet
-		arg.LockBeforeGet = &copied
+		LockBeforeGet: lockBeforeGet,
 	}
 
 	_, rmds, err := md.get(ctx, arg)
@@ -671,20 +662,28 @@ func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned,
 	return md.getClient().PutMetadata(ctx, arg)
 }
 
-// LockOp implements the MDServer interface for MDServerRemote.
-func (md *MDServerRemote) LockOp(ctx context.Context,
-	tlfID tlf.ID, lockID keybase1.LockID, isTake bool) error {
+// Lock implements the MDServer interface for MDServerRemote.
+func (md *MDServerRemote) Lock(ctx context.Context,
+	tlfID tlf.ID, lockID keybase1.LockID) error {
 	ctx = rpc.WithFireNow(ctx)
-	md.log.LazyTrace(ctx, "MDServer: LockOp %s %s %s", tlfID, lockID, isTake)
+	md.log.LazyTrace(ctx, "MDServer: Lock %s %s", tlfID, lockID)
 	defer func() {
-		md.deferLog.LazyTrace(ctx, "MDServer: LockOp %s %s %s", tlfID, lockID, isTake)
+		md.deferLog.LazyTrace(ctx, "MDServer: Lock %s %s", tlfID, lockID)
 	}()
-	if isTake {
-		return md.getClient().Lock(ctx, keybase1.LockArg{
-			FolderID: tlfID.String(),
-			LockID:   lockID,
-		})
-	}
+	return md.getClient().Lock(ctx, keybase1.LockArg{
+		FolderID: tlfID.String(),
+		LockID:   lockID,
+	})
+}
+
+// ReleaseLock implements the MDServer interface for MDServerRemote.
+func (md *MDServerRemote) ReleaseLock(ctx context.Context,
+	tlfID tlf.ID, lockID keybase1.LockID) error {
+	ctx = rpc.WithFireNow(ctx)
+	md.log.LazyTrace(ctx, "MDServer: ReleaseLock %s %s", tlfID, lockID)
+	defer func() {
+		md.deferLog.LazyTrace(ctx, "MDServer: ReleaseLock %s %s", tlfID, lockID)
+	}()
 	return md.getClient().ReleaseLock(ctx, keybase1.ReleaseLockArg{
 		FolderID: tlfID.String(),
 		LockID:   lockID,

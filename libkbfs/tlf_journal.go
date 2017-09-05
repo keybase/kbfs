@@ -1350,6 +1350,7 @@ func (j *tlfJournal) flushOneMDOp(
 
 	j.log.CDebugf(ctx, "Flushing MD for TLF=%s with id=%s, rev=%s, bid=%s",
 		rmds.MD.TlfID(), mdID, rmds.MD.RevisionNumber(), rmds.MD.BID())
+	// TODO: take care of locking in journal.
 	pushErr := mdServer.Put(ctx, rmds, extra, nil, keybase1.MDPriorityNormal)
 	if isRevisionConflict(pushErr) {
 		headMdID, err := getMdID(ctx, mdServer, j.config.Codec(),

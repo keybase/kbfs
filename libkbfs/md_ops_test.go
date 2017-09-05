@@ -212,7 +212,7 @@ func putMDForPrivate(config *ConfigMock, rmd *RootMetadata) {
 	config.mockBsplit.EXPECT().ShouldEmbedBlockChanges(gomock.Any()).
 		Return(true)
 	config.mockMdserv.EXPECT().Put(gomock.Any(), gomock.Any(), gomock.Any(),
-		gomock.Any(), gomock.Any()).Return(nil)
+		nil, gomock.Any()).Return(nil)
 	config.mockMdcache.EXPECT().Replace(gomock.Any(), gomock.Any())
 }
 
@@ -226,7 +226,7 @@ func testMDOpsGetForHandlePublicSuccess(t *testing.T, ver MetadataVer) {
 	verifyMDForPublic(config, rmds, nil)
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(),
-		Merged, gomock.Any()).Return(tlf.NullID, rmds, nil)
+		Merged, nil).Return(tlf.NullID, rmds, nil)
 
 	// Do this first, since rmds is consumed.
 	expectedMD := rmds.MD
@@ -253,7 +253,7 @@ func testMDOpsGetForHandlePrivateSuccess(t *testing.T, ver MetadataVer) {
 	verifyMDForPrivate(config, rmds)
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(),
-		Merged, gomock.Any()).Return(tlf.NullID, rmds, nil)
+		Merged, nil).Return(tlf.NullID, rmds, nil)
 	expectGetKeyBundles(ctx, config, extra)
 
 	// Do this first, since rmds is consumed.
@@ -278,7 +278,7 @@ func testMDOpsGetForUnresolvedHandlePublicSuccess(t *testing.T, ver MetadataVer)
 	require.NoError(t, err)
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx,
-		hUnresolved.ToBareHandleOrBust(), Merged, gomock.Any()).Return(
+		hUnresolved.ToBareHandleOrBust(), Merged, nil).Return(
 		tlf.NullID, rmds, nil).Times(2)
 
 	// First time should fail.
@@ -327,7 +327,7 @@ func testMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T, ver MetadataVe
 	require.NoError(t, err)
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(),
-		Merged, gomock.Any()).Return(tlf.NullID, rmds1, nil)
+		Merged, nil).Return(tlf.NullID, rmds1, nil)
 
 	// First time should fail.
 	_, _, err = config.MDOps().GetForHandle(ctx, h, Merged, nil)
@@ -340,7 +340,7 @@ func testMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T, ver MetadataVe
 	daemon.addNewAssertionForTestOrBust("charlie", "charlie@twitter")
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(),
-		Merged, gomock.Any()).Return(tlf.NullID, rmds2, nil)
+		Merged, nil).Return(tlf.NullID, rmds2, nil)
 
 	// Second and time should succeed.
 	if _, _, err := config.MDOps().GetForHandle(ctx, h, Merged, nil); err != nil {
@@ -348,7 +348,7 @@ func testMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T, ver MetadataVe
 	}
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(),
-		Merged, gomock.Any()).Return(tlf.NullID, rmds3, nil)
+		Merged, nil).Return(tlf.NullID, rmds3, nil)
 
 	if _, _, err := config.MDOps().GetForHandle(ctx, h, Merged, nil); err != nil {
 		t.Errorf("Got error on get: %v", err)
@@ -370,7 +370,7 @@ func testMDOpsGetForUnresolvedHandlePublicFailure(t *testing.T, ver MetadataVer)
 	daemon.addNewAssertionForTestOrBust("bob", "bob@twitter")
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx,
-		hUnresolved.ToBareHandleOrBust(), Merged, gomock.Any()).Return(
+		hUnresolved.ToBareHandleOrBust(), Merged, nil).Return(
 		tlf.NullID, rmds, nil)
 
 	// Should still fail.
@@ -391,7 +391,7 @@ func testMDOpsGetForHandlePublicFailFindKey(t *testing.T, ver MetadataVer) {
 	verifyMDForPublic(config, rmds, VerifyingKeyNotFoundError{})
 
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(),
-		Merged, gomock.Any()).Return(tlf.NullID, rmds, nil)
+		Merged, nil).Return(tlf.NullID, rmds, nil)
 
 	_, _, err := config.MDOps().GetForHandle(ctx, h, Merged, nil)
 	if _, ok := err.(UnverifiableTlfUpdateError); !ok {
@@ -419,7 +419,7 @@ func testMDOpsGetForHandlePublicFailVerify(t *testing.T, ver MetadataVer) {
 	// which will then cause an MDMismatchError.
 	rmds.MD.(MutableBareRootMetadata).SetRefBytes(100)
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(),
-		Merged, gomock.Any()).Return(tlf.NullID, rmds, nil)
+		Merged, nil).Return(tlf.NullID, rmds, nil)
 
 	_, _, err := config.MDOps().GetForHandle(ctx, h, Merged, nil)
 	require.IsType(t, MDMismatchError{}, err)
@@ -435,7 +435,7 @@ func testMDOpsGetForHandleFailGet(t *testing.T, ver MetadataVer) {
 
 	// only the get happens, no verify needed with a blank sig
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(),
-		Merged, gomock.Any()).Return(tlf.NullID, nil, err)
+		Merged, nil).Return(tlf.NullID, nil, err)
 
 	if _, _, err2 := config.MDOps().GetForHandle(ctx, h, Merged, nil); err2 != err {
 		t.Errorf("Got bad error on get: %v", err2)
@@ -452,7 +452,7 @@ func testMDOpsGetForHandleFailHandleCheck(t *testing.T, ver MetadataVer) {
 	// Make a different handle.
 	otherH := parseTlfHandleOrBust(t, config, "alice", tlf.Private)
 	config.mockMdserv.EXPECT().GetForHandle(ctx, otherH.ToBareHandleOrBust(),
-		Merged, gomock.Any()).Return(tlf.NullID, rmds, nil)
+		Merged, nil).Return(tlf.NullID, rmds, nil)
 	expectGetKeyBundles(ctx, config, extra)
 
 	_, _, err := config.MDOps().GetForHandle(ctx, otherH, Merged, nil)
@@ -472,7 +472,7 @@ func testMDOpsGetSuccess(t *testing.T, ver MetadataVer) {
 	verifyMDForPrivate(config, rmds)
 
 	config.mockMdserv.EXPECT().GetForTLF(ctx, rmds.MD.TlfID(), NullBranchID,
-		Merged, gomock.Any()).Return(rmds, nil)
+		Merged, nil).Return(rmds, nil)
 	expectGetKeyBundles(ctx, config, extra)
 
 	// Do this first, since rmds is consumed.
@@ -492,7 +492,7 @@ func testMDOpsGetBlankSigFailure(t *testing.T, ver MetadataVer) {
 
 	// only the get happens, no verify needed with a blank sig
 	config.mockMdserv.EXPECT().GetForTLF(ctx, rmds.MD.TlfID(), NullBranchID,
-		Merged, gomock.Any()).Return(rmds, nil)
+		Merged, nil).Return(rmds, nil)
 	expectGetKeyBundles(ctx, config, extra)
 
 	if _, err := config.MDOps().GetForTLF(ctx, rmds.MD.TlfID(), nil); err == nil {
@@ -509,7 +509,7 @@ func testMDOpsGetFailGet(t *testing.T, ver MetadataVer) {
 
 	// only the get happens, no verify needed with a blank sig
 	config.mockMdserv.EXPECT().GetForTLF(ctx, id, NullBranchID,
-		Merged, gomock.Any()).Return(nil, err)
+		Merged, nil).Return(nil, err)
 
 	if _, err2 := config.MDOps().GetForTLF(ctx, id, nil); err2 != err {
 		t.Errorf("Got bad error on get: %v", err2)
@@ -526,7 +526,7 @@ func testMDOpsGetFailIDCheck(t *testing.T, ver MetadataVer) {
 	id2 := tlf.FakeID(2, tlf.Public)
 
 	config.mockMdserv.EXPECT().GetForTLF(ctx, id2, NullBranchID,
-		Merged, gomock.Any()).Return(rmds, nil)
+		Merged, nil).Return(rmds, nil)
 	expectGetKeyBundles(ctx, config, extra)
 
 	if _, err := config.MDOps().GetForTLF(ctx, id2, nil); err == nil {

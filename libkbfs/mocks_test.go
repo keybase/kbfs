@@ -4313,16 +4313,28 @@ func (mr *MockMDServerMockRecorder) Put(ctx, rmds, extra, lockContext, priority 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockMDServer)(nil).Put), ctx, rmds, extra, lockContext, priority)
 }
 
-// LockOp mocks base method
-func (m *MockMDServer) LockOp(ctx context.Context, tlfID tlf.ID, lockID keybase1.LockID, isTake bool) error {
-	ret := m.ctrl.Call(m, "LockOp", ctx, tlfID, lockID, isTake)
+// Lock mocks base method
+func (m *MockMDServer) Lock(ctx context.Context, tlfID tlf.ID, lockID keybase1.LockID) error {
+	ret := m.ctrl.Call(m, "Lock", ctx, tlfID, lockID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// LockOp indicates an expected call of LockOp
-func (mr *MockMDServerMockRecorder) LockOp(ctx, tlfID, lockID, isTake interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockOp", reflect.TypeOf((*MockMDServer)(nil).LockOp), ctx, tlfID, lockID, isTake)
+// Lock indicates an expected call of Lock
+func (mr *MockMDServerMockRecorder) Lock(ctx, tlfID, lockID interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Lock", reflect.TypeOf((*MockMDServer)(nil).Lock), ctx, tlfID, lockID)
+}
+
+// ReleaseLock mocks base method
+func (m *MockMDServer) ReleaseLock(ctx context.Context, tlfID tlf.ID, lockID keybase1.LockID) error {
+	ret := m.ctrl.Call(m, "ReleaseLock", ctx, tlfID, lockID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReleaseLock indicates an expected call of ReleaseLock
+func (mr *MockMDServerMockRecorder) ReleaseLock(ctx, tlfID, lockID interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseLock", reflect.TypeOf((*MockMDServer)(nil).ReleaseLock), ctx, tlfID, lockID)
 }
 
 // PruneBranch mocks base method
@@ -4575,16 +4587,28 @@ func (mr *MockmdServerLocalMockRecorder) Put(ctx, rmds, extra, lockContext, prio
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Put", reflect.TypeOf((*MockmdServerLocal)(nil).Put), ctx, rmds, extra, lockContext, priority)
 }
 
-// LockOp mocks base method
-func (m *MockmdServerLocal) LockOp(ctx context.Context, tlfID tlf.ID, lockID keybase1.LockID, isTake bool) error {
-	ret := m.ctrl.Call(m, "LockOp", ctx, tlfID, lockID, isTake)
+// Lock mocks base method
+func (m *MockmdServerLocal) Lock(ctx context.Context, tlfID tlf.ID, lockID keybase1.LockID) error {
+	ret := m.ctrl.Call(m, "Lock", ctx, tlfID, lockID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// LockOp indicates an expected call of LockOp
-func (mr *MockmdServerLocalMockRecorder) LockOp(ctx, tlfID, lockID, isTake interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockOp", reflect.TypeOf((*MockmdServerLocal)(nil).LockOp), ctx, tlfID, lockID, isTake)
+// Lock indicates an expected call of Lock
+func (mr *MockmdServerLocalMockRecorder) Lock(ctx, tlfID, lockID interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Lock", reflect.TypeOf((*MockmdServerLocal)(nil).Lock), ctx, tlfID, lockID)
+}
+
+// ReleaseLock mocks base method
+func (m *MockmdServerLocal) ReleaseLock(ctx context.Context, tlfID tlf.ID, lockID keybase1.LockID) error {
+	ret := m.ctrl.Call(m, "ReleaseLock", ctx, tlfID, lockID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReleaseLock indicates an expected call of ReleaseLock
+func (mr *MockmdServerLocalMockRecorder) ReleaseLock(ctx, tlfID, lockID interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseLock", reflect.TypeOf((*MockmdServerLocal)(nil).ReleaseLock), ctx, tlfID, lockID)
 }
 
 // PruneBranch mocks base method

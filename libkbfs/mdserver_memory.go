@@ -548,9 +548,17 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 	return nil
 }
 
-// LockOp (does not) implement the MDServer interface for MDServerMemory.
-func (*MDServerMemory) LockOp(ctx context.Context,
-	tlfID tlf.ID, lockID keybase1.LockID, isTake bool) error {
+// Lock (does not) implement the MDServer interface for MDServerMemory.
+func (*MDServerMemory) Lock(ctx context.Context,
+	tlfID tlf.ID, lockID keybase1.LockID) error {
+	// In-memory MD server doesn't need to do anything about locking since it's
+	// all within the same session.
+	return nil
+}
+
+// ReleaseLock (does not) implement the MDServer interface for MDServerMemory.
+func (*MDServerMemory) ReleaseLock(ctx context.Context,
+	tlfID tlf.ID, lockID keybase1.LockID) error {
 	// In-memory MD server doesn't need to do anything about locking since it's
 	// all within the same session.
 	return nil

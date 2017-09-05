@@ -147,7 +147,7 @@ func TestCRInput(t *testing.T) {
 			ImmutableRootMetadata{}, NoSuchMDError{cr.fbo.id(), i, NullBranchID})
 	}
 	config.mockMdops.EXPECT().GetRange(gomock.Any(), cr.fbo.id(), mergedHead+1,
-		gomock.Any(), gomock.Any()).Return(nil, nil)
+		gomock.Any(), nil).Return(nil, nil)
 
 	// CR doesn't see any operations and so it does resolution early.
 	// Just cause an error so it doesn't bother the mocks too much.

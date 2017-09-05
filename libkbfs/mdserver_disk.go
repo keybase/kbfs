@@ -439,10 +439,16 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned,
 	return nil
 }
 
-// LockOp (does not) implement the MDServer interface for MDServerDisk.
-func (*MDServerDisk) LockOp(ctx context.Context,
-	tlfID tlf.ID, lockID keybase1.LockID, isTake bool) error {
-	panic("LockOp called on *MDServerDisk")
+// Lock (does not) implement the MDServer interface for MDServerDisk.
+func (*MDServerDisk) Lock(ctx context.Context,
+	tlfID tlf.ID, lockID keybase1.LockID) error {
+	panic("Lock called on *MDServerDisk")
+}
+
+// ReleaseLock (does not) implement the MDServer interface for MDServerDisk.
+func (*MDServerDisk) ReleaseLock(ctx context.Context,
+	tlfID tlf.ID, lockID keybase1.LockID) error {
+	panic("ReleaseLock called on *MDServerDisk")
 }
 
 // PruneBranch implements the MDServer interface for MDServerDisk.

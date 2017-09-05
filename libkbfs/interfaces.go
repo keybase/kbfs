@@ -1171,6 +1171,11 @@ type MDOps interface {
 	// the time of the put, and optionally (if specified in lockContext)
 	// releases the lock on the lock ID if the put is successful. Releasing the
 	// lock in mdserver is idempotent.
+	//
+	// The priority parameter specifies the priority of this particular MD put
+	// operation. When conflict happens, mdserver tries to prioritize writes
+	// with higher priorities. Caller should use pre-defined (or define new)
+	// constants in keybase1 package, such as keybase1.MDPriorityNormal.
 	Put(ctx context.Context, rmd *RootMetadata,
 		verifyingKey kbfscrypto.VerifyingKey,
 		lockContext *keybase1.LockContext, priority keybase1.MDPriority) (
@@ -1379,12 +1384,20 @@ type MDServer interface {
 	Put(ctx context.Context, rmds *RootMetadataSigned, extra ExtraMetadata,
 		lockContext *keybase1.LockContext, priority keybase1.MDPriority) error
 
-	// LockOps performs a locking operation with a mdserver. If isTake is true, it
-	// ensures lockID for tlfID is taken by this device, i.e., idempotently
-	// take the lock. If isTake is false, it ensures lockID for tlfID is not taken
-	// by this device, i.e., idmpotently release the lock.
-	LockOp(ctx context.Context,
-		tlfID tlf.ID, lockID keybase1.LockID, isTake bool) error
+	// Lock ensures lockID for tlfID is taken by this session, i.e.,
+	// idempotently take the lock. If the lock is already taken by *another*
+	// session, mdserver returns a throttle error, causing RPC layer at client
+	// to retry. So caller of this method should observe a behavior similar to
+	// blocking call, which upon successful return, makes sure the lock is
+	// taken on the server. Note that the lock expires after certain time, so
+	// it's important to make writes contingent to the lock by requiring the
+	// lockID in Put.
+	Lock(ctx context.Context, tlfID tlf.ID, lockID keybase1.LockID) error
+
+	// Release Lock ensures lockID for tlfID is not taken by this session, i.e.,
+	// idempotently release the lock. If the lock is already released or
+	// expired, this is a no-op.
+	ReleaseLock(ctx context.Context, tlfID tlf.ID, lockID keybase1.LockID) error
 
 	// PruneBranch prunes all unmerged history for the given TLF branch.
 	PruneBranch(ctx context.Context, id tlf.ID, bid BranchID) error
