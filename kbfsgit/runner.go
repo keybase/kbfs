@@ -29,6 +29,7 @@ import (
 	gogit "gopkg.in/src-d/go-git.v4"
 	gogitcfg "gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/storage"
 )
 
 const (
@@ -80,22 +81,6 @@ const (
 	ctxCommandIDKey ctxCommandTagKey = iota
 )
 
-func getHandleFromFolderName(ctx context.Context, config libkbfs.Config,
-	tlfName string, t tlf.Type) (*libkbfs.TlfHandle, error) {
-	for {
-		tlfHandle, err := libkbfs.ParseTlfHandle(
-			ctx, config.KBPKI(), tlfName, t)
-		switch e := errors.Cause(err).(type) {
-		case libkbfs.TlfNameNotCanonical:
-			tlfName = e.NameToTry
-		case nil:
-			return tlfHandle, nil
-		default:
-			return nil, err
-		}
-	}
-}
-
 type runner struct {
 	config libkbfs.Config
 	log    logger.Logger
@@ -144,7 +129,8 @@ func newRunner(ctx context.Context, config libkbfs.Config,
 		return nil, errors.Errorf("Unrecognized TLF type: %s", parts[0])
 	}
 
-	h, err := getHandleFromFolderName(ctx, config, parts[1], t)
+	h, err := libkbfs.GetHandleFromFolderNameAndType(
+		ctx, config.KBPKI(), parts[1], t)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +224,7 @@ func (r *runner) printDoneOrErr(
 	}
 }
 
-func (r *runner) initRepoIfNeeded(ctx context.Context) (
+func (r *runner) initRepoIfNeeded(ctx context.Context, forCmd string) (
 	repo *gogit.Repository, err error) {
 	// This function might be called multiple times per function, but
 	// the subsequent calls will use the local cache.  So only print
@@ -265,17 +251,51 @@ func (r *runner) initRepoIfNeeded(ctx context.Context) (
 	// backslashes in remote URLs, and 2) we don't want to persist the
 	// remotes anyway since they'll contain local paths and wouldn't
 	// make sense to other devices, plus that could leak local info.
-	storer, err := newConfigWithoutRemotesStorer(fs)
+	var storage storage.Storer
+	storage, err = newConfigWithoutRemotesStorer(fs)
 	if err != nil {
 		return nil, err
+	}
+
+	if forCmd == gitCmdFetch {
+		r.log.CDebugf(ctx, "Using on-demand storer")
+		// Wrap it in an on-demand storer, so we don't try to read all the
+		// objects of big repos into memory at once.
+		storage, err = newOnDemandStorer(storage)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	config, err := storage.Config()
+	if err != nil {
+		return nil, err
+	}
+	if config.Pack.Window > 0 {
+		// Turn delta compression off, both to avoid messing up the
+		// on-demand storer, and to avoid the unnecessary computation
+		// since we're not transferring the objects over a network.
+		// TODO: this results in uncompressed local git repo after
+		// fetches, so we should either run:
+		//
+		// `git repack -a -d -f --depth=250 --window=250` as needed.
+		// (via https://stackoverflow.com/questions/7102053/git-pull-without-remotely-compressing-objects)
+		//
+		// or we should document that the user should do so.
+		r.log.CDebugf(ctx, "Disabling pack compression by using a 0 window")
+		config.Pack.Window = 0
+		err = storage.SetConfig(config)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// TODO: This needs to take a server lock when initializing a
 	// repo.
 	r.log.CDebugf(ctx, "Attempting to init or open repo %s", r.repo)
-	repo, err = gogit.Init(storer, nil)
+	repo, err = gogit.Init(storage, nil)
 	if err == gogit.ErrRepositoryAlreadyExists {
-		repo, err = gogit.Open(storer, nil)
+		repo, err = gogit.Open(storage, nil)
 	}
 	if err != nil {
 		return nil, err
@@ -412,7 +432,7 @@ func (r *runner) handleList(ctx context.Context, args []string) (err error) {
 		return errors.Errorf("Bad list request: %v", args)
 	}
 
-	repo, err := r.initRepoIfNeeded(ctx)
+	repo, err := r.initRepoIfNeeded(ctx, gitCmdList)
 	if err != nil {
 		return err
 	}
@@ -495,6 +515,7 @@ func (r *runner) processGogitStatus(
 
 		switch update.Stage {
 		case plumbing.StatusDone:
+			r.log.CDebugf(ctx, "Status processing done")
 			return
 		case plumbing.StatusCount:
 			newStr = fmt.Sprintf("%d objects... ", update.ObjectsTotal)
@@ -511,12 +532,14 @@ func (r *runner) processGogitStatus(
 
 		currStage = update.Stage
 	}
+	r.log.CDebugf(ctx, "Status channel closed")
 	r.errput.Write([]byte("\n"))
 }
 
 // recursiveByteCount returns a sum of the size of all files under the
-// directory represented by `fs`, added to `totalSoFar`.  It also
-// returns the length of the last string it printed to `r.errput`.
+// directory represented by `fs`.  It also returns the length of the
+// last string it printed to `r.errput` as `toErase`, to aid in
+// overwriting the text on the next update.
 func (r *runner) recursiveByteCount(
 	ctx context.Context, fs billy.Filesystem, totalSoFar int64, toErase int) (
 	bytes int64, toEraseRet int, err error) {
@@ -531,23 +554,25 @@ func (r *runner) recursiveByteCount(
 			if err != nil {
 				return 0, 0, err
 			}
-			totalSoFar, toErase, err = r.recursiveByteCount(
-				ctx, chrootFS, totalSoFar, toErase)
+			var chrootBytes int64
+			chrootBytes, toErase, err = r.recursiveByteCount(
+				ctx, chrootFS, totalSoFar+bytes, toErase)
 			if err != nil {
 				return 0, 0, err
 			}
+			bytes += chrootBytes
 		} else {
-			totalSoFar += fi.Size()
+			bytes += fi.Size()
 			if r.progress {
 				// This function only runs if r.verbosity >= 1.
 				eraseStr := strings.Repeat("\b", toErase)
-				newStr := fmt.Sprintf("%d bytes... ", totalSoFar)
+				newStr := fmt.Sprintf("%d bytes... ", totalSoFar+bytes)
 				toErase = len(newStr)
 				r.errput.Write([]byte(eraseStr + newStr))
 			}
 		}
 	}
-	return totalSoFar, toErase, nil
+	return bytes, toErase, nil
 }
 
 // statusWriter is a simple io.Writer shim that logs to `r.errput` the
@@ -647,7 +672,7 @@ func (r *runner) recursiveCopy(
 // a single ref will show up for the user.  TODO: Maybe we should run
 // `git gc` for the user on the local repo?
 func (r *runner) handleClone(ctx context.Context) (err error) {
-	_, err = r.initRepoIfNeeded(ctx)
+	_, err = r.initRepoIfNeeded(ctx, "clone")
 	if err != nil {
 		return err
 	}
@@ -720,7 +745,7 @@ func (r *runner) handleClone(ctx context.Context) (err error) {
 // suitably updated.
 func (r *runner) handleFetchBatch(ctx context.Context, args [][]string) (
 	err error) {
-	repo, err := r.initRepoIfNeeded(ctx)
+	repo, err := r.initRepoIfNeeded(ctx, gitCmdFetch)
 	if err != nil {
 		return err
 	}
@@ -822,7 +847,7 @@ func (r *runner) handleFetchBatch(ctx context.Context, args [][]string) (
 // an LF.
 func (r *runner) handlePushBatch(ctx context.Context, args [][]string) (
 	err error) {
-	repo, err := r.initRepoIfNeeded(ctx)
+	repo, err := r.initRepoIfNeeded(ctx, gitCmdPush)
 	if err != nil {
 		return err
 	}
@@ -834,18 +859,8 @@ func (r *runner) handlePushBatch(ctx context.Context, args [][]string) (
 		URLs: []string{r.gitDir},
 	})
 
-	var statusChan plumbing.StatusChan
-	if r.verbosity >= 1 {
-		s := make(chan plumbing.StatusUpdate)
-		defer close(s)
-		statusChan = plumbing.StatusChan(s)
-		go r.processGogitStatus(ctx, s)
-	}
-
 	results := make(map[string]error, len(args))
-	// We don't batch the pushes together, because the protocol
-	// requires a separate ok/error line for each individual ref, and
-	// we can't get that with a batched fetch operation.
+	var refspecs []gogitcfg.RefSpec
 	for _, push := range args {
 		if len(push) != 1 {
 			return errors.Errorf("Bad push request: %v", push)
@@ -856,38 +871,60 @@ func (r *runner) handlePushBatch(ctx context.Context, args [][]string) (
 			return err
 		}
 
-		if !refspec.IsForceUpdate() {
-			r.log.CDebugf(
-				ctx, "Turning a non-force push into a force push for now: %s",
-				refspec)
-		}
-
-		start := strings.Index(push[0], ":") + 1
-		dst := push[0][start:]
-
 		// Delete the reference in the repo if needed; otherwise,
 		// fetch from the local repo into the remote repo.
 		if refspec.IsDelete() {
+			start := strings.Index(push[0], ":") + 1
+			dst := push[0][start:]
+
 			if refspec.IsWildcard() {
 				results[dst] = errors.Errorf(
 					"Wildcards not supported for deletes: %s", refspec)
 				continue
 			}
 			err = repo.Storer.RemoveReference(plumbing.ReferenceName(dst))
+			if err == gogit.NoErrAlreadyUpToDate {
+				err = nil
+			}
+			results[dst] = err
 		} else {
-			err = remote.FetchContext(ctx, &gogit.FetchOptions{
-				RemoteName: localRepoRemoteName,
-				RefSpecs:   []gogitcfg.RefSpec{refspec},
-				StatusChan: statusChan,
-			})
-		}
-		if err == gogit.NoErrAlreadyUpToDate {
-			err = nil
+			if !refspec.IsForceUpdate() {
+				r.log.CDebugf(ctx,
+					"Turning a non-force push into a force push for now: %s",
+					refspec)
+			}
+
+			refspecs = append(refspecs, refspec)
 		}
 		if err != nil {
 			r.log.CDebugf(ctx, "Error fetching %s: %+v", refspec, err)
 		}
-		results[dst] = err
+	}
+
+	if len(refspecs) > 0 {
+		var statusChan plumbing.StatusChan
+		if r.verbosity >= 1 {
+			s := make(chan plumbing.StatusUpdate)
+			defer close(s)
+			statusChan = plumbing.StatusChan(s)
+			go r.processGogitStatus(ctx, s)
+		}
+
+		err = remote.FetchContext(ctx, &gogit.FetchOptions{
+			RemoteName: localRepoRemoteName,
+			RefSpecs:   refspecs,
+			StatusChan: statusChan,
+		})
+		if err == gogit.NoErrAlreadyUpToDate {
+			err = nil
+		}
+		// All non-delete refspecs in the batch get the same error.
+		for _, refspec := range refspecs {
+			refStr := refspec.String()
+			start := strings.Index(refStr, ":") + 1
+			dst := refStr[start:]
+			results[dst] = err
+		}
 	}
 
 	err = r.waitForJournal(ctx)
@@ -965,78 +1002,121 @@ func (r *runner) handleOption(ctx context.Context, args []string) (err error) {
 	return err
 }
 
+func (r *runner) processCommand(
+	ctx context.Context, commandChan <-chan string) (err error) {
+	var fetchBatch, pushBatch [][]string
+	for {
+		select {
+		case cmd := <-commandChan:
+			ctx := libkbfs.CtxWithRandomIDReplayable(
+				ctx, ctxCommandIDKey, ctxCommandOpID, r.log)
+
+			cmdParts := strings.Fields(cmd)
+			if len(cmdParts) == 0 {
+				if len(fetchBatch) > 0 {
+					if r.cloning {
+						r.log.CDebugf(ctx, "Processing clone")
+						err = r.handleClone(ctx)
+						if err != nil {
+							return err
+						}
+					} else {
+						r.log.CDebugf(ctx, "Processing fetch batch")
+						err = r.handleFetchBatch(ctx, fetchBatch)
+						if err != nil {
+							return err
+						}
+					}
+					fetchBatch = nil
+					continue
+				} else if len(pushBatch) > 0 {
+					r.log.CDebugf(ctx, "Processing push batch")
+					err = r.handlePushBatch(ctx, pushBatch)
+					if err != nil {
+						return err
+					}
+					pushBatch = nil
+					continue
+				} else {
+					r.log.CDebugf(ctx, "Done processing commands")
+					return nil
+				}
+			}
+
+			switch cmdParts[0] {
+			case gitCmdCapabilities:
+				err = r.handleCapabilities()
+			case gitCmdList:
+				err = r.handleList(ctx, cmdParts[1:])
+			case gitCmdFetch:
+				if len(pushBatch) > 0 {
+					return errors.New(
+						"Cannot fetch in the middle of a push batch")
+				}
+				fetchBatch = append(fetchBatch, cmdParts[1:])
+			case gitCmdPush:
+				if len(fetchBatch) > 0 {
+					return errors.New(
+						"Cannot push in the middle of a fetch batch")
+				}
+				pushBatch = append(pushBatch, cmdParts[1:])
+			case gitCmdOption:
+				err = r.handleOption(ctx, cmdParts[1:])
+			default:
+				err = errors.Errorf("Unsupported command: %s", cmdParts[0])
+			}
+			if err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
 func (r *runner) processCommands(ctx context.Context) (err error) {
 	r.log.CDebugf(ctx, "Ready to process")
 	reader := bufio.NewReader(r.input)
-	var fetchBatch, pushBatch [][]string
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Process the commands with a separate queue in a separate
+	// goroutine, so we can exit as soon as EOF is received
+	// (indicating the corresponding `git` command has been
+	// interrupted).
+	commandChan := make(chan string, 100)
+	processorErrChan := make(chan error, 1)
+	go func() {
+		processorErrChan <- r.processCommand(ctx, commandChan)
+	}()
+
 	for {
-		cmd, err := reader.ReadString('\n')
-		if errors.Cause(err) == io.EOF {
-			r.log.CDebugf(ctx, "Done processing commands")
-			return nil
-		} else if err != nil {
-			return err
-		}
+		stdinErrChan := make(chan error, 1)
+		go func() {
+			cmd, err := reader.ReadString('\n')
+			if err != nil {
+				stdinErrChan <- err
+				return
+			}
 
-		ctx := libkbfs.CtxWithRandomIDReplayable(
-			ctx, ctxCommandIDKey, ctxCommandOpID, r.log)
+			r.log.CDebugf(ctx, "Received command: %s", cmd)
+			commandChan <- cmd
+			stdinErrChan <- nil
+		}()
 
-		cmdParts := strings.Fields(cmd)
-		if len(cmdParts) == 0 {
-			if len(fetchBatch) > 0 {
-				if r.cloning {
-					r.log.CDebugf(ctx, "Processing clone")
-					err = r.handleClone(ctx)
-					if err != nil {
-						return err
-					}
-				} else {
-					r.log.CDebugf(ctx, "Processing fetch batch")
-					err = r.handleFetchBatch(ctx, fetchBatch)
-					if err != nil {
-						return err
-					}
-				}
-				fetchBatch = nil
-				continue
-			} else if len(pushBatch) > 0 {
-				r.log.CDebugf(ctx, "Processing push batch")
-				err = r.handlePushBatch(ctx, pushBatch)
-				if err != nil {
-					return err
-				}
-				pushBatch = nil
-				continue
-			} else {
+		select {
+		case err := <-stdinErrChan:
+			if errors.Cause(err) == io.EOF {
 				r.log.CDebugf(ctx, "Done processing commands")
 				return nil
+			} else if err != nil {
+				return err
 			}
-		}
-
-		r.log.CDebugf(ctx, "Received command: %s", cmd)
-
-		switch cmdParts[0] {
-		case gitCmdCapabilities:
-			err = r.handleCapabilities()
-		case gitCmdList:
-			err = r.handleList(ctx, cmdParts[1:])
-		case gitCmdFetch:
-			if len(pushBatch) > 0 {
-				return errors.New("Cannot fetch in the middle of a push batch")
-			}
-			fetchBatch = append(fetchBatch, cmdParts[1:])
-		case gitCmdPush:
-			if len(fetchBatch) > 0 {
-				return errors.New("Cannot push in the middle of a fetch batch")
-			}
-			pushBatch = append(pushBatch, cmdParts[1:])
-		case gitCmdOption:
-			err = r.handleOption(ctx, cmdParts[1:])
-		default:
-			err = errors.Errorf("Unsupported command: %s", cmdParts[0])
-		}
-		if err != nil {
+			// Otherwise continue to read the next command.
+		case err := <-processorErrChan:
 			return err
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
 }

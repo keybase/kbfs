@@ -9,6 +9,7 @@ import (
 	"io"
 
 	"github.com/keybase/kbfs/libfs"
+	"github.com/keybase/kbfs/libgit"
 	"github.com/keybase/kbfs/libkbfs"
 )
 
@@ -26,54 +27,25 @@ type StartOptions struct {
 	GitDir string
 }
 
-const (
-	// Debug tag ID for a whole remote helper process.
-	ctxProcessOpID = "GITID"
-)
-
-type ctxProcessTagKey int
-
-const (
-	ctxProcessIDKey ctxProcessTagKey = iota
-)
-
 // Start starts the kbfsgit logic, and begins listening for git
 // commands from `input` and responding to them via `output`.
 func Start(ctx context.Context, options StartOptions,
 	kbCtx libkbfs.Context, defaultLogPath string,
 	input io.Reader, output io.Writer, errput io.Writer) *libfs.Error {
-	log, err := libkbfs.InitLogWithPrefix(
-		options.KbfsParams, kbCtx, "git", defaultLogPath)
-	if err != nil {
-		return libfs.InitError(err.Error())
-	}
-
 	// Ideally we wouldn't print this if the verbosity is 0, but we
 	// don't know that until we start parsing options.  TODO: get rid
 	// of this once we integrate with the kbfs daemon.
 	errput.Write([]byte("Initializing Keybase... "))
-
-	// Assign a unique ID to each remote-helper instance, since
-	// they'll all share the same log.
-	ctx, err = libkbfs.NewContextWithCancellationDelayer(
-		libkbfs.CtxWithRandomIDReplayable(
-			ctx, ctxProcessIDKey, ctxProcessOpID, log))
+	ctx, config, err := libgit.Init(
+		ctx, options.KbfsParams, kbCtx, nil, defaultLogPath)
 	if err != nil {
-		errput.Write([]byte(err.Error() + "\n"))
-		return libfs.InitError(err.Error())
-	}
-	log.CDebugf(
-		ctx, "Running Git remote helper: remote=%s, repo=%s, storageRoot=%s",
-		options.Remote, options.Repo, options.KbfsParams.StorageRoot)
-
-	config, err := libkbfs.InitWithLogPrefix(
-		ctx, kbCtx, options.KbfsParams, nil, nil, log, "git")
-	if err != nil {
-		errput.Write([]byte(err.Error() + "\n"))
 		return libfs.InitError(err.Error())
 	}
 	defer config.Shutdown(ctx)
 
+	config.MakeLogger("").CDebugf(
+		ctx, "Running Git remote helper: remote=%s, repo=%s, storageRoot=%s",
+		options.Remote, options.Repo, options.KbfsParams.StorageRoot)
 	errput.Write([]byte("done.\n"))
 
 	r, err := newRunner(

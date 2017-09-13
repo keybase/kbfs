@@ -631,7 +631,7 @@ func isFastForward(s storer.EncodedObjectStorer, old, new plumbing.Hash) (bool, 
 	}
 
 	found := false
-	iter := object.NewCommitPreorderIter(c, nil)
+	iter := object.NewCommitPreorderIter(c, nil, nil)
 	return found, iter.ForEach(func(c *object.Commit) error {
 		if c.Hash != old {
 			return nil
@@ -813,7 +813,7 @@ func referencesToHashes(refs storer.ReferenceStorer) ([]plumbing.Hash, error) {
 func pushHashes(
 	ctx context.Context,
 	sess transport.ReceivePackSession,
-	sto storer.EncodedObjectStorer,
+	s storage.Storer,
 	req *packp.ReferenceUpdateRequest,
 	hs []plumbing.Hash,
 	statusChan plumbing.StatusChan,
@@ -821,10 +821,14 @@ func pushHashes(
 
 	rd, wr := io.Pipe()
 	req.Packfile = rd
+	config, err := s.Config()
+	if err != nil {
+		return nil, err
+	}
 	done := make(chan error)
 	go func() {
-		e := packfile.NewEncoder(wr, sto, false)
-		if _, err := e.Encode(hs, statusChan); err != nil {
+		e := packfile.NewEncoder(wr, s, false)
+		if _, err := e.Encode(hs, config.Pack.Window, statusChan); err != nil {
 			done <- wr.CloseWithError(err)
 			return
 		}
