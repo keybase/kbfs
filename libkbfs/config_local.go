@@ -101,6 +101,7 @@ type ConfigLocal struct {
 	diskLimiter      DiskLimiter
 	syncedTlfs       map[tlf.ID]bool
 	defaultBlockType keybase1.BlockType
+	kbfsService      *KBFSService
 
 	maxNameBytes uint32
 	maxDirBytes  uint64
@@ -1090,6 +1091,10 @@ func (c *ConfigLocal) Shutdown(ctx context.Context) error {
 	if dbc != nil {
 		dbc.Shutdown(ctx)
 	}
+	kbfsServ := c.kbfsService
+	if kbfsServ != nil {
+		kbfsServ.Shutdown()
+	}
 
 	if len(errorList) == 1 {
 		return errorList[0]
@@ -1369,4 +1374,14 @@ func (c *ConfigLocal) PrefetchStatus(ctx context.Context, tlfID tlf.ID,
 // GetRekeyFSMLimiter implements the Config interface for ConfigLocal.
 func (c *ConfigLocal) GetRekeyFSMLimiter() *OngoingWorkLimiter {
 	return c.rekeyFSMLimiter
+}
+
+// SetKBFSService sets the KBFSService for this ConfigLocal.
+func (c *ConfigLocal) SetKBFSService(k *KBFSService) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.kbfsService != nil {
+		c.kbfsService.Shutdown()
+	}
+	c.kbfsService = k
 }
