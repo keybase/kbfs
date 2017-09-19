@@ -234,7 +234,7 @@ func TestDiskBlockCacheEvictFromTLF(t *testing.T) {
 	t.Parallel()
 	t.Log("Test that disk cache eviction works for a single TLF.")
 	cache, config := initDiskBlockCacheTest(t)
-	standardCache := cache.workingSetCache.(*DiskBlockCacheStandard)
+	standardCache := cache.workingSetCache
 	defer shutdownDiskBlockCacheTest(cache)
 
 	tlf1 := tlf.FakeID(3, tlf.Private)
@@ -317,7 +317,7 @@ func TestDiskBlockCacheEvictOverall(t *testing.T) {
 	t.Parallel()
 	t.Log("Test that disk cache eviction works overall.")
 	cache, config := initDiskBlockCacheTest(t)
-	standardCache := cache.workingSetCache.(*DiskBlockCacheStandard)
+	standardCache := cache.workingSetCache
 	defer shutdownDiskBlockCacheTest(cache)
 
 	ctx := context.Background()
@@ -394,7 +394,7 @@ func TestDiskBlockCacheStaticLimit(t *testing.T) {
 	t.Parallel()
 	t.Log("Test that disk cache eviction works when we hit the static limit.")
 	cache, config := initDiskBlockCacheTest(t)
-	standardCache := cache.workingSetCache.(*DiskBlockCacheStandard)
+	standardCache := cache.workingSetCache
 	defer shutdownDiskBlockCacheTest(cache)
 
 	ctx := context.Background()
@@ -436,7 +436,7 @@ func TestDiskBlockCacheDynamicLimit(t *testing.T) {
 	t.Parallel()
 	t.Log("Test that disk cache eviction works when we hit a dynamic limit.")
 	cache, config := initDiskBlockCacheTest(t)
-	standardCache := cache.workingSetCache.(*DiskBlockCacheStandard)
+	standardCache := cache.workingSetCache
 	defer shutdownDiskBlockCacheTest(cache)
 
 	ctx := context.Background()
@@ -536,7 +536,7 @@ func TestSyncBlockCacheStaticLimit(t *testing.T) {
 	t.Parallel()
 	t.Log("Test that disk cache eviction works when we hit the static limit.")
 	cache, config := initDiskBlockCacheTest(t)
-	standardCache := cache.syncCache.(*DiskBlockCacheStandard)
+	standardCache := cache.syncCache
 	defer shutdownDiskBlockCacheTest(standardCache)
 
 	ctx := context.Background()

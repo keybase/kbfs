@@ -103,6 +103,7 @@ func rateMeterToStatus(m metrics.Meter) MeterStatus {
 // DiskBlockCacheStatus represents the status of the disk cache.
 type DiskBlockCacheStatus struct {
 	IsStarting      bool
+	IsRemote        bool
 	NumBlocks       uint64
 	BlockBytes      uint64
 	CurrByteLimit   uint64
