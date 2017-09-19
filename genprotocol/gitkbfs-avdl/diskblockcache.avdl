@@ -1,0 +1,35 @@
+/**
+  DiskBlockCacheInterface specifies remote disk block cache operations that the
+  KBFS service provides for KBGit.
+  */
+@namespace("gitkbfs.1")
+protocol DiskBlockCache {
+
+  import idl "github.com/keybase/client/go/protocol/keybase1" as keybase1;
+
+  @typedef("bytes") record BlockCacheEntry {}
+  @typedef("bytes") record BlockMetadataEntry {}
+
+  record BlockRes {
+    BlockCacheEntry blockData;
+    BlockMetadataEntry blockMetadata;
+  }
+
+  record DeletBlockRes {
+    int numRemoved;
+    int sizeRemoved;
+  }
+
+  /**
+    getBlock returns an encoded block and its cache metadata.
+    */
+  BlockRes getBlock(string tlfID, string blockID);
+  /**
+    putBlock accepts an encoded block and puts it into the disk cache.
+    */
+  void putBlock(string tlfID, string blockID, BlockCacheEntry buf);
+  /**
+    deleteBlocks deletes a set of blocks from the disk cache.
+    */
+  DeleteBlockRes deleteBlocks(array<string> blockIDs);
+}
