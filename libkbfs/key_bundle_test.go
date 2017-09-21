@@ -42,7 +42,7 @@ func makeFakeTLFCryptKeyInfoFuture(t *testing.T) tlfCryptKeyInfoFuture {
 				[]byte("fake nonce"),
 			},
 		},
-		TLFCryptKeyServerHalfID{hmac},
+		TLFCryptKeyServerHalfID{ID: hmac},
 		5,
 		codec.UnknownFieldSetHandler{},
 	}

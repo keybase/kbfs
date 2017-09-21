@@ -11,6 +11,7 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfshash"
 	"github.com/pkg/errors"
 )
 
@@ -360,6 +361,16 @@ func MakeRandomTLFCryptKeyServerHalf() (
 	}
 	serverHalf = MakeTLFCryptKeyServerHalf(data)
 	return serverHalf, nil
+}
+
+// TLFCryptKeyServerHalfID is the identifier type for a server-side key half.
+type TLFCryptKeyServerHalfID struct {
+	ID kbfshash.HMAC // Exported for serialization.
+}
+
+// String implements the Stringer interface for TLFCryptKeyServerHalfID.
+func (id TLFCryptKeyServerHalfID) String() string {
+	return id.ID.String()
 }
 
 // TLFCryptKeyClientHalf (t_u^{f,k,i} for a user u, a folder f, a key
