@@ -36,13 +36,10 @@ func makeFakeTLFCryptKeyInfoFuture(t *testing.T) tlfCryptKeyInfoFuture {
 		kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x3}))
 	require.NoError(t, err)
 	cki := TLFCryptKeyInfo{
-		EncryptedTLFCryptKeyClientHalf{
-			encryptedData{
-				EncryptionSecretbox,
-				[]byte("fake encrypted data"),
-				[]byte("fake nonce"),
-			},
-		},
+		kbfscrypto.MakeEncryptedTLFCryptKeyClientHalfForTest(
+			EncryptionSecretbox,
+			[]byte("fake encrypted data"),
+			[]byte("fake nonce")),
 		id, 5,
 		codec.UnknownFieldSetHandler{},
 	}

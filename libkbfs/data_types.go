@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"encoding/hex"
 	"fmt"
 	"reflect"
 	"strings"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
-	"github.com/keybase/kbfs/cache"
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfsmd"
@@ -76,68 +74,25 @@ type SessionInfo struct {
 	VerifyingKey   kbfscrypto.VerifyingKey
 }
 
-// EncryptionVer denotes a version for the encryption method.
-type EncryptionVer int
+// EncryptionVer is a temporary alias.
+type EncryptionVer = kbfscrypto.EncryptionVer
 
 const (
-	// EncryptionSecretbox is the encryption version that uses
-	// nacl/secretbox or nacl/box.
-	EncryptionSecretbox EncryptionVer = 1
+	// EncryptionSecretbox is a temporary alias.
+	EncryptionSecretbox EncryptionVer = kbfscrypto.EncryptionSecretbox
 )
 
-func (v EncryptionVer) String() string {
-	switch v {
-	case EncryptionSecretbox:
-		return "EncryptionSecretbox"
-	default:
-		return fmt.Sprintf("EncryptionVer(%d)", v)
-	}
-}
+// EncryptedTLFCryptKeyClientHalf is a temporary alias.
+type EncryptedTLFCryptKeyClientHalf = kbfscrypto.EncryptedTLFCryptKeyClientHalf
 
-// encryptedData is encrypted data with a nonce and a version.
-type encryptedData struct {
-	// Exported only for serialization purposes. Should only be
-	// used by implementations of Crypto.
-	Version       EncryptionVer `codec:"v"`
-	EncryptedData []byte        `codec:"e"`
-	Nonce         []byte        `codec:"n"`
-}
+// EncryptedPrivateMetadata is a temporary alias.
+type EncryptedPrivateMetadata = kbfscrypto.EncryptedPrivateMetadata
 
-// Size implements the cache.Measurable interface.
-func (ed encryptedData) Size() int {
-	return cache.IntSize /* ed.Version */ +
-		cache.PtrSize + len(ed.EncryptedData) + cache.PtrSize + len(ed.Nonce)
-}
+// EncryptedBlock is a temporary alias.
+type EncryptedBlock = kbfscrypto.EncryptedBlock
 
-func (ed encryptedData) String() string {
-	if reflect.DeepEqual(ed, encryptedData{}) {
-		return "EncryptedData{}"
-	}
-	return fmt.Sprintf("%s{data=%s, nonce=%s}",
-		ed.Version, hex.EncodeToString(ed.EncryptedData),
-		hex.EncodeToString(ed.Nonce))
-}
-
-// EncryptedTLFCryptKeyClientHalf is an encrypted
-// TLFCryptKeyClientHalf object.
-type EncryptedTLFCryptKeyClientHalf struct {
-	encryptedData
-}
-
-// EncryptedPrivateMetadata is an encrypted PrivateMetadata object.
-type EncryptedPrivateMetadata struct {
-	encryptedData
-}
-
-// EncryptedBlock is an encrypted Block.
-type EncryptedBlock struct {
-	encryptedData
-}
-
-// EncryptedTLFCryptKeys is an encrypted TLFCryptKey array.
-type EncryptedTLFCryptKeys struct {
-	encryptedData
-}
+// EncryptedTLFCryptKeys is a temporary alias.
+type EncryptedTLFCryptKeys = kbfscrypto.EncryptedTLFCryptKeys
 
 // EncryptedMerkleLeaf is an encrypted Merkle leaf.
 type EncryptedMerkleLeaf struct {

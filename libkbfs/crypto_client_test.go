@@ -86,13 +86,9 @@ func (fc FakeCryptoClient) Call(ctx context.Context, s string, args interface{},
 		arg := args.([]interface{})[0].(keybase1.UnboxBytes32Arg)
 		publicKey := kbfscrypto.MakeTLFEphemeralPublicKey(
 			arg.PeersPublicKey)
-		encryptedClientHalf := EncryptedTLFCryptKeyClientHalf{
-			encryptedData{
-				Version:       EncryptionSecretbox,
-				EncryptedData: arg.EncryptedBytes32[:],
-				Nonce:         arg.Nonce[:],
-			},
-		}
+		encryptedClientHalf := kbfscrypto.MakeEncryptedTLFCryptKeyClientHalfForTest(
+			EncryptionSecretbox, arg.EncryptedBytes32[:],
+			arg.Nonce[:])
 		clientHalf, err := fc.Local.DecryptTLFCryptKeyClientHalf(
 			ctx, publicKey, encryptedClientHalf)
 		if err != nil {
@@ -111,15 +107,10 @@ func (fc FakeCryptoClient) Call(ctx context.Context, s string, args interface{},
 		for _, k := range arg.Bundles {
 			ePublicKey := kbfscrypto.MakeTLFEphemeralPublicKey(
 				k.PublicKey)
-			encryptedClientHalf := EncryptedTLFCryptKeyClientHalf{
-				encryptedData{
-					Version:       EncryptionSecretbox,
-					EncryptedData: make([]byte, len(k.Ciphertext)),
-					Nonce:         make([]byte, len(k.Nonce)),
-				},
-			}
-			copy(encryptedClientHalf.EncryptedData, k.Ciphertext[:])
-			copy(encryptedClientHalf.Nonce, k.Nonce[:])
+			encryptedClientHalf := kbfscrypto.MakeEncryptedTLFCryptKeyClientHalfForTest(
+				EncryptionSecretbox,
+				k.Ciphertext[:],
+				k.Nonce[:])
 			keys = append(keys, EncryptedTLFCryptKeyClientAndEphemeral{
 				EPubKey:    ePublicKey,
 				ClientHalf: encryptedClientHalf,
@@ -212,13 +203,8 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfBoxSeal(t *testing.T) {
 	clientHalfData := clientHalf.Data()
 	ephPrivateKeyData := ephPrivateKey.Data()
 	encryptedBytes := box.Seal(nil, clientHalfData[:], &nonce, (*[32]byte)(&dhKeyPair.Public), &ephPrivateKeyData)
-	encryptedClientHalf := EncryptedTLFCryptKeyClientHalf{
-		encryptedData{
-			Version:       EncryptionSecretbox,
-			Nonce:         nonce[:],
-			EncryptedData: encryptedBytes,
-		},
-	}
+	encryptedClientHalf := kbfscrypto.MakeEncryptedTLFCryptKeyClientHalfForTest(
+		EncryptionSecretbox, encryptedBytes, nonce[:])
 
 	decryptedClientHalf, err := c.DecryptTLFCryptKeyClientHalf(
 		context.Background(), ephPublicKey, encryptedClientHalf)
@@ -433,7 +419,8 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfFailures(t *testing.T) {
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKey,
 		encryptedClientHalfWrongVersion)
 	assert.Equal(t,
-		UnknownEncryptionVer{encryptedClientHalfWrongVersion.Version},
+		kbfscrypto.UnknownEncryptionVer{
+			Ver: encryptedClientHalfWrongVersion.Version},
 		errors.Cause(err))
 
 	// Wrong sizes.
@@ -452,7 +439,8 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfFailures(t *testing.T) {
 	_, err = c.DecryptTLFCryptKeyClientHalf(ctx, ephPublicKey,
 		encryptedClientHalfWrongNonceSize)
 	assert.Equal(t,
-		InvalidNonceError{encryptedClientHalfWrongNonceSize.Nonce},
+		kbfscrypto.InvalidNonceError{
+			Nonce: encryptedClientHalfWrongNonceSize.Nonce},
 		errors.Cause(err))
 
 	// Corrupt key.

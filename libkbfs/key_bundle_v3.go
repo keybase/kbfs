@@ -48,8 +48,8 @@ func (dkimV3 DeviceKeyInfoMapV3) Size() int {
 		// We are not using v.ClientHalf.encryptedData here since that would
 		// include the size of struct itself which is already counted in
 		// cache.StaticSizeOfMapWithSize.
-		contentSize += len(v.ClientHalf.encryptedData.EncryptedData) +
-			len(v.ClientHalf.encryptedData.Nonce)
+		contentSize += len(v.ClientHalf.EncryptedData) +
+			len(v.ClientHalf.Nonce)
 	}
 
 	return mapSize + contentSize
@@ -270,7 +270,7 @@ func (wkb TLFWriterKeyBundleV3) Size() (bytes int) {
 	bytes += wkb.TLFEphemeralPublicKeys.Size()
 
 	// EncryptedHistoricTLFCryptKeys
-	bytes += wkb.EncryptedHistoricTLFCryptKeys.encryptedData.Size()
+	bytes += wkb.EncryptedHistoricTLFCryptKeys.Size()
 
 	// For codec.UnknownFieldSetHandler. It has a private map field which we
 	// can't inspect unless extending the codec package. Just assume it's empty

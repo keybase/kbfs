@@ -245,6 +245,21 @@ func MakeTLFEphemeralPrivateKey(data [32]byte) TLFEphemeralPrivateKey {
 	return TLFEphemeralPrivateKey{privateByte32Container{data}}
 }
 
+// MakeRandomTLFEphemeralKeys generates ephemeral keys using a CSPRNG
+// for a TLF. These keys can then be used to key/rekey the TLF.
+func MakeRandomTLFEphemeralKeys() (
+	TLFEphemeralPublicKey, TLFEphemeralPrivateKey, error) {
+	keyPair, err := libkb.GenerateNaclDHKeyPair()
+	if err != nil {
+		return TLFEphemeralPublicKey{}, TLFEphemeralPrivateKey{},
+			errors.WithStack(err)
+	}
+
+	ePubKey := MakeTLFEphemeralPublicKey(keyPair.Public)
+	ePrivKey := MakeTLFEphemeralPrivateKey(*keyPair.Private)
+	return ePubKey, ePrivKey, nil
+}
+
 // CryptPrivateKey is a private key for encryption/decryption.
 type CryptPrivateKey struct {
 	kp libkb.NaclDHKeyPair
