@@ -19,6 +19,21 @@ import (
 	billy "gopkg.in/src-d/go-billy.v3"
 )
 
+// LockNamespace is a simple wrapper around Bytes(). The namespace bytes should
+// be combined with something else that identifies the lock, which then produce
+// a keybase1.LockID.
+type LockNamespace interface {
+	// Bytes reuturns the namespace in bytes.
+	Bytes() []byte
+}
+
+type lockNamespaceEmpty struct{}
+
+// Bytes implements the LockNamespace interface.
+func (lockNamespaceEmpty) Bytes() []byte {
+	return nil
+}
+
 // FS is a wrapper around a KBFS subdirectory that implements the
 // billy.Filesystem interface.  It uses forward-slash separated paths.
 // It may return errors wrapped with the `github.com/pkg/errors`
@@ -27,15 +42,16 @@ type FS struct {
 	// Yes, storing ctx in a struct is a mortal sin, but the
 	// billy.Filesystem interface doesn't give us a way to accept ctxs
 	// any other way.
-	ctx      context.Context
-	config   libkbfs.Config
-	root     libkbfs.Node
-	rootInfo libkbfs.EntryInfo
-	h        *libkbfs.TlfHandle
-	subdir   string
-	uniqID   string
-	log      logger.Logger
-	deferLog logger.Logger
+	ctx           context.Context
+	config        libkbfs.Config
+	root          libkbfs.Node
+	rootInfo      libkbfs.EntryInfo
+	h             *libkbfs.TlfHandle
+	subdir        string
+	uniqID        string
+	log           logger.Logger
+	deferLog      logger.Logger
+	lockNamespace LockNamespace
 }
 
 var _ billy.Filesystem = (*FS)(nil)
@@ -80,15 +96,16 @@ func NewFS(ctx context.Context, config libkbfs.Config,
 		tlfHandle.GetCanonicalName(), subdir)
 
 	return &FS{
-		ctx:      ctx,
-		config:   config,
-		root:     n,
-		rootInfo: ei,
-		h:        tlfHandle,
-		subdir:   subdir,
-		uniqID:   uniqID,
-		log:      log,
-		deferLog: log.CloneWithAddedDepth(1),
+		ctx:           ctx,
+		config:        config,
+		root:          n,
+		rootInfo:      ei,
+		h:             tlfHandle,
+		subdir:        subdir,
+		uniqID:        uniqID,
+		log:           log,
+		deferLog:      log.CloneWithAddedDepth(1),
+		lockNamespace: lockNamespaceEmpty{},
 	}, nil
 }
 
@@ -634,4 +651,14 @@ func (fs *FS) SyncAll() error {
 // Config returns the underlying Config object of this FS.
 func (fs *FS) Config() libkbfs.Config {
 	return fs.config
+}
+
+// SetLockNamespace sets the namespace used in locking.
+func (fs *FS) SetLockNamespace(lockNamespace LockNamespace) {
+	fs.lockNamespace = lockNamespace
+}
+
+// GetLockNamespace returns the namespace used in locking.
+func (fs *FS) GetLockNamespace() (lockNamespace LockNamespace) {
+	return fs.lockNamespace
 }

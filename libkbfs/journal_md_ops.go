@@ -403,6 +403,11 @@ func (j journalMDOps) GetRange(ctx context.Context, id tlf.ID, start,
 		j.jServer.deferLog.LazyTrace(ctx, "jMDOps: GetRange %s %d-%d done (err=%v)", id, start, stop, err)
 	}()
 
+	if lockBeforeGet != nil {
+		// We need to grab locks. So bypass journal and hit server directly.
+		return j.MDOps.GetRange(ctx, id, start, stop, lockBeforeGet)
+	}
+
 	return j.getRange(ctx, id, NullBranchID, Merged, start, stop, lockBeforeGet,
 		j.MDOps.GetRange)
 }
@@ -435,6 +440,11 @@ func (j journalMDOps) Put(ctx context.Context, rmd *RootMetadata,
 
 	if tlfJournal, ok := j.jServer.getTLFJournal(
 		rmd.TlfID(), rmd.GetTlfHandle()); ok {
+		if lc != nil {
+			return ImmutableRootMetadata{}, errors.New(
+				"journal Put doesn't support LockContext " +
+					"yet. Use FinishSingleOp to require locks on MD write.")
+		}
 		// Just route to the journal.
 		irmd, err := tlfJournal.putMD(ctx, rmd, verifyingKey)
 		switch errors.Cause(err).(type) {
