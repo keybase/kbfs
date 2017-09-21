@@ -380,18 +380,7 @@ func (c CryptoCommon) GetTLFCryptKeyServerHalfID(
 	user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey,
 	serverHalf kbfscrypto.TLFCryptKeyServerHalf) (
 	TLFCryptKeyServerHalfID, error) {
-	key, err := serverHalf.MarshalBinary()
-	if err != nil {
-		return TLFCryptKeyServerHalfID{}, err
-	}
-	data := append(user.ToBytes(), devicePubKey.KID().ToBytes()...)
-	hmac, err := kbfshash.DefaultHMAC(key, data)
-	if err != nil {
-		return TLFCryptKeyServerHalfID{}, err
-	}
-	return TLFCryptKeyServerHalfID{
-		ID: hmac,
-	}, nil
+	return kbfscrypto.MakeTLFCryptKeyServerHalfID(user, devicePubKey, serverHalf)
 }
 
 // VerifyTLFCryptKeyServerHalfID implements the Crypto interface for CryptoCommon.

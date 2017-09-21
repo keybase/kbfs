@@ -13,7 +13,6 @@ import (
 	"github.com/keybase/go-codec/codec"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
-	"github.com/keybase/kbfs/kbfshash"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,8 +30,10 @@ func (cki tlfCryptKeyInfoFuture) ToCurrentStruct() kbfscodec.CurrentStruct {
 }
 
 func makeFakeTLFCryptKeyInfoFuture(t *testing.T) tlfCryptKeyInfoFuture {
-	hmac, err := kbfshash.DefaultHMAC(
-		[]byte("fake key"), []byte("fake buf"))
+	id, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(
+		keybase1.MakeTestUID(1),
+		kbfscrypto.MakeFakeCryptPublicKeyOrBust("fake"),
+		kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x3}))
 	require.NoError(t, err)
 	cki := TLFCryptKeyInfo{
 		EncryptedTLFCryptKeyClientHalf{
@@ -42,8 +43,7 @@ func makeFakeTLFCryptKeyInfoFuture(t *testing.T) tlfCryptKeyInfoFuture {
 				[]byte("fake nonce"),
 			},
 		},
-		TLFCryptKeyServerHalfID{ID: hmac},
-		5,
+		id, 5,
 		codec.UnknownFieldSetHandler{},
 	}
 	return tlfCryptKeyInfoFuture{

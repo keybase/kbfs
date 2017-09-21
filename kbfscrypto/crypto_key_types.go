@@ -373,6 +373,26 @@ func (id TLFCryptKeyServerHalfID) String() string {
 	return id.ID.String()
 }
 
+// MakeTLFCryptKeyServerHalfID creates a unique ID for this particular
+// TLFCryptKeyServerHalf.
+func MakeTLFCryptKeyServerHalfID(
+	user keybase1.UID, devicePubKey CryptPublicKey,
+	serverHalf TLFCryptKeyServerHalf) (
+	TLFCryptKeyServerHalfID, error) {
+	key, err := serverHalf.MarshalBinary()
+	if err != nil {
+		return TLFCryptKeyServerHalfID{}, err
+	}
+	data := append(user.ToBytes(), devicePubKey.KID().ToBytes()...)
+	hmac, err := kbfshash.DefaultHMAC(key, data)
+	if err != nil {
+		return TLFCryptKeyServerHalfID{}, err
+	}
+	return TLFCryptKeyServerHalfID{
+		ID: hmac,
+	}, nil
+}
+
 // TLFCryptKeyClientHalf (t_u^{f,k,i} for a user u, a folder f, a key
 // generation k, and a device i) is the masked, client-side half of a
 // TLFCryptKey, which can be recovered only with both halves. (See
