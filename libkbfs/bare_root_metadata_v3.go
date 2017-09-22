@@ -1173,7 +1173,7 @@ func (md *BareRootMetadataV3) SetMerkleRoot(root keybase1.MerkleRootV2) {
 	md.KBMerkleRoot = &root
 }
 
-func (md *BareRootMetadataV3) updateKeyBundles(crypto cryptoPure,
+func (md *BareRootMetadataV3) updateKeyBundles(codec kbfscodec.Codec,
 	extra ExtraMetadata,
 	updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
@@ -1230,8 +1230,8 @@ func (md *BareRootMetadataV3) updateKeyBundles(crypto cryptoPure,
 
 // AddKeyGeneration implements the MutableBareRootMetadata interface
 // for BareRootMetadataV3.
-func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
-	crypto cryptoPure, currExtra ExtraMetadata,
+func (md *BareRootMetadataV3) AddKeyGeneration(
+	codec kbfscodec.Codec, currExtra ExtraMetadata,
 	updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
@@ -1324,7 +1324,7 @@ func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
 	md.WriterMetadata.LatestKeyGen++
 	nextExtra = NewExtraMetadataV3(newWriterKeys, newReaderKeys, true, true)
 
-	serverHalves, err = md.updateKeyBundles(crypto, nextExtra,
+	serverHalves, err = md.updateKeyBundles(codec, nextExtra,
 		updatedWriterKeys, updatedReaderKeys,
 		ePubKey, ePrivKey, nextCryptKey)
 	if err != nil {
@@ -1409,7 +1409,7 @@ func (md *BareRootMetadataV3) GetUnresolvedParticipants() []keybase1.SocialAsser
 
 // UpdateKeyBundles implements the MutableBareRootMetadata interface
 // for BareRootMetadataV3.
-func (md *BareRootMetadataV3) UpdateKeyBundles(crypto cryptoPure,
+func (md *BareRootMetadataV3) UpdateKeyBundles(codec kbfscodec.Codec,
 	extra ExtraMetadata,
 	updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
@@ -1422,7 +1422,7 @@ func (md *BareRootMetadataV3) UpdateKeyBundles(crypto cryptoPure,
 			len(tlfCryptKeys))
 	}
 
-	serverHalves, err := md.updateKeyBundles(crypto, extra,
+	serverHalves, err := md.updateKeyBundles(codec, extra,
 		updatedWriterKeys, updatedReaderKeys,
 		ePubKey, ePrivKey, tlfCryptKeys[0])
 	if err != nil {

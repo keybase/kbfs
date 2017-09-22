@@ -524,7 +524,7 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 		// practice.
 		var err error
 		extra, serverHalves1, err = rmd.AddKeyGeneration(codec,
-			crypto, extra, updatedWriterKeys, updatedReaderKeys,
+			extra, updatedWriterKeys, updatedReaderKeys,
 			ePubKey1, ePrivKey1,
 			pubKey, tlfCryptKey, nextTLFCryptKey)
 		require.NoError(t, err)
@@ -556,7 +556,7 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 
 	tlfCryptKeys := []kbfscrypto.TLFCryptKey{tlfCryptKey}
 
-	serverHalves1b, err := rmd.UpdateKeyBundles(crypto,
+	serverHalves1b, err := rmd.UpdateKeyBundles(codec,
 		extra, updatedWriterKeys, updatedReaderKeys,
 		ePubKey1, ePrivKey1, tlfCryptKeys)
 	require.NoError(t, err)
@@ -581,7 +581,7 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 	ePubKey2, ePrivKey2, err := crypto.MakeRandomTLFEphemeralKeys()
 	require.NoError(t, err)
 
-	serverHalves2, err := rmd.UpdateKeyBundles(crypto,
+	serverHalves2, err := rmd.UpdateKeyBundles(codec,
 		extra, updatedWriterKeys, updatedReaderKeys,
 		ePubKey2, ePrivKey2, tlfCryptKeys)
 	require.NoError(t, err)
@@ -606,7 +606,7 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 
 	// Do again to check idempotency.
 
-	serverHalves2b, err := rmd.UpdateKeyBundles(crypto,
+	serverHalves2b, err := rmd.UpdateKeyBundles(codec,
 		extra, updatedWriterKeys, updatedReaderKeys,
 		ePubKey2, ePrivKey2, tlfCryptKeys)
 	require.NoError(t, err)
@@ -628,7 +628,7 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 	ePubKey3, ePrivKey3, err := crypto.MakeRandomTLFEphemeralKeys()
 	require.NoError(t, err)
 
-	serverHalves3, err := rmd.UpdateKeyBundles(crypto,
+	serverHalves3, err := rmd.UpdateKeyBundles(codec,
 		extra, updatedWriterKeys, updatedReaderKeys,
 		ePubKey3, ePrivKey3, tlfCryptKeys)
 	require.NoError(t, err)
@@ -651,7 +651,7 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 
 	// Do again to check idempotency.
 
-	serverHalves3b, err := rmd.UpdateKeyBundles(crypto,
+	serverHalves3b, err := rmd.UpdateKeyBundles(codec,
 		extra, updatedWriterKeys, updatedReaderKeys,
 		ePubKey3, ePrivKey3, tlfCryptKeys)
 	require.NoError(t, err)
@@ -678,7 +678,7 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 	filteredReaderKeys := UserDevicePublicKeys{
 		uid3: updatedReaderKeys[uid3],
 	}
-	serverHalves4, err := rmd.UpdateKeyBundles(crypto,
+	serverHalves4, err := rmd.UpdateKeyBundles(codec,
 		extra, nil, filteredReaderKeys,
 		ePubKey4, ePrivKey4, tlfCryptKeys)
 	require.NoError(t, err)
@@ -699,7 +699,7 @@ func TestBareRootMetadataV3UpdateKeyBundles(t *testing.T) {
 
 	// Do again to check idempotency.
 
-	serverHalves4b, err := rmd.UpdateKeyBundles(crypto,
+	serverHalves4b, err := rmd.UpdateKeyBundles(codec,
 		extra, nil, filteredReaderKeys,
 		ePubKey4, ePrivKey4, tlfCryptKeys)
 	require.NoError(t, err)
@@ -755,7 +755,7 @@ func TestBareRootMetadataV3AddKeyGenerationKeylessUsers(t *testing.T) {
 	tlfCryptKey := kbfscrypto.MakeTLFCryptKey(fakeKeyData)
 
 	extra, serverHalves1, err := rmd.AddKeyGeneration(codec,
-		crypto, nil, updatedWriterKeys, updatedReaderKeys,
+		nil, updatedWriterKeys, updatedReaderKeys,
 		ePubKey1, ePrivKey1,
 		pubKey, kbfscrypto.TLFCryptKey{}, tlfCryptKey)
 	require.NoError(t, err)

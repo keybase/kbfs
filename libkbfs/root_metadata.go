@@ -793,7 +793,7 @@ func (md *RootMetadata) GetBareRootMetadata() BareRootMetadata {
 
 // AddKeyGeneration adds a new key generation to this revision of metadata.
 func (md *RootMetadata) AddKeyGeneration(codec kbfscodec.Codec,
-	crypto cryptoPure, wKeys, rKeys UserDevicePublicKeys,
+	wKeys, rKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	pubKey kbfscrypto.TLFPublicKey,
@@ -801,7 +801,7 @@ func (md *RootMetadata) AddKeyGeneration(codec kbfscodec.Codec,
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (
 	serverHalves UserDeviceKeyServerHalves, err error) {
 	nextExtra, serverHalves, err := md.bareMd.AddKeyGeneration(
-		codec, crypto, md.extra, wKeys, rKeys, ePubKey, ePrivKey,
+		codec, md.extra, wKeys, rKeys, ePubKey, ePrivKey,
 		pubKey, currCryptKey, nextCryptKey)
 	if err != nil {
 		return nil, err
@@ -822,13 +822,13 @@ func (md *RootMetadata) revokeRemovedDevices(
 	return md.bareMd.RevokeRemovedDevices(wKeys, rKeys, md.extra)
 }
 
-func (md *RootMetadata) updateKeyBundles(crypto cryptoPure,
-	wKeys, rKeys UserDevicePublicKeys,
+func (md *RootMetadata) updateKeyBundles(
+	codec kbfscodec.Codec, wKeys, rKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKeys []kbfscrypto.TLFCryptKey) (
 	[]UserDeviceKeyServerHalves, error) {
-	return md.bareMd.UpdateKeyBundles(crypto, md.extra,
+	return md.bareMd.UpdateKeyBundles(codec, md.extra,
 		wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKeys)
 }
 

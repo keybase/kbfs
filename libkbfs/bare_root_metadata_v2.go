@@ -1154,7 +1154,7 @@ func (md *BareRootMetadataV2) GetUnresolvedParticipants() []keybase1.SocialAsser
 }
 
 func (md *BareRootMetadataV2) updateKeyGenerationForReaderRekey(
-	crypto cryptoPure, keyGen KeyGen,
+	codec kbfscodec.Codec, keyGen KeyGen,
 	updatedReaderKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
@@ -1191,7 +1191,7 @@ func (md *BareRootMetadataV2) updateKeyGenerationForReaderRekey(
 }
 
 func (md *BareRootMetadataV2) updateKeyGeneration(
-	crypto cryptoPure, keyGen KeyGen,
+	keyGen KeyGen,
 	updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
@@ -1237,8 +1237,8 @@ func (md *BareRootMetadataV2) updateKeyGeneration(
 
 // AddKeyGeneration implements the MutableBareRootMetadata interface
 // for BareRootMetadataV2.
-func (md *BareRootMetadataV2) AddKeyGeneration(codec kbfscodec.Codec,
-	crypto cryptoPure, extra ExtraMetadata,
+func (md *BareRootMetadataV2) AddKeyGeneration(
+	codec kbfscodec.Codec, extra ExtraMetadata,
 	updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
@@ -1296,7 +1296,7 @@ func (md *BareRootMetadataV2) AddKeyGeneration(codec kbfscodec.Codec,
 	md.RKeys = append(md.RKeys, newReaderKeys)
 
 	serverHalves, err = md.updateKeyGeneration(
-		crypto, md.LatestKeyGeneration(), updatedWriterKeys,
+		md.LatestKeyGeneration(), updatedWriterKeys,
 		updatedReaderKeys, ePubKey, ePrivKey, nextCryptKey)
 	if err != nil {
 		return nil, nil, err
@@ -1313,7 +1313,7 @@ func (md *BareRootMetadataV2) SetLatestKeyGenerationForTeamTLF(keyGen KeyGen) {
 
 // UpdateKeyBundles implements the MutableBareRootMetadata interface
 // for BareRootMetadataV2.
-func (md *BareRootMetadataV2) UpdateKeyBundles(crypto cryptoPure,
+func (md *BareRootMetadataV2) UpdateKeyBundles(codec kbfscodec.Codec,
 	_ ExtraMetadata,
 	updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
@@ -1339,7 +1339,7 @@ func (md *BareRootMetadataV2) UpdateKeyBundles(crypto cryptoPure,
 
 		for keyGen := FirstValidKeyGen; keyGen <= md.LatestKeyGeneration(); keyGen++ {
 			serverHalvesGen, err :=
-				md.updateKeyGenerationForReaderRekey(crypto,
+				md.updateKeyGenerationForReaderRekey(codec,
 					keyGen, updatedReaderKeys,
 					ePubKey, ePrivKey,
 					tlfCryptKeys[keyGen-FirstValidKeyGen])
@@ -1357,7 +1357,7 @@ func (md *BareRootMetadataV2) UpdateKeyBundles(crypto cryptoPure,
 
 	for keyGen := FirstValidKeyGen; keyGen <= md.LatestKeyGeneration(); keyGen++ {
 		serverHalvesGen, err := md.updateKeyGeneration(
-			crypto, keyGen, updatedWriterKeys, updatedReaderKeys,
+			keyGen, updatedWriterKeys, updatedReaderKeys,
 			ePubKey, ePrivKey,
 			tlfCryptKeys[keyGen-FirstValidKeyGen])
 		if err != nil {

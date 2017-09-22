@@ -45,7 +45,7 @@ func FakeInitialRekey(md MutableBareRootMetadata,
 	crypto := MakeCryptoCommon(codec)
 	tlfCryptKey := kbfscrypto.MakeTLFCryptKey([32]byte{0x1})
 	extra, _, err := md.AddKeyGeneration(
-		codec, crypto, nil, wKeys, rKeys,
+		codec, nil, wKeys, rKeys,
 		kbfscrypto.TLFEphemeralPublicKey{},
 		kbfscrypto.TLFEphemeralPrivateKey{},
 		pubKey, kbfscrypto.TLFCryptKey{}, tlfCryptKey)

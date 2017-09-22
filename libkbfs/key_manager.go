@@ -347,8 +347,8 @@ func (km *KeyManagerStandard) updateKeyBundles(ctx context.Context,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKeys []kbfscrypto.TLFCryptKey) error {
 
-	serverHalves, err := md.updateKeyBundles(km.config.Crypto(),
-		updatedWriterKeys, updatedReaderKeys,
+	serverHalves, err := md.updateKeyBundles(
+		km.config.Codec(), updatedWriterKeys, updatedReaderKeys,
 		ePubKey, ePrivKey, tlfCryptKeys)
 	if err != nil {
 		return err
@@ -850,7 +850,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		}
 	}
 	serverHalves, err := md.AddKeyGeneration(km.config.Codec(),
-		km.config.Crypto(), updatedWriterKeys, updatedReaderKeys,
+		updatedWriterKeys, updatedReaderKeys,
 		ePubKey, ePrivKey, pubKey, privKey,
 		currTLFCryptKey, tlfCryptKey)
 	if err != nil {
