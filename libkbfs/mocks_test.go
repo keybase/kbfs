@@ -6903,8 +6903,8 @@ func (mr *MockBareRootMetadataMockRecorder) DeepCopy(codec interface{}) *gomock.
 }
 
 // MakeSuccessorCopy mocks base method
-func (m *MockBareRootMetadata) MakeSuccessorCopy(codec kbfscodec.Codec, crypto cryptoPure, extra ExtraMetadata, latestMDVer MetadataVer, tlfCryptKeyGetter func() ([]kbfscrypto.TLFCryptKey, error), isReadableAndWriter bool) (MutableBareRootMetadata, ExtraMetadata, error) {
-	ret := m.ctrl.Call(m, "MakeSuccessorCopy", codec, crypto, extra, latestMDVer, tlfCryptKeyGetter, isReadableAndWriter)
+func (m *MockBareRootMetadata) MakeSuccessorCopy(codec kbfscodec.Codec, extra ExtraMetadata, latestMDVer MetadataVer, tlfCryptKeyGetter func() ([]kbfscrypto.TLFCryptKey, error), isReadableAndWriter bool) (MutableBareRootMetadata, ExtraMetadata, error) {
+	ret := m.ctrl.Call(m, "MakeSuccessorCopy", codec, extra, latestMDVer, tlfCryptKeyGetter, isReadableAndWriter)
 	ret0, _ := ret[0].(MutableBareRootMetadata)
 	ret1, _ := ret[1].(ExtraMetadata)
 	ret2, _ := ret[2].(error)
@@ -6912,8 +6912,8 @@ func (m *MockBareRootMetadata) MakeSuccessorCopy(codec kbfscodec.Codec, crypto c
 }
 
 // MakeSuccessorCopy indicates an expected call of MakeSuccessorCopy
-func (mr *MockBareRootMetadataMockRecorder) MakeSuccessorCopy(codec, crypto, extra, latestMDVer, tlfCryptKeyGetter, isReadableAndWriter interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MakeSuccessorCopy", reflect.TypeOf((*MockBareRootMetadata)(nil).MakeSuccessorCopy), codec, crypto, extra, latestMDVer, tlfCryptKeyGetter, isReadableAndWriter)
+func (mr *MockBareRootMetadataMockRecorder) MakeSuccessorCopy(codec, extra, latestMDVer, tlfCryptKeyGetter, isReadableAndWriter interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MakeSuccessorCopy", reflect.TypeOf((*MockBareRootMetadata)(nil).MakeSuccessorCopy), codec, extra, latestMDVer, tlfCryptKeyGetter, isReadableAndWriter)
 }
 
 // CheckValidSuccessor mocks base method
@@ -6996,15 +6996,15 @@ func (mr *MockBareRootMetadataMockRecorder) GetTLFCryptKeyParams(keyGen, user, k
 }
 
 // IsValidAndSigned mocks base method
-func (m *MockBareRootMetadata) IsValidAndSigned(ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, teamMemChecker TeamMembershipChecker, extra ExtraMetadata, writerVerifyingKey kbfscrypto.VerifyingKey) error {
-	ret := m.ctrl.Call(m, "IsValidAndSigned", ctx, codec, crypto, teamMemChecker, extra, writerVerifyingKey)
+func (m *MockBareRootMetadata) IsValidAndSigned(ctx context.Context, codec kbfscodec.Codec, teamMemChecker TeamMembershipChecker, extra ExtraMetadata, writerVerifyingKey kbfscrypto.VerifyingKey) error {
+	ret := m.ctrl.Call(m, "IsValidAndSigned", ctx, codec, teamMemChecker, extra, writerVerifyingKey)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // IsValidAndSigned indicates an expected call of IsValidAndSigned
-func (mr *MockBareRootMetadataMockRecorder) IsValidAndSigned(ctx, codec, crypto, teamMemChecker, extra, writerVerifyingKey interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsValidAndSigned", reflect.TypeOf((*MockBareRootMetadata)(nil).IsValidAndSigned), ctx, codec, crypto, teamMemChecker, extra, writerVerifyingKey)
+func (mr *MockBareRootMetadataMockRecorder) IsValidAndSigned(ctx, codec, teamMemChecker, extra, writerVerifyingKey interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsValidAndSigned", reflect.TypeOf((*MockBareRootMetadata)(nil).IsValidAndSigned), ctx, codec, teamMemChecker, extra, writerVerifyingKey)
 }
 
 // IsLastModifiedBy mocks base method
@@ -7435,8 +7435,8 @@ func (mr *MockMutableBareRootMetadataMockRecorder) DeepCopy(codec interface{}) *
 }
 
 // MakeSuccessorCopy mocks base method
-func (m *MockMutableBareRootMetadata) MakeSuccessorCopy(codec kbfscodec.Codec, crypto cryptoPure, extra ExtraMetadata, latestMDVer MetadataVer, tlfCryptKeyGetter func() ([]kbfscrypto.TLFCryptKey, error), isReadableAndWriter bool) (MutableBareRootMetadata, ExtraMetadata, error) {
-	ret := m.ctrl.Call(m, "MakeSuccessorCopy", codec, crypto, extra, latestMDVer, tlfCryptKeyGetter, isReadableAndWriter)
+func (m *MockMutableBareRootMetadata) MakeSuccessorCopy(codec kbfscodec.Codec, extra ExtraMetadata, latestMDVer MetadataVer, tlfCryptKeyGetter func() ([]kbfscrypto.TLFCryptKey, error), isReadableAndWriter bool) (MutableBareRootMetadata, ExtraMetadata, error) {
+	ret := m.ctrl.Call(m, "MakeSuccessorCopy", codec, extra, latestMDVer, tlfCryptKeyGetter, isReadableAndWriter)
 	ret0, _ := ret[0].(MutableBareRootMetadata)
 	ret1, _ := ret[1].(ExtraMetadata)
 	ret2, _ := ret[2].(error)
@@ -7444,8 +7444,8 @@ func (m *MockMutableBareRootMetadata) MakeSuccessorCopy(codec kbfscodec.Codec, c
 }
 
 // MakeSuccessorCopy indicates an expected call of MakeSuccessorCopy
-func (mr *MockMutableBareRootMetadataMockRecorder) MakeSuccessorCopy(codec, crypto, extra, latestMDVer, tlfCryptKeyGetter, isReadableAndWriter interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MakeSuccessorCopy", reflect.TypeOf((*MockMutableBareRootMetadata)(nil).MakeSuccessorCopy), codec, crypto, extra, latestMDVer, tlfCryptKeyGetter, isReadableAndWriter)
+func (mr *MockMutableBareRootMetadataMockRecorder) MakeSuccessorCopy(codec, extra, latestMDVer, tlfCryptKeyGetter, isReadableAndWriter interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MakeSuccessorCopy", reflect.TypeOf((*MockMutableBareRootMetadata)(nil).MakeSuccessorCopy), codec, extra, latestMDVer, tlfCryptKeyGetter, isReadableAndWriter)
 }
 
 // CheckValidSuccessor mocks base method
@@ -7528,15 +7528,15 @@ func (mr *MockMutableBareRootMetadataMockRecorder) GetTLFCryptKeyParams(keyGen, 
 }
 
 // IsValidAndSigned mocks base method
-func (m *MockMutableBareRootMetadata) IsValidAndSigned(ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure, teamMemChecker TeamMembershipChecker, extra ExtraMetadata, writerVerifyingKey kbfscrypto.VerifyingKey) error {
-	ret := m.ctrl.Call(m, "IsValidAndSigned", ctx, codec, crypto, teamMemChecker, extra, writerVerifyingKey)
+func (m *MockMutableBareRootMetadata) IsValidAndSigned(ctx context.Context, codec kbfscodec.Codec, teamMemChecker TeamMembershipChecker, extra ExtraMetadata, writerVerifyingKey kbfscrypto.VerifyingKey) error {
+	ret := m.ctrl.Call(m, "IsValidAndSigned", ctx, codec, teamMemChecker, extra, writerVerifyingKey)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // IsValidAndSigned indicates an expected call of IsValidAndSigned
-func (mr *MockMutableBareRootMetadataMockRecorder) IsValidAndSigned(ctx, codec, crypto, teamMemChecker, extra, writerVerifyingKey interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsValidAndSigned", reflect.TypeOf((*MockMutableBareRootMetadata)(nil).IsValidAndSigned), ctx, codec, crypto, teamMemChecker, extra, writerVerifyingKey)
+func (mr *MockMutableBareRootMetadataMockRecorder) IsValidAndSigned(ctx, codec, teamMemChecker, extra, writerVerifyingKey interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsValidAndSigned", reflect.TypeOf((*MockMutableBareRootMetadata)(nil).IsValidAndSigned), ctx, codec, teamMemChecker, extra, writerVerifyingKey)
 }
 
 // IsLastModifiedBy mocks base method
@@ -8119,8 +8119,8 @@ func (mr *MockMutableBareRootMetadataMockRecorder) SetTlfID(tlf interface{}) *go
 }
 
 // AddKeyGeneration mocks base method
-func (m *MockMutableBareRootMetadata) AddKeyGeneration(codec kbfscodec.Codec, crypto cryptoPure, currExtra ExtraMetadata, updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, pubKey kbfscrypto.TLFPublicKey, currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (ExtraMetadata, UserDeviceKeyServerHalves, error) {
-	ret := m.ctrl.Call(m, "AddKeyGeneration", codec, crypto, currExtra, updatedWriterKeys, updatedReaderKeys, ePubKey, ePrivKey, pubKey, currCryptKey, nextCryptKey)
+func (m *MockMutableBareRootMetadata) AddKeyGeneration(codec kbfscodec.Codec, currExtra ExtraMetadata, updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, pubKey kbfscrypto.TLFPublicKey, currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (ExtraMetadata, UserDeviceKeyServerHalves, error) {
+	ret := m.ctrl.Call(m, "AddKeyGeneration", codec, currExtra, updatedWriterKeys, updatedReaderKeys, ePubKey, ePrivKey, pubKey, currCryptKey, nextCryptKey)
 	ret0, _ := ret[0].(ExtraMetadata)
 	ret1, _ := ret[1].(UserDeviceKeyServerHalves)
 	ret2, _ := ret[2].(error)
@@ -8128,8 +8128,8 @@ func (m *MockMutableBareRootMetadata) AddKeyGeneration(codec kbfscodec.Codec, cr
 }
 
 // AddKeyGeneration indicates an expected call of AddKeyGeneration
-func (mr *MockMutableBareRootMetadataMockRecorder) AddKeyGeneration(codec, crypto, currExtra, updatedWriterKeys, updatedReaderKeys, ePubKey, ePrivKey, pubKey, currCryptKey, nextCryptKey interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddKeyGeneration", reflect.TypeOf((*MockMutableBareRootMetadata)(nil).AddKeyGeneration), codec, crypto, currExtra, updatedWriterKeys, updatedReaderKeys, ePubKey, ePrivKey, pubKey, currCryptKey, nextCryptKey)
+func (mr *MockMutableBareRootMetadataMockRecorder) AddKeyGeneration(codec, currExtra, updatedWriterKeys, updatedReaderKeys, ePubKey, ePrivKey, pubKey, currCryptKey, nextCryptKey interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddKeyGeneration", reflect.TypeOf((*MockMutableBareRootMetadata)(nil).AddKeyGeneration), codec, currExtra, updatedWriterKeys, updatedReaderKeys, ePubKey, ePrivKey, pubKey, currCryptKey, nextCryptKey)
 }
 
 // SetLatestKeyGenerationForTeamTLF mocks base method
@@ -8143,16 +8143,16 @@ func (mr *MockMutableBareRootMetadataMockRecorder) SetLatestKeyGenerationForTeam
 }
 
 // UpdateKeyBundles mocks base method
-func (m *MockMutableBareRootMetadata) UpdateKeyBundles(crypto cryptoPure, extra ExtraMetadata, updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, tlfCryptKeys []kbfscrypto.TLFCryptKey) ([]UserDeviceKeyServerHalves, error) {
-	ret := m.ctrl.Call(m, "UpdateKeyBundles", crypto, extra, updatedWriterKeys, updatedReaderKeys, ePubKey, ePrivKey, tlfCryptKeys)
+func (m *MockMutableBareRootMetadata) UpdateKeyBundles(codec kbfscodec.Codec, extra ExtraMetadata, updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys, ePubKey kbfscrypto.TLFEphemeralPublicKey, ePrivKey kbfscrypto.TLFEphemeralPrivateKey, tlfCryptKeys []kbfscrypto.TLFCryptKey) ([]UserDeviceKeyServerHalves, error) {
+	ret := m.ctrl.Call(m, "UpdateKeyBundles", codec, extra, updatedWriterKeys, updatedReaderKeys, ePubKey, ePrivKey, tlfCryptKeys)
 	ret0, _ := ret[0].([]UserDeviceKeyServerHalves)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdateKeyBundles indicates an expected call of UpdateKeyBundles
-func (mr *MockMutableBareRootMetadataMockRecorder) UpdateKeyBundles(crypto, extra, updatedWriterKeys, updatedReaderKeys, ePubKey, ePrivKey, tlfCryptKeys interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateKeyBundles", reflect.TypeOf((*MockMutableBareRootMetadata)(nil).UpdateKeyBundles), crypto, extra, updatedWriterKeys, updatedReaderKeys, ePubKey, ePrivKey, tlfCryptKeys)
+func (mr *MockMutableBareRootMetadataMockRecorder) UpdateKeyBundles(codec, extra, updatedWriterKeys, updatedReaderKeys, ePubKey, ePrivKey, tlfCryptKeys interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateKeyBundles", reflect.TypeOf((*MockMutableBareRootMetadata)(nil).UpdateKeyBundles), codec, extra, updatedWriterKeys, updatedReaderKeys, ePubKey, ePrivKey, tlfCryptKeys)
 }
 
 // PromoteReaders mocks base method
@@ -8181,15 +8181,15 @@ func (mr *MockMutableBareRootMetadataMockRecorder) RevokeRemovedDevices(updatedW
 }
 
 // FinalizeRekey mocks base method
-func (m *MockMutableBareRootMetadata) FinalizeRekey(c cryptoPure, extra ExtraMetadata) error {
-	ret := m.ctrl.Call(m, "FinalizeRekey", c, extra)
+func (m *MockMutableBareRootMetadata) FinalizeRekey(codec kbfscodec.Codec, extra ExtraMetadata) error {
+	ret := m.ctrl.Call(m, "FinalizeRekey", codec, extra)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // FinalizeRekey indicates an expected call of FinalizeRekey
-func (mr *MockMutableBareRootMetadataMockRecorder) FinalizeRekey(c, extra interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalizeRekey", reflect.TypeOf((*MockMutableBareRootMetadata)(nil).FinalizeRekey), c, extra)
+func (mr *MockMutableBareRootMetadataMockRecorder) FinalizeRekey(codec, extra interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalizeRekey", reflect.TypeOf((*MockMutableBareRootMetadata)(nil).FinalizeRekey), codec, extra)
 }
 
 // MockKeyBundleCache is a mock of KeyBundleCache interface

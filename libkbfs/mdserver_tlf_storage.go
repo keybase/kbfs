@@ -77,12 +77,11 @@ type mdServerTlfStorage struct {
 }
 
 func makeMDServerTlfStorage(tlfID tlf.ID, codec kbfscodec.Codec,
-	crypto cryptoPure, clock Clock, teamMemChecker TeamMembershipChecker,
+	clock Clock, teamMemChecker TeamMembershipChecker,
 	mdVer MetadataVer, dir string) *mdServerTlfStorage {
 	journal := &mdServerTlfStorage{
 		tlfID:          tlfID,
 		codec:          codec,
-		crypto:         crypto,
 		clock:          clock,
 		teamMemChecker: teamMemChecker,
 		mdVer:          mdVer,
@@ -410,7 +409,7 @@ func (s *mdServerTlfStorage) put(ctx context.Context,
 		return false, err
 	}
 
-	err = rmds.IsValidAndSigned(ctx, s.codec, s.crypto, s.teamMemChecker, extra)
+	err = rmds.IsValidAndSigned(ctx, s.codec, s.teamMemChecker, extra)
 	if err != nil {
 		return false, kbfsmd.ServerErrorBadRequest{Reason: err.Error()}
 	}

@@ -2000,7 +2000,7 @@ type BareRootMetadata interface {
 	// version. tlfCryptKeyGetter should be a function that
 	// returns a list of TLFCryptKeys for all key generations in
 	// ascending order.
-	MakeSuccessorCopy(codec kbfscodec.Codec, crypto cryptoPure,
+	MakeSuccessorCopy(codec kbfscodec.Codec,
 		extra ExtraMetadata, latestMDVer MetadataVer,
 		tlfCryptKeyGetter func() ([]kbfscrypto.TLFCryptKey, error),
 		isReadableAndWriter bool) (mdCopy MutableBareRootMetadata,
@@ -2038,7 +2038,7 @@ type BareRootMetadata interface {
 	// the current device key (using IsLastModifiedBy), or by
 	// checking with KBPKI.
 	IsValidAndSigned(ctx context.Context, codec kbfscodec.Codec,
-		crypto cryptoPure, teamMemChecker TeamMembershipChecker,
+		teamMemChecker TeamMembershipChecker,
 		extra ExtraMetadata, writerVerifyingKey kbfscrypto.VerifyingKey) error
 	// IsLastModifiedBy verifies that the BareRootMetadata is
 	// written by the given user and device (identified by the

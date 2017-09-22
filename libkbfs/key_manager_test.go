@@ -2366,7 +2366,7 @@ func TestKeyManagerGetTeamTLFCryptKey(t *testing.T) {
 	AddTeamKeyForTestOrBust(t, config1, tid)
 	AddTeamKeyForTestOrBust(t, config2, tid)
 	rmd2, err := rmd.MakeSuccessor(context.Background(),
-		config1.MetadataVersion(), config1.Codec(), config1.Crypto(),
+		config1.MetadataVersion(), config1.Codec(),
 		config1.KeyManager(), config1.KBPKI(), config1.KBPKI(),
 		kbfsmd.FakeID(2), true)
 	require.NoError(t, err)

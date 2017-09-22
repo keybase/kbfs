@@ -241,7 +241,7 @@ func (md *RootMetadata) deepCopy(codec kbfscodec.Codec) (*RootMetadata, error) {
 // with the revision incremented and a correct backpointer.
 func (md *RootMetadata) MakeSuccessor(
 	ctx context.Context, latestMDVer MetadataVer, codec kbfscodec.Codec,
-	crypto cryptoPure, keyManager KeyManager, merkleGetter merkleRootGetter,
+	keyManager KeyManager, merkleGetter merkleRootGetter,
 	teamKeyer teamKeysGetter, mdID kbfsmd.ID, isWriter bool) (
 	*RootMetadata, error) {
 	if mdID == (kbfsmd.ID{}) {
@@ -254,7 +254,7 @@ func (md *RootMetadata) MakeSuccessor(
 	isReadableAndWriter := md.IsReadable() && isWriter
 
 	brmdCopy, extraCopy, err := md.bareMd.MakeSuccessorCopy(
-		codec, crypto, md.extra, latestMDVer,
+		codec, md.extra, latestMDVer,
 		func() ([]kbfscrypto.TLFCryptKey, error) {
 			return keyManager.GetTLFCryptKeyOfAllGenerations(ctx, md)
 		}, isReadableAndWriter)
@@ -1166,7 +1166,7 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(
 // validated, either by comparing to the current device key (using
 // IsLastModifiedBy), or by checking with KBPKI.
 func (rmds *RootMetadataSigned) IsValidAndSigned(
-	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure,
+	ctx context.Context, codec kbfscodec.Codec,
 	teamMemChecker TeamMembershipChecker, extra ExtraMetadata) error {
 	// Optimization -- if the RootMetadata signature is nil, it
 	// will fail verification.
@@ -1180,7 +1180,7 @@ func (rmds *RootMetadataSigned) IsValidAndSigned(
 	}
 
 	err := rmds.MD.IsValidAndSigned(
-		ctx, codec, crypto, teamMemChecker, extra,
+		ctx, codec, teamMemChecker, extra,
 		rmds.WriterSigInfo.VerifyingKey)
 	if err != nil {
 		return err

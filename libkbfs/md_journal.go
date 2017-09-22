@@ -475,7 +475,7 @@ func (j mdJournal) getMDAndExtra(ctx context.Context, entry mdIDJournalEntry,
 	}
 
 	err = rmd.IsValidAndSigned(
-		ctx, j.codec, j.crypto, j.teamMemChecker, extra, j.key)
+		ctx, j.codec, j.teamMemChecker, extra, j.key)
 	if err != nil {
 		return nil, nil, time.Time{}, err
 	}
@@ -1341,7 +1341,7 @@ func (j *mdJournal) put(
 	}
 
 	err = rmd.bareMd.IsValidAndSigned(
-		ctx, j.codec, j.crypto, j.teamMemChecker, rmd.extra, j.key)
+		ctx, j.codec, j.teamMemChecker, rmd.extra, j.key)
 	if err != nil {
 		return kbfsmd.ID{}, err
 	}

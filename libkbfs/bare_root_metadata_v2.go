@@ -360,8 +360,7 @@ func (md *BareRootMetadataV2) DeepCopy(
 
 // MakeSuccessorCopy implements the ImmutableBareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) MakeSuccessorCopy(
-	codec kbfscodec.Codec, crypto cryptoPure,
-	extra ExtraMetadata, latestMDVer MetadataVer,
+	codec kbfscodec.Codec, extra ExtraMetadata, latestMDVer MetadataVer,
 	tlfCryptKeyGetter func() ([]kbfscrypto.TLFCryptKey, error),
 	isReadableAndWriter bool) (
 	MutableBareRootMetadata, ExtraMetadata, error) {
@@ -380,7 +379,7 @@ func (md *BareRootMetadataV2) MakeSuccessorCopy(
 	}
 
 	// Upconvert to the new version.
-	return md.makeSuccessorCopyV3(codec, crypto, tlfCryptKeyGetter)
+	return md.makeSuccessorCopyV3(codec, tlfCryptKeyGetter)
 }
 
 func (md *BareRootMetadataV2) makeSuccessorCopyV2(
@@ -397,7 +396,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV2(
 }
 
 func (md *BareRootMetadataV2) makeSuccessorCopyV3(
-	codec kbfscodec.Codec, crypto cryptoPure,
+	codec kbfscodec.Codec,
 	tlfCryptKeyGetter func() ([]kbfscrypto.TLFCryptKey, error)) (
 	*BareRootMetadataV3, ExtraMetadata, error) {
 	mdV3 := &BareRootMetadataV3{}
@@ -769,7 +768,7 @@ func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
 
 // IsValidAndSigned implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) IsValidAndSigned(
-	_ context.Context, codec kbfscodec.Codec, crypto cryptoPure,
+	_ context.Context, codec kbfscodec.Codec,
 	_ TeamMembershipChecker, extra ExtraMetadata,
 	_ kbfscrypto.VerifyingKey) error {
 	// Optimization -- if the WriterMetadata signature is nil, it

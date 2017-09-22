@@ -426,7 +426,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 	}
 
 	err = rmds.IsValidAndSigned(
-		ctx, md.config.Codec(), md.config.cryptoPure(),
+		ctx, md.config.Codec(),
 		md.config.teamMembershipChecker(), extra)
 	if err != nil {
 		return kbfsmd.ServerErrorBadRequest{Reason: err.Error()}

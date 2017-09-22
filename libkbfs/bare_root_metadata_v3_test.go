@@ -54,7 +54,7 @@ func TestRootMetadataV3ExtraNew(t *testing.T) {
 	require.True(t, extraV3.rkbNew)
 
 	_, extraCopy, err := rmd.MakeSuccessorCopy(
-		codec, nil, extra, -1, nil, true)
+		codec, extra, -1, nil, true)
 	require.NoError(t, err)
 
 	extraV3Copy, ok := extraCopy.(*ExtraMetadataV3)

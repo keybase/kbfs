@@ -499,8 +499,7 @@ func (md *BareRootMetadataV3) DeepCopy(
 
 // MakeSuccessorCopy implements the ImmutableBareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) MakeSuccessorCopy(
-	codec kbfscodec.Codec, crypto cryptoPure,
-	extra ExtraMetadata, _ MetadataVer,
+	codec kbfscodec.Codec, extra ExtraMetadata, _ MetadataVer,
 	_ func() ([]kbfscrypto.TLFCryptKey, error), isReadableAndWriter bool) (
 	MutableBareRootMetadata, ExtraMetadata, error) {
 	var extraCopy ExtraMetadata
@@ -845,7 +844,7 @@ func checkRKBID(codec kbfscodec.Codec,
 
 // IsValidAndSigned implements the BareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) IsValidAndSigned(
-	ctx context.Context, codec kbfscodec.Codec, crypto cryptoPure,
+	ctx context.Context, codec kbfscodec.Codec,
 	teamMemChecker TeamMembershipChecker, extra ExtraMetadata,
 	writerVerifyingKey kbfscrypto.VerifyingKey) error {
 	if md.TlfID().Type() == tlf.Private {
