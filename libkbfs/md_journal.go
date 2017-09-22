@@ -340,7 +340,7 @@ func (j mdJournal) getExtraMetadata(
 		return nil, err
 	}
 
-	err = checkWKBID(j.crypto, wkbID, wkb)
+	err = checkWKBID(j.codec, wkbID, wkb)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +351,7 @@ func (j mdJournal) getExtraMetadata(
 		return nil, err
 	}
 
-	err = checkRKBID(j.crypto, rkbID, rkb)
+	err = checkRKBID(j.codec, rkbID, rkb)
 	if err != nil {
 		return nil, err
 	}
@@ -391,12 +391,12 @@ func (j mdJournal) putExtraMetadata(rmd BareRootMetadata, extra ExtraMetadata) (
 	// it as part of the mdInfo, so we don't needlessly send it
 	// while flushing.
 
-	err = checkWKBID(j.crypto, wkbID, extraV3.wkb)
+	err = checkWKBID(j.codec, wkbID, extraV3.wkb)
 	if err != nil {
 		return false, false, err
 	}
 
-	err = checkRKBID(j.crypto, rkbID, extraV3.rkb)
+	err = checkRKBID(j.codec, rkbID, extraV3.rkb)
 	if err != nil {
 		return false, false, err
 	}

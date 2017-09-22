@@ -417,7 +417,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(
 		}
 
 		mdV3.WriterMetadata.WKeyBundleID, err =
-			crypto.MakeTLFWriterKeyBundleID(wkbV3)
+			MakeTLFWriterKeyBundleID(codec, wkbV3)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -430,7 +430,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(
 			return nil, nil, err
 		}
 		mdV3.RKeyBundleID, err =
-			crypto.MakeTLFReaderKeyBundleID(rkbV3)
+			MakeTLFReaderKeyBundleID(codec, rkbV3)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1384,7 +1384,7 @@ func (md *BareRootMetadataV2) GetTLFReaderKeyBundleID() TLFReaderKeyBundleID {
 
 // FinalizeRekey implements the MutableBareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) FinalizeRekey(
-	_ cryptoPure, _ ExtraMetadata) error {
+	_ kbfscodec.Codec, _ ExtraMetadata) error {
 	// Nothing to do.
 	return nil
 }

@@ -523,7 +523,7 @@ func (s *mdServerTlfStorage) getKeyBundlesReadLocked(tlfID tlf.ID,
 			return nil, nil, err
 		}
 
-		err = checkWKBID(s.crypto, wkbID, foundWKB)
+		err = checkWKBID(s.codec, wkbID, foundWKB)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -538,7 +538,7 @@ func (s *mdServerTlfStorage) getKeyBundlesReadLocked(tlfID tlf.ID,
 			return nil, nil, err
 		}
 
-		err = checkRKBID(s.crypto, rkbID, foundRKB)
+		err = checkRKBID(s.codec, rkbID, foundRKB)
 		if err != nil {
 			return nil, nil, err
 		}

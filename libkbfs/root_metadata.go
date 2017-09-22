@@ -832,8 +832,8 @@ func (md *RootMetadata) updateKeyBundles(
 		wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKeys)
 }
 
-func (md *RootMetadata) finalizeRekey(crypto cryptoPure) error {
-	return md.bareMd.FinalizeRekey(crypto, md.extra)
+func (md *RootMetadata) finalizeRekey(codec kbfscodec.Codec) error {
+	return md.bareMd.FinalizeRekey(codec, md.extra)
 }
 
 func (md *RootMetadata) getUserDevicePublicKeys() (

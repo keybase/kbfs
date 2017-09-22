@@ -42,14 +42,13 @@ func TestRootMetadataV3ExtraNew(t *testing.T) {
 	require.NoError(t, err)
 
 	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
 	extra := FakeInitialRekey(rmd, bh, kbfscrypto.TLFPublicKey{})
 	extraV3, ok := extra.(*ExtraMetadataV3)
 	require.True(t, ok)
 	require.True(t, extraV3.wkbNew)
 	require.True(t, extraV3.rkbNew)
 
-	err = rmd.FinalizeRekey(crypto, extra)
+	err = rmd.FinalizeRekey(codec, extra)
 	require.NoError(t, err)
 	require.True(t, extraV3.wkbNew)
 	require.True(t, extraV3.rkbNew)

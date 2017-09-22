@@ -1053,12 +1053,6 @@ type cryptoPure interface {
 	DecryptMerkleLeaf(encryptedLeaf EncryptedMerkleLeaf,
 		privKey kbfscrypto.TLFPrivateKey, nonce *[24]byte,
 		ePubKey kbfscrypto.TLFEphemeralPublicKey) (*MerkleLeaf, error)
-
-	// MakeTLFWriterKeyBundleID hashes a TLFWriterKeyBundleV3 to create an ID.
-	MakeTLFWriterKeyBundleID(wkb TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error)
-
-	// MakeTLFReaderKeyBundleID hashes a TLFReaderKeyBundleV3 to create an ID.
-	MakeTLFReaderKeyBundleID(rkb TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error)
 }
 
 // Crypto signs, verifies, encrypts, and decrypts stuff.
@@ -2242,7 +2236,7 @@ type MutableBareRootMetadata interface {
 
 	// FinalizeRekey must be called called after all rekeying work
 	// has been performed on the underlying metadata.
-	FinalizeRekey(c cryptoPure, extra ExtraMetadata) error
+	FinalizeRekey(codec kbfscodec.Codec, extra ExtraMetadata) error
 }
 
 // KeyBundleCache is an interface to a key bundle cache for use with v3 metadata.

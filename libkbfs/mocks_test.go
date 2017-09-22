@@ -3377,32 +3377,6 @@ func (mr *MockcryptoPureMockRecorder) DecryptMerkleLeaf(encryptedLeaf, privKey, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecryptMerkleLeaf", reflect.TypeOf((*MockcryptoPure)(nil).DecryptMerkleLeaf), encryptedLeaf, privKey, nonce, ePubKey)
 }
 
-// MakeTLFWriterKeyBundleID mocks base method
-func (m *MockcryptoPure) MakeTLFWriterKeyBundleID(wkb TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error) {
-	ret := m.ctrl.Call(m, "MakeTLFWriterKeyBundleID", wkb)
-	ret0, _ := ret[0].(TLFWriterKeyBundleID)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// MakeTLFWriterKeyBundleID indicates an expected call of MakeTLFWriterKeyBundleID
-func (mr *MockcryptoPureMockRecorder) MakeTLFWriterKeyBundleID(wkb interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MakeTLFWriterKeyBundleID", reflect.TypeOf((*MockcryptoPure)(nil).MakeTLFWriterKeyBundleID), wkb)
-}
-
-// MakeTLFReaderKeyBundleID mocks base method
-func (m *MockcryptoPure) MakeTLFReaderKeyBundleID(rkb TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error) {
-	ret := m.ctrl.Call(m, "MakeTLFReaderKeyBundleID", rkb)
-	ret0, _ := ret[0].(TLFReaderKeyBundleID)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// MakeTLFReaderKeyBundleID indicates an expected call of MakeTLFReaderKeyBundleID
-func (mr *MockcryptoPureMockRecorder) MakeTLFReaderKeyBundleID(rkb interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MakeTLFReaderKeyBundleID", reflect.TypeOf((*MockcryptoPure)(nil).MakeTLFReaderKeyBundleID), rkb)
-}
-
 // MockCrypto is a mock of Crypto interface
 type MockCrypto struct {
 	ctrl     *gomock.Controller
@@ -3609,32 +3583,6 @@ func (m *MockCrypto) DecryptMerkleLeaf(encryptedLeaf EncryptedMerkleLeaf, privKe
 // DecryptMerkleLeaf indicates an expected call of DecryptMerkleLeaf
 func (mr *MockCryptoMockRecorder) DecryptMerkleLeaf(encryptedLeaf, privKey, nonce, ePubKey interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DecryptMerkleLeaf", reflect.TypeOf((*MockCrypto)(nil).DecryptMerkleLeaf), encryptedLeaf, privKey, nonce, ePubKey)
-}
-
-// MakeTLFWriterKeyBundleID mocks base method
-func (m *MockCrypto) MakeTLFWriterKeyBundleID(wkb TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error) {
-	ret := m.ctrl.Call(m, "MakeTLFWriterKeyBundleID", wkb)
-	ret0, _ := ret[0].(TLFWriterKeyBundleID)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// MakeTLFWriterKeyBundleID indicates an expected call of MakeTLFWriterKeyBundleID
-func (mr *MockCryptoMockRecorder) MakeTLFWriterKeyBundleID(wkb interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MakeTLFWriterKeyBundleID", reflect.TypeOf((*MockCrypto)(nil).MakeTLFWriterKeyBundleID), wkb)
-}
-
-// MakeTLFReaderKeyBundleID mocks base method
-func (m *MockCrypto) MakeTLFReaderKeyBundleID(rkb TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error) {
-	ret := m.ctrl.Call(m, "MakeTLFReaderKeyBundleID", rkb)
-	ret0, _ := ret[0].(TLFReaderKeyBundleID)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// MakeTLFReaderKeyBundleID indicates an expected call of MakeTLFReaderKeyBundleID
-func (mr *MockCryptoMockRecorder) MakeTLFReaderKeyBundleID(rkb interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MakeTLFReaderKeyBundleID", reflect.TypeOf((*MockCrypto)(nil).MakeTLFReaderKeyBundleID), rkb)
 }
 
 // Sign mocks base method

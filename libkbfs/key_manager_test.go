@@ -27,16 +27,6 @@ type shimKMCrypto struct {
 	pure cryptoPure
 }
 
-func (c shimKMCrypto) MakeTLFWriterKeyBundleID(
-	wkb TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error) {
-	return c.pure.MakeTLFWriterKeyBundleID(wkb)
-}
-
-func (c shimKMCrypto) MakeTLFReaderKeyBundleID(
-	wkb TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error) {
-	return c.pure.MakeTLFReaderKeyBundleID(wkb)
-}
-
 func keyManagerInit(t *testing.T, ver MetadataVer) (mockCtrl *gomock.Controller,
 	config *ConfigMock, ctx context.Context) {
 	ctr := NewSafeTestReporter(t)

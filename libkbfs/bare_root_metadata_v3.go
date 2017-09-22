@@ -813,9 +813,9 @@ func (md *BareRootMetadataV3) GetTLFCryptKeyParams(
 	return publicKeys[index], info.ClientHalf, info.ServerHalfID, true, nil
 }
 
-func checkWKBID(crypto cryptoPure,
+func checkWKBID(codec kbfscodec.Codec,
 	wkbID TLFWriterKeyBundleID, wkb TLFWriterKeyBundleV3) error {
-	computedWKBID, err := crypto.MakeTLFWriterKeyBundleID(wkb)
+	computedWKBID, err := MakeTLFWriterKeyBundleID(codec, wkb)
 	if err != nil {
 		return err
 	}
@@ -828,9 +828,9 @@ func checkWKBID(crypto cryptoPure,
 	return nil
 }
 
-func checkRKBID(crypto cryptoPure,
+func checkRKBID(codec kbfscodec.Codec,
 	rkbID TLFReaderKeyBundleID, rkb TLFReaderKeyBundleV3) error {
-	computedRKBID, err := crypto.MakeTLFReaderKeyBundleID(rkb)
+	computedRKBID, err := MakeTLFReaderKeyBundleID(codec, rkb)
 	if err != nil {
 		return err
 	}
@@ -854,12 +854,12 @@ func (md *BareRootMetadataV3) IsValidAndSigned(
 			return err
 		}
 
-		err = checkWKBID(crypto, md.GetTLFWriterKeyBundleID(), *wkb)
+		err = checkWKBID(codec, md.GetTLFWriterKeyBundleID(), *wkb)
 		if err != nil {
 			return err
 		}
 
-		err = checkRKBID(crypto, md.GetTLFReaderKeyBundleID(), *rkb)
+		err = checkRKBID(codec, md.GetTLFReaderKeyBundleID(), *rkb)
 		if err != nil {
 			return err
 		}
@@ -1444,7 +1444,7 @@ func (md *BareRootMetadataV3) GetTLFReaderKeyBundleID() TLFReaderKeyBundleID {
 
 // FinalizeRekey implements the MutableBareRootMetadata interface for BareRootMetadataV3.
 func (md *BareRootMetadataV3) FinalizeRekey(
-	crypto cryptoPure, extra ExtraMetadata) error {
+	codec kbfscodec.Codec, extra ExtraMetadata) error {
 	extraV3, ok := extra.(*ExtraMetadataV3)
 	if !ok {
 		return errors.New("Invalid extra metadata")
@@ -1452,11 +1452,11 @@ func (md *BareRootMetadataV3) FinalizeRekey(
 	oldWKBID := md.WriterMetadata.WKeyBundleID
 	oldRKBID := md.RKeyBundleID
 
-	newWKBID, err := crypto.MakeTLFWriterKeyBundleID(extraV3.wkb)
+	newWKBID, err := MakeTLFWriterKeyBundleID(codec, extraV3.wkb)
 	if err != nil {
 		return err
 	}
-	newRKBID, err := crypto.MakeTLFReaderKeyBundleID(extraV3.rkb)
+	newRKBID, err := MakeTLFReaderKeyBundleID(codec, extraV3.rkb)
 	if err != nil {
 		return err
 	}

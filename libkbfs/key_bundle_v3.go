@@ -360,6 +360,24 @@ func (h TLFWriterKeyBundleID) IsNil() bool {
 	return h == TLFWriterKeyBundleID{}
 }
 
+// MakeTLFWriterKeyBundleID hashes a TLFWriterKeyBundleV3 to create an ID.
+func MakeTLFWriterKeyBundleID(codec kbfscodec.Codec, wkb TLFWriterKeyBundleV3) (
+	TLFWriterKeyBundleID, error) {
+	if len(wkb.Keys) == 0 {
+		return TLFWriterKeyBundleID{}, errors.New(
+			"Writer key bundle with no keys (MakeTLFWriterKeyBundleID)")
+	}
+	buf, err := codec.Encode(wkb)
+	if err != nil {
+		return TLFWriterKeyBundleID{}, err
+	}
+	h, err := kbfshash.DefaultHash(buf)
+	if err != nil {
+		return TLFWriterKeyBundleID{}, err
+	}
+	return TLFWriterKeyBundleID{h}, nil
+}
+
 // TLFReaderKeyBundleV3 stores all the reader keys with reader
 // permissions on a TLF.
 type TLFReaderKeyBundleV3 struct {
@@ -484,4 +502,18 @@ func (h *TLFReaderKeyBundleID) UnmarshalBinary(data []byte) error {
 // IsNil returns true if the ID is unset.
 func (h TLFReaderKeyBundleID) IsNil() bool {
 	return h == TLFReaderKeyBundleID{}
+}
+
+// MakeTLFReaderKeyBundleID hashes a TLFReaderKeyBundleV3 to create an ID.
+func MakeTLFReaderKeyBundleID(codec kbfscodec.Codec, rkb TLFReaderKeyBundleV3) (
+	TLFReaderKeyBundleID, error) {
+	buf, err := codec.Encode(rkb)
+	if err != nil {
+		return TLFReaderKeyBundleID{}, err
+	}
+	h, err := kbfshash.DefaultHash(buf)
+	if err != nil {
+		return TLFReaderKeyBundleID{}, err
+	}
+	return TLFReaderKeyBundleID{h}, nil
 }

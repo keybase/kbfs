@@ -450,7 +450,7 @@ func TestRootMetadataUpconversionPrivate(t *testing.T) {
 	require.Equal(t, aliceKeys, charlieKeys)
 
 	// Rekeying again shouldn't change wkbNew/rkbNew.
-	err = rmd2.finalizeRekey(config.Crypto())
+	err = rmd2.finalizeRekey(config.Codec())
 	require.NoError(t, err)
 	extra, ok = rmd2.extra.(*ExtraMetadataV3)
 	require.True(t, ok)

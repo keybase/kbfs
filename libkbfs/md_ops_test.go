@@ -43,16 +43,6 @@ func (c shimCrypto) Verify(
 	return kbfscrypto.Verify(msg, sigInfo)
 }
 
-func (c shimCrypto) MakeTLFWriterKeyBundleID(
-	wkb TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error) {
-	return c.pure.MakeTLFWriterKeyBundleID(wkb)
-}
-
-func (c shimCrypto) MakeTLFReaderKeyBundleID(
-	rkb TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error) {
-	return c.pure.MakeTLFReaderKeyBundleID(rkb)
-}
-
 func injectShimCrypto(config Config) {
 	signingKey := kbfscrypto.MakeFakeSigningKeyOrBust("test key")
 	crypto := shimCrypto{

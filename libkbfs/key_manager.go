@@ -755,7 +755,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 			if mdChanged {
 				finalizeErr := md.finalizeRekey(
-					km.config.Crypto())
+					km.config.Codec())
 				if finalizeErr != nil {
 					mdChanged = false
 					cryptKey = nil
