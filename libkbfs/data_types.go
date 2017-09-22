@@ -112,21 +112,16 @@ type EncryptedTLFCryptKeyClientAndEphemeral struct {
 	EPubKey kbfscrypto.TLFEphemeralPublicKey
 }
 
-// KeyGen is the type of a key generation for a top-level folder.
-type KeyGen int
+// KeyGen is a temporary alias.
+type KeyGen = kbfsmd.KeyGen
 
 const (
-	// PublicKeyGen is the value used for public TLFs. Note that
-	// it is not considered a valid key generation.
-	PublicKeyGen KeyGen = -1
-	// UnspecifiedKeyGen indicates that the application doesn't have a
-	// particular keygen in mind when requesting keys; any keygen will
-	// do.
-	UnspecifiedKeyGen KeyGen = 0
-	// FirstValidKeyGen is the first value that is considered a
-	// valid key generation. Note that the nil value is not
-	// considered valid.
-	FirstValidKeyGen KeyGen = 1
+	// PublicKeyGen is a temporary alias.
+	PublicKeyGen KeyGen = kbfsmd.PublicKeyGen
+	// UnspecifiedKeyGen is a temporary alias.
+	UnspecifiedKeyGen KeyGen = kbfsmd.UnspecifiedKeyGen
+	// FirstValidKeyGen is a temporary alias.
+	FirstValidKeyGen KeyGen = kbfsmd.FirstValidKeyGen
 )
 
 // MetadataVer is the type of a version for marshalled KBFS metadata
