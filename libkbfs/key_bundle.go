@@ -108,7 +108,7 @@ func (serverHalves UserDeviceKeyServerHalves) mergeUsers(
 // splitTLFCryptKey splits the given TLFCryptKey into two parts -- the
 // client-side part (which is encrypted with the given keys), and the
 // server-side part, which will be uploaded to the server.
-func splitTLFCryptKey(crypto cryptoPure, uid keybase1.UID,
+func splitTLFCryptKey(uid keybase1.UID,
 	tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	pubKey kbfscrypto.CryptPublicKey) (
@@ -117,7 +117,7 @@ func splitTLFCryptKey(crypto cryptoPure, uid keybase1.UID,
 	//    * mask it with the key to get the client half
 	//    * encrypt the client half
 	var serverHalf kbfscrypto.TLFCryptKeyServerHalf
-	serverHalf, err := crypto.MakeRandomTLFCryptKeyServerHalf()
+	serverHalf, err := kbfscrypto.MakeRandomTLFCryptKeyServerHalf()
 	if err != nil {
 		return TLFCryptKeyInfo{}, kbfscrypto.TLFCryptKeyServerHalf{}, err
 	}
@@ -126,14 +126,14 @@ func splitTLFCryptKey(crypto cryptoPure, uid keybase1.UID,
 
 	var encryptedClientHalf EncryptedTLFCryptKeyClientHalf
 	encryptedClientHalf, err =
-		crypto.EncryptTLFCryptKeyClientHalf(ePrivKey, pubKey, clientHalf)
+		kbfscrypto.EncryptTLFCryptKeyClientHalf(ePrivKey, pubKey, clientHalf)
 	if err != nil {
 		return TLFCryptKeyInfo{}, kbfscrypto.TLFCryptKeyServerHalf{}, err
 	}
 
 	var serverHalfID TLFCryptKeyServerHalfID
 	serverHalfID, err =
-		crypto.GetTLFCryptKeyServerHalfID(uid, pubKey, serverHalf)
+		kbfscrypto.MakeTLFCryptKeyServerHalfID(uid, pubKey, serverHalf)
 	if err != nil {
 		return TLFCryptKeyInfo{}, kbfscrypto.TLFCryptKeyServerHalf{}, err
 	}

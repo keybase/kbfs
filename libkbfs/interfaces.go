@@ -668,7 +668,7 @@ type KeyMetadata interface {
 
 	// GetHistoricTLFCryptKey attempts to symmetrically decrypt the key at the given
 	// generation using the current generation's TLFCryptKey.
-	GetHistoricTLFCryptKey(c cryptoPure, keyGen KeyGen,
+	GetHistoricTLFCryptKey(codec kbfscodec.Codec, keyGen KeyGen,
 		currentKey kbfscrypto.TLFCryptKey) (
 		kbfscrypto.TLFCryptKey, error)
 }
@@ -1017,23 +1017,11 @@ type cryptoPure interface {
 	// single key generation of a TLF.
 	MakeRandomTLFKeys() (kbfscrypto.TLFPublicKey,
 		kbfscrypto.TLFPrivateKey, kbfscrypto.TLFCryptKey, error)
-	// MakeRandomTLFCryptKeyServerHalf generates the server-side of a
-	// top-level folder crypt key.
-	MakeRandomTLFCryptKeyServerHalf() (
-		kbfscrypto.TLFCryptKeyServerHalf, error)
 
 	// MakeRandomBlockCryptKeyServerHalf generates the server-side of
 	// a block crypt key.
 	MakeRandomBlockCryptKeyServerHalf() (
 		kbfscrypto.BlockCryptKeyServerHalf, error)
-
-	// EncryptTLFCryptKeyClientHalf encrypts a TLFCryptKeyClientHalf
-	// using both a TLF's ephemeral private key and a device pubkey.
-	EncryptTLFCryptKeyClientHalf(
-		privateKey kbfscrypto.TLFEphemeralPrivateKey,
-		publicKey kbfscrypto.CryptPublicKey,
-		clientHalf kbfscrypto.TLFCryptKeyClientHalf) (
-		EncryptedTLFCryptKeyClientHalf, error)
 
 	// EncryptPrivateMetadata encrypts a PrivateMetadata object.
 	EncryptPrivateMetadata(
@@ -1056,18 +1044,6 @@ type cryptoPure interface {
 	DecryptBlock(encryptedBlock EncryptedBlock,
 		key kbfscrypto.BlockCryptKey, block Block) error
 
-	// GetTLFCryptKeyServerHalfID creates a unique ID for this particular
-	// kbfscrypto.TLFCryptKeyServerHalf.
-	GetTLFCryptKeyServerHalfID(
-		user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey,
-		serverHalf kbfscrypto.TLFCryptKeyServerHalf) (
-		TLFCryptKeyServerHalfID, error)
-
-	// VerifyTLFCryptKeyServerHalfID verifies the ID is the proper HMAC result.
-	VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID,
-		user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey,
-		serverHalf kbfscrypto.TLFCryptKeyServerHalf) error
-
 	// EncryptMerkleLeaf encrypts a Merkle leaf node with the TLFPublicKey.
 	EncryptMerkleLeaf(leaf MerkleLeaf, pubKey kbfscrypto.TLFPublicKey,
 		nonce *[24]byte, ePrivKey kbfscrypto.TLFEphemeralPrivateKey) (
@@ -1083,15 +1059,6 @@ type cryptoPure interface {
 
 	// MakeTLFReaderKeyBundleID hashes a TLFReaderKeyBundleV3 to create an ID.
 	MakeTLFReaderKeyBundleID(rkb TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error)
-
-	// EncryptTLFCryptKeys encrypts an array of historic TLFCryptKeys.
-	EncryptTLFCryptKeys(oldKeys []kbfscrypto.TLFCryptKey,
-		key kbfscrypto.TLFCryptKey) (EncryptedTLFCryptKeys, error)
-
-	// DecryptTLFCryptKeys decrypts an array of historic TLFCryptKeys.
-	DecryptTLFCryptKeys(
-		encKeys EncryptedTLFCryptKeys, key kbfscrypto.TLFCryptKey) (
-		[]kbfscrypto.TLFCryptKey, error)
 }
 
 // Crypto signs, verifies, encrypts, and decrypts stuff.
@@ -2132,7 +2099,7 @@ type BareRootMetadata interface {
 	StoresHistoricTLFCryptKeys() bool
 	// GetHistoricTLFCryptKey attempts to symmetrically decrypt the key at the given
 	// generation using the current generation's TLFCryptKey.
-	GetHistoricTLFCryptKey(c cryptoPure, keyGen KeyGen,
+	GetHistoricTLFCryptKey(codec kbfscodec.Codec, keyGen KeyGen,
 		currentKey kbfscrypto.TLFCryptKey, extra ExtraMetadata) (
 		kbfscrypto.TLFCryptKey, error)
 }

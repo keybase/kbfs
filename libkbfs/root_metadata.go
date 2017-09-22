@@ -862,10 +862,10 @@ func (md *RootMetadata) StoresHistoricTLFCryptKeys() bool {
 
 // GetHistoricTLFCryptKey implements the KeyMetadata interface for RootMetadata.
 func (md *RootMetadata) GetHistoricTLFCryptKey(
-	crypto cryptoPure, keyGen KeyGen,
+	codec kbfscodec.Codec, keyGen KeyGen,
 	currentKey kbfscrypto.TLFCryptKey) (kbfscrypto.TLFCryptKey, error) {
 	return md.bareMd.GetHistoricTLFCryptKey(
-		crypto, keyGen, currentKey, md.extra)
+		codec, keyGen, currentKey, md.extra)
 }
 
 // IsWriter checks that the given user is a valid writer of the TLF

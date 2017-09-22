@@ -72,7 +72,7 @@ func getEphemeralPublicKeyInfoV2(info TLFCryptKeyInfo,
 // TLF's symmetric secret key information.
 type DeviceKeyInfoMapV2 map[keybase1.KID]TLFCryptKeyInfo
 
-func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfos(crypto cryptoPure,
+func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfos(
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	updatedDeviceKeys DevicePublicKeys) (
@@ -86,7 +86,7 @@ func (dkimV2 DeviceKeyInfoMapV2) fillInDeviceInfos(crypto cryptoPure,
 		}
 
 		clientInfo, serverHalf, err := splitTLFCryptKey(
-			crypto, uid, tlfCryptKey, ePrivKey, ePubIndex, k)
+			uid, tlfCryptKey, ePrivKey, ePubIndex, k)
 		if err != nil {
 			return nil, err
 		}
@@ -165,7 +165,7 @@ func (udkimV2 UserDeviceKeyInfoMapV2) removeDevicesNotIn(
 }
 
 func (udkimV2 UserDeviceKeyInfoMapV2) fillInUserInfos(
-	crypto cryptoPure, newIndex int, updatedUserKeys UserDevicePublicKeys,
+	newIndex int, updatedUserKeys UserDevicePublicKeys,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (
 	serverHalves UserDeviceKeyServerHalves, err error) {
@@ -176,7 +176,7 @@ func (udkimV2 UserDeviceKeyInfoMapV2) fillInUserInfos(
 		}
 
 		deviceServerHalves, err := udkimV2[u].fillInDeviceInfos(
-			crypto, u, tlfCryptKey, ePrivKey, newIndex,
+			u, tlfCryptKey, ePrivKey, newIndex,
 			updatedDeviceKeys)
 		if err != nil {
 			return nil, err
@@ -238,7 +238,7 @@ func (wkg TLFWriterKeyGenerationsV2) IsWriter(user keybase1.UID, deviceKey kbfsc
 
 // ToTLFWriterKeyBundleV3 converts a TLFWriterKeyGenerationsV2 to a TLFWriterKeyBundleV3.
 func (wkg TLFWriterKeyGenerationsV2) ToTLFWriterKeyBundleV3(
-	codec kbfscodec.Codec, crypto cryptoPure,
+	codec kbfscodec.Codec,
 	tlfCryptKeyGetter func() ([]kbfscrypto.TLFCryptKey, error)) (
 	TLFWriterKeyBundleV2, TLFWriterKeyBundleV3, error) {
 	keyGen := wkg.LatestKeyGeneration()
@@ -279,7 +279,7 @@ func (wkg TLFWriterKeyGenerationsV2) ToTLFWriterKeyBundleV3(
 		// Get rid of the most current generation as that's in the UserDeviceKeyInfoMap already.
 		keys = keys[:len(keys)-1]
 		// Encrypt the historic keys with the current key.
-		wkbV3.EncryptedHistoricTLFCryptKeys, err = crypto.EncryptTLFCryptKeys(keys, currKey)
+		wkbV3.EncryptedHistoricTLFCryptKeys, err = kbfscrypto.EncryptTLFCryptKeys(codec, keys, currKey)
 		if err != nil {
 			return TLFWriterKeyBundleV2{}, TLFWriterKeyBundleV3{}, err
 		}

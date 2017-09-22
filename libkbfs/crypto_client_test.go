@@ -185,7 +185,7 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfBoxSeal(t *testing.T) {
 	cryptKey, err := kbfscrypto.MakeRandomTLFCryptKey()
 	require.NoError(t, err)
 
-	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
+	serverHalf, err := kbfscrypto.MakeRandomTLFCryptKeyServerHalf()
 	require.NoError(t, err)
 
 	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
@@ -228,14 +228,14 @@ func TestCryptoClientDecryptEncryptedTLFCryptKeyClientHalf(t *testing.T) {
 	cryptKey, err := kbfscrypto.MakeRandomTLFCryptKey()
 	require.NoError(t, err)
 
-	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
+	serverHalf, err := kbfscrypto.MakeRandomTLFCryptKeyServerHalf()
 	require.NoError(t, err)
 
 	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
 
 	// See crypto_common_test.go for tests that this actually
 	// performs encryption.
-	encryptedClientHalf, err := c.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
+	encryptedClientHalf, err := kbfscrypto.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
 	require.NoError(t, err)
 	require.Equal(t, EncryptionSecretbox, encryptedClientHalf.Version)
 
@@ -281,14 +281,14 @@ func TestCryptoClientDecryptEncryptedTLFCryptKeyClientHalfAny(t *testing.T) {
 		cryptKey, err := kbfscrypto.MakeRandomTLFCryptKey()
 		require.NoError(t, err)
 
-		serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
+		serverHalf, err := kbfscrypto.MakeRandomTLFCryptKeyServerHalf()
 		require.NoError(t, err)
 
 		clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
 
 		// See crypto_common_test.go for tests that this actually
 		// performs encryption.
-		encryptedClientHalf, err := c.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
+		encryptedClientHalf, err := kbfscrypto.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
 		require.NoError(t, err)
 		require.Equal(t, EncryptionSecretbox,
 			encryptedClientHalf.Version)
@@ -323,12 +323,12 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfAnyFailures(t *testing.T) {
 	cryptKey, err := kbfscrypto.MakeRandomTLFCryptKey()
 	require.NoError(t, err)
 
-	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
+	serverHalf, err := kbfscrypto.MakeRandomTLFCryptKeyServerHalf()
 	require.NoError(t, err)
 
 	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
 
-	encryptedClientHalf, err := c.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
+	encryptedClientHalf, err := kbfscrypto.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
 	require.NoError(t, err)
 
 	// Wrong version.
@@ -403,12 +403,12 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfFailures(t *testing.T) {
 	cryptKey, err := kbfscrypto.MakeRandomTLFCryptKey()
 	require.NoError(t, err)
 
-	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
+	serverHalf, err := kbfscrypto.MakeRandomTLFCryptKeyServerHalf()
 	require.NoError(t, err)
 
 	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
 
-	encryptedClientHalf, err := c.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
+	encryptedClientHalf, err := kbfscrypto.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
 	require.NoError(t, err)
 
 	// Wrong version.
@@ -476,12 +476,12 @@ func TestCryptoClientDecryptTLFCryptKeyClientHalfCanceled(t *testing.T) {
 	cryptKey, err := kbfscrypto.MakeRandomTLFCryptKey()
 	require.NoError(t, err)
 
-	serverHalf, err := c.MakeRandomTLFCryptKeyServerHalf()
+	serverHalf, err := kbfscrypto.MakeRandomTLFCryptKeyServerHalf()
 	require.NoError(t, err)
 
 	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, cryptKey)
 
-	encryptedClientHalf, err := c.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
+	encryptedClientHalf, err := kbfscrypto.EncryptTLFCryptKeyClientHalf(ephPrivateKey, cryptPrivateKey.GetPublicKey(), clientHalf)
 	require.NoError(t, err)
 
 	f := func(ctx context.Context) error {

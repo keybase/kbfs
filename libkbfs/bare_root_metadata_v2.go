@@ -411,7 +411,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(
 	if md.LatestKeyGeneration() != PublicKeyGen {
 		// Fill out the writer key bundle.
 		wkbV2, wkbV3, err := md.WKeys.ToTLFWriterKeyBundleV3(
-			codec, crypto, tlfCryptKeyGetter)
+			codec, tlfCryptKeyGetter)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1175,7 +1175,7 @@ func (md *BareRootMetadataV2) updateKeyGenerationForReaderRekey(
 	newIndex := -len(rkb.TLFReaderEphemeralPublicKeys) - 1
 
 	rServerHalves, err := rkb.RKeys.fillInUserInfos(
-		crypto, newIndex, updatedReaderKeys, ePrivKey, tlfCryptKey)
+		newIndex, updatedReaderKeys, ePrivKey, tlfCryptKey)
 	if err != nil {
 		return nil, err
 	}
@@ -1209,13 +1209,13 @@ func (md *BareRootMetadataV2) updateKeyGeneration(
 	newIndex := len(wkb.TLFEphemeralPublicKeys)
 
 	wServerHalves, err := wkb.WKeys.fillInUserInfos(
-		crypto, newIndex, updatedWriterKeys, ePrivKey, tlfCryptKey)
+		newIndex, updatedWriterKeys, ePrivKey, tlfCryptKey)
 	if err != nil {
 		return nil, err
 	}
 
 	rServerHalves, err := rkb.RKeys.fillInUserInfos(
-		crypto, newIndex, updatedReaderKeys, ePrivKey, tlfCryptKey)
+		newIndex, updatedReaderKeys, ePrivKey, tlfCryptKey)
 	if err != nil {
 		return nil, err
 	}
@@ -1397,7 +1397,7 @@ func (md *BareRootMetadataV2) StoresHistoricTLFCryptKeys() bool {
 
 // GetHistoricTLFCryptKey implements the BareRootMetadata interface for BareRootMetadataV2.
 func (md *BareRootMetadataV2) GetHistoricTLFCryptKey(
-	_ cryptoPure, _ KeyGen, _ kbfscrypto.TLFCryptKey, _ ExtraMetadata) (
+	_ kbfscodec.Codec, _ KeyGen, _ kbfscrypto.TLFCryptKey, _ ExtraMetadata) (
 	kbfscrypto.TLFCryptKey, error) {
 	return kbfscrypto.TLFCryptKey{}, errors.New(
 		"TLF crypt key not symmetrically encrypted")

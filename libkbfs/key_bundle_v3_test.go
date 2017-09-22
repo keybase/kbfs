@@ -71,19 +71,17 @@ func TestRemoveDevicesNotInV3(t *testing.T) {
 	half2c := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x5})
 	half3a := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x6})
 
-	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
-	id1a, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1a, half1a)
+	id1a, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(uid1, key1a, half1a)
 	require.NoError(t, err)
-	id1b, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1b, half1b)
+	id1b, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(uid1, key1b, half1b)
 	require.NoError(t, err)
-	id2a, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2a, half2a)
+	id2a, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(uid2, key2a, half2a)
 	require.NoError(t, err)
-	id2b, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2b, half2b)
+	id2b, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(uid2, key2b, half2b)
 	require.NoError(t, err)
-	id2c, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2c, half2c)
+	id2c, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(uid2, key2c, half2c)
 	require.NoError(t, err)
-	id3a, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key3a, half3a)
+	id3a, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(uid2, key3a, half3a)
 	require.NoError(t, err)
 
 	udkimV3 := UserDeviceKeyInfoMapV3{
@@ -177,11 +175,9 @@ func TestRemoveLastDeviceV3(t *testing.T) {
 	half1 := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x1})
 	half2 := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x2})
 
-	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
-	id1, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1, half1)
+	id1, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(uid1, key1, half1)
 	require.NoError(t, err)
-	id2, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2, half2)
+	id2, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(uid2, key2, half2)
 	require.NoError(t, err)
 
 	udkimV3 := UserDeviceKeyInfoMapV3{

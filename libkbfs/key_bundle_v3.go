@@ -55,7 +55,7 @@ func (dkimV3 DeviceKeyInfoMapV3) Size() int {
 	return mapSize + contentSize
 }
 
-func (dkimV3 DeviceKeyInfoMapV3) fillInDeviceInfos(crypto cryptoPure,
+func (dkimV3 DeviceKeyInfoMapV3) fillInDeviceInfos(
 	uid keybase1.UID, tlfCryptKey kbfscrypto.TLFCryptKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey, ePubIndex int,
 	updatedDeviceKeys DevicePublicKeys) (
@@ -69,7 +69,7 @@ func (dkimV3 DeviceKeyInfoMapV3) fillInDeviceInfos(crypto cryptoPure,
 		}
 
 		clientInfo, serverHalf, err := splitTLFCryptKey(
-			crypto, uid, tlfCryptKey, ePrivKey, ePubIndex, k)
+			uid, tlfCryptKey, ePrivKey, ePubIndex, k)
 		if err != nil {
 			return nil, err
 		}
@@ -193,7 +193,7 @@ func (udkimV3 UserDeviceKeyInfoMapV3) removeDevicesNotIn(
 }
 
 func (udkimV3 UserDeviceKeyInfoMapV3) fillInUserInfos(
-	crypto cryptoPure, newIndex int, updatedUserKeys UserDevicePublicKeys,
+	newIndex int, updatedUserKeys UserDevicePublicKeys,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (
 	serverHalves UserDeviceKeyServerHalves, err error) {
@@ -204,7 +204,7 @@ func (udkimV3 UserDeviceKeyInfoMapV3) fillInUserInfos(
 		}
 
 		deviceServerHalves, err := udkimV3[u].fillInDeviceInfos(
-			crypto, u, tlfCryptKey, ePrivKey, newIndex,
+			u, tlfCryptKey, ePrivKey, newIndex,
 			updatedDeviceKeys)
 		if err != nil {
 			return nil, err

@@ -1196,7 +1196,7 @@ func (md *BareRootMetadataV3) updateKeyBundles(crypto cryptoPure,
 		newWriterIndex = len(wkb.TLFEphemeralPublicKeys)
 	}
 	wServerHalves, err := wkb.Keys.fillInUserInfos(
-		crypto, newWriterIndex, updatedWriterKeys,
+		newWriterIndex, updatedWriterKeys,
 		ePrivKey, tlfCryptKey)
 	if err != nil {
 		return nil, err
@@ -1213,7 +1213,7 @@ func (md *BareRootMetadataV3) updateKeyBundles(crypto cryptoPure,
 		newReaderIndex = len(rkb.TLFEphemeralPublicKeys)
 	}
 	rServerHalves, err := rkb.Keys.fillInUserInfos(
-		crypto, newReaderIndex, updatedReaderKeys,
+		newReaderIndex, updatedReaderKeys,
 		ePrivKey, tlfCryptKey)
 	if err != nil {
 		return nil, err
@@ -1288,7 +1288,8 @@ func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
 		var historicKeys []kbfscrypto.TLFCryptKey
 		if latestKeyGen > FirstValidKeyGen {
 			var err error
-			historicKeys, err = crypto.DecryptTLFCryptKeys(
+			historicKeys, err = kbfscrypto.DecryptTLFCryptKeys(
+				codec,
 				currExtraV3.wkb.EncryptedHistoricTLFCryptKeys,
 				currCryptKey)
 			if err != nil {
@@ -1305,8 +1306,8 @@ func (md *BareRootMetadataV3) AddKeyGeneration(codec kbfscodec.Codec,
 		}
 		historicKeys = append(historicKeys, currCryptKey)
 		var err error
-		encryptedHistoricKeys, err = crypto.EncryptTLFCryptKeys(
-			historicKeys, nextCryptKey)
+		encryptedHistoricKeys, err = kbfscrypto.EncryptTLFCryptKeys(
+			codec, historicKeys, nextCryptKey)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1474,7 +1475,7 @@ func (md *BareRootMetadataV3) StoresHistoricTLFCryptKeys() bool {
 }
 
 // GetHistoricTLFCryptKey implements the BareRootMetadata interface for BareRootMetadataV3.
-func (md *BareRootMetadataV3) GetHistoricTLFCryptKey(crypto cryptoPure,
+func (md *BareRootMetadataV3) GetHistoricTLFCryptKey(codec kbfscodec.Codec,
 	keyGen KeyGen, currentKey kbfscrypto.TLFCryptKey, extra ExtraMetadata) (
 	kbfscrypto.TLFCryptKey, error) {
 	extraV3, ok := extra.(*ExtraMetadataV3)
@@ -1486,8 +1487,8 @@ func (md *BareRootMetadataV3) GetHistoricTLFCryptKey(crypto cryptoPure,
 		return kbfscrypto.TLFCryptKey{}, errors.Errorf(
 			"Invalid key generation %d", keyGen)
 	}
-	oldKeys, err := crypto.DecryptTLFCryptKeys(
-		extraV3.wkb.EncryptedHistoricTLFCryptKeys, currentKey)
+	oldKeys, err := kbfscrypto.DecryptTLFCryptKeys(
+		codec, extraV3.wkb.EncryptedHistoricTLFCryptKeys, currentKey)
 	if err != nil {
 		return kbfscrypto.TLFCryptKey{}, err
 	}

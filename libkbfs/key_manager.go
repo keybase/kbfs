@@ -183,7 +183,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 		}
 		// get the historic key we want
 		tlfCryptKey, err =
-			kmd.GetHistoricTLFCryptKey(km.config.Crypto(), keyGen, latestKey)
+			kmd.GetHistoricTLFCryptKey(km.config.Codec(), keyGen, latestKey)
 		if err != nil {
 			return kbfscrypto.TLFCryptKey{}, err
 		}

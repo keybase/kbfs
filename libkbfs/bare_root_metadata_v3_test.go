@@ -148,13 +148,11 @@ func TestRevokeRemovedDevicesV3(t *testing.T) {
 	half2a := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x3})
 	half3a := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x5})
 
-	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
-	id1a, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1, half1a)
+	id1a, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(uid1, key1, half1a)
 	require.NoError(t, err)
-	id2a, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2, half2a)
+	id2a, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(uid2, key2, half2a)
 	require.NoError(t, err)
-	id3a, err := crypto.GetTLFCryptKeyServerHalfID(uid3, key3, half3a)
+	id3a, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(uid3, key3, half3a)
 	require.NoError(t, err)
 
 	tlfID := tlf.FakeID(1, tlf.Private)
@@ -259,11 +257,9 @@ func TestRevokeLastDeviceV3(t *testing.T) {
 	half1 := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x1})
 	half2 := kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x2})
 
-	codec := kbfscodec.NewMsgpack()
-	crypto := MakeCryptoCommon(codec)
-	id1, err := crypto.GetTLFCryptKeyServerHalfID(uid1, key1, half1)
+	id1, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(uid1, key1, half1)
 	require.NoError(t, err)
-	id2, err := crypto.GetTLFCryptKeyServerHalfID(uid2, key2, half2)
+	id2, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(uid2, key2, half2)
 	require.NoError(t, err)
 
 	tlfID := tlf.FakeID(1, tlf.Private)
