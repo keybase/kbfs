@@ -4898,10 +4898,7 @@ func (fbo *folderBranchOps) getAndApplyNewestUnmergedHead(ctx context.Context,
 	if err := fbo.notifyBatchLocked(ctx, lState, md); err != nil {
 		return err
 	}
-	if err := fbo.config.MDCache().Put(md); err != nil {
-		return err
-	}
-	return nil
+	return fbo.config.MDCache().Put(md)
 }
 
 // getUnmergedMDUpdates returns a slice of the unmerged MDs for this
@@ -5241,7 +5238,7 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 
 	// send rekey finish notification
 	handle := md.GetTlfHandle()
-	if currKeyGen >= FirstValidKeyGen {
+	if currKeyGen >= FirstValidKeyGen && rekeyDone {
 		fbo.config.Reporter().Notify(ctx,
 			rekeyNotification(ctx, fbo.config, handle, true))
 	}
