@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD
 // license that can be found in the LICENSE file.
 
-package libkbfs
+package kbfsmd
 
 import (
 	"encoding"
@@ -108,7 +108,8 @@ func (udkimV3 UserDeviceKeyInfoMapV3) Size() int {
 	return mapSize + contentSize
 }
 
-func (udkimV3 UserDeviceKeyInfoMapV3) toPublicKeys() UserDevicePublicKeys {
+// ToPublicKeys converts this object to a UserDevicePublicKeys object.
+func (udkimV3 UserDeviceKeyInfoMapV3) ToPublicKeys() UserDevicePublicKeys {
 	publicKeys := make(UserDevicePublicKeys, len(udkimV3))
 	for u, dkimV3 := range udkimV3 {
 		publicKeys[u] = dkimV3.toPublicKeys()
@@ -148,14 +149,14 @@ func writerUDKIMV2ToV3(codec kbfscodec.Codec, udkimV2 UserDeviceKeyInfoMapV2,
 	return udkimV3, nil
 }
 
-// removeDevicesNotIn removes any info for any device that is not
+// RemoveDevicesNotIn removes any info for any device that is not
 // contained in the given map of users and devices.
-func (udkimV3 UserDeviceKeyInfoMapV3) removeDevicesNotIn(
+func (udkimV3 UserDeviceKeyInfoMapV3) RemoveDevicesNotIn(
 	updatedUserKeys UserDevicePublicKeys) ServerHalfRemovalInfo {
 	removalInfo := make(ServerHalfRemovalInfo)
 	for uid, dkim := range udkimV3 {
 		userRemoved := false
-		deviceServerHalfIDs := make(deviceServerHalfRemovalInfo)
+		deviceServerHalfIDs := make(DeviceServerHalfRemovalInfo)
 		if deviceKeys, ok := updatedUserKeys[uid]; ok {
 			for key, info := range dkim {
 				if !deviceKeys[key] {
@@ -183,16 +184,17 @@ func (udkimV3 UserDeviceKeyInfoMapV3) removeDevicesNotIn(
 			delete(udkimV3, uid)
 		}
 
-		removalInfo[uid] = userServerHalfRemovalInfo{
-			userRemoved:         userRemoved,
-			deviceServerHalfIDs: deviceServerHalfIDs,
+		removalInfo[uid] = UserServerHalfRemovalInfo{
+			UserRemoved:         userRemoved,
+			DeviceServerHalfIDs: deviceServerHalfIDs,
 		}
 	}
 
 	return removalInfo
 }
 
-func (udkimV3 UserDeviceKeyInfoMapV3) fillInUserInfos(
+// FillInUserInfos fills in this map from the given info.
+func (udkimV3 UserDeviceKeyInfoMapV3) FillInUserInfos(
 	newIndex int, updatedUserKeys UserDevicePublicKeys,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (
@@ -238,7 +240,7 @@ type TLFWriterKeyBundleV3 struct {
 
 	// This is a time-ordered encrypted list of historic key generations.
 	// It is encrypted with the latest generation of the TLF crypt key.
-	EncryptedHistoricTLFCryptKeys EncryptedTLFCryptKeys `codec:"oldKeys"`
+	EncryptedHistoricTLFCryptKeys kbfscrypto.EncryptedTLFCryptKeys `codec:"oldKeys"`
 
 	codec.UnknownFieldSetHandler
 }

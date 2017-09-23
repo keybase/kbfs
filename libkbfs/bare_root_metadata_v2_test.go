@@ -162,6 +162,106 @@ func (wmef writerMetadataExtraV2Future) toCurrent() WriterMetadataExtraV2 {
 	return wmef.WriterMetadataExtraV2
 }
 
+// TODO: Remove the below once we move this file to kbfsmd.
+
+type tlfCryptKeyInfoFuture struct {
+	kbfsmd.TLFCryptKeyInfo
+	kbfscodec.Extra
+}
+
+func (cki tlfCryptKeyInfoFuture) toCurrent() kbfsmd.TLFCryptKeyInfo {
+	return cki.TLFCryptKeyInfo
+}
+
+func (cki tlfCryptKeyInfoFuture) ToCurrentStruct() kbfscodec.CurrentStruct {
+	return cki.toCurrent()
+}
+
+func makeFakeTLFCryptKeyInfoFuture(t *testing.T) tlfCryptKeyInfoFuture {
+	id, err := kbfscrypto.MakeTLFCryptKeyServerHalfID(
+		keybase1.MakeTestUID(1),
+		kbfscrypto.MakeFakeCryptPublicKeyOrBust("fake"),
+		kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x3}))
+	require.NoError(t, err)
+	cki := TLFCryptKeyInfo{
+		ClientHalf: kbfscrypto.MakeEncryptedTLFCryptKeyClientHalfForTest(
+			kbfscrypto.EncryptionSecretbox,
+			[]byte("fake encrypted data"),
+			[]byte("fake nonce")),
+		ServerHalfID:           id,
+		EPubKeyIndex:           5,
+		UnknownFieldSetHandler: codec.UnknownFieldSetHandler{},
+	}
+	return tlfCryptKeyInfoFuture{
+		cki,
+		kbfscodec.MakeExtraOrBust("TLFCryptKeyInfo", t),
+	}
+}
+
+type deviceKeyInfoMapV2Future map[keybase1.KID]tlfCryptKeyInfoFuture
+
+func (dkimf deviceKeyInfoMapV2Future) toCurrent() kbfsmd.DeviceKeyInfoMapV2 {
+	dkim := make(DeviceKeyInfoMapV2, len(dkimf))
+	for k, kif := range dkimf {
+		ki := kif.toCurrent()
+		dkim[k] = TLFCryptKeyInfo(ki)
+	}
+	return dkim
+}
+
+func makeFakeDeviceKeyInfoMapV2Future(t *testing.T) userDeviceKeyInfoMapV2Future {
+	return userDeviceKeyInfoMapV2Future{
+		"fake uid": deviceKeyInfoMapV2Future{
+			"fake kid": makeFakeTLFCryptKeyInfoFuture(t),
+		},
+	}
+}
+
+type userDeviceKeyInfoMapV2Future map[keybase1.UID]deviceKeyInfoMapV2Future
+
+func (udkimf userDeviceKeyInfoMapV2Future) toCurrent() kbfsmd.UserDeviceKeyInfoMapV2 {
+	udkim := make(UserDeviceKeyInfoMapV2)
+	for u, dkimf := range udkimf {
+		dkim := dkimf.toCurrent()
+		udkim[u] = dkim
+	}
+	return udkim
+}
+
+type tlfWriterKeyBundleV2Future struct {
+	TLFWriterKeyBundleV2
+	// Override TLFWriterKeyBundleV2.WKeys.
+	WKeys userDeviceKeyInfoMapV2Future
+	kbfscodec.Extra
+}
+
+func (wkbf tlfWriterKeyBundleV2Future) toCurrent() TLFWriterKeyBundleV2 {
+	wkb := wkbf.TLFWriterKeyBundleV2
+	wkb.WKeys = wkbf.WKeys.toCurrent()
+	return wkb
+}
+
+func (wkbf tlfWriterKeyBundleV2Future) ToCurrentStruct() kbfscodec.CurrentStruct {
+	return wkbf.toCurrent()
+}
+
+func makeFakeTLFWriterKeyBundleV2Future(
+	t *testing.T) tlfWriterKeyBundleV2Future {
+	wkb := TLFWriterKeyBundleV2{
+		WKeys:        nil,
+		TLFPublicKey: kbfscrypto.MakeTLFPublicKey([32]byte{0xa}),
+		TLFEphemeralPublicKeys: kbfscrypto.TLFEphemeralPublicKeys{
+			kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0xb}),
+		},
+		UnknownFieldSetHandler: codec.UnknownFieldSetHandler{},
+	}
+	return tlfWriterKeyBundleV2Future{
+		wkb,
+		makeFakeDeviceKeyInfoMapV2Future(t),
+		kbfscodec.MakeExtraOrBust("TLFWriterKeyBundleV2", t),
+	}
+}
+
 type tlfWriterKeyGenerationsV2Future []*tlfWriterKeyBundleV2Future
 
 func (wkgf tlfWriterKeyGenerationsV2Future) toCurrent() TLFWriterKeyGenerationsV2 {
@@ -231,6 +331,39 @@ func makeFakeWriterMetadataV2Future(t *testing.T) writerMetadataV2Future {
 
 func TestWriterMetadataV2UnknownFields(t *testing.T) {
 	testStructUnknownFields(t, makeFakeWriterMetadataV2Future(t))
+}
+
+type tlfReaderKeyBundleV2Future struct {
+	TLFReaderKeyBundleV2
+	// Override TLFReaderKeyBundleV2.RKeys.
+	RKeys userDeviceKeyInfoMapV2Future
+	kbfscodec.Extra
+}
+
+func (rkbf tlfReaderKeyBundleV2Future) toCurrent() TLFReaderKeyBundleV2 {
+	rkb := rkbf.TLFReaderKeyBundleV2
+	rkb.RKeys = rkbf.RKeys.toCurrent()
+	return rkb
+}
+
+func (rkbf tlfReaderKeyBundleV2Future) ToCurrentStruct() kbfscodec.CurrentStruct {
+	return rkbf.toCurrent()
+}
+
+func makeFakeTLFReaderKeyBundleV2Future(
+	t *testing.T) tlfReaderKeyBundleV2Future {
+	rkb := TLFReaderKeyBundleV2{
+		RKeys: nil,
+		TLFReaderEphemeralPublicKeys: kbfscrypto.TLFEphemeralPublicKeys{
+			kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0xc}),
+		},
+		UnknownFieldSetHandler: codec.UnknownFieldSetHandler{},
+	}
+	return tlfReaderKeyBundleV2Future{
+		rkb,
+		makeFakeDeviceKeyInfoMapV2Future(t),
+		kbfscodec.MakeExtraOrBust("TLFReaderKeyBundleV2", t),
+	}
 }
 
 type tlfReaderKeyGenerationsV2Future []*tlfReaderKeyBundleV2Future
@@ -476,9 +609,9 @@ func TestRevokeRemovedDevicesV2(t *testing.T) {
 		updatedWriterKeys, updatedReaderKeys, nil)
 	require.NoError(t, err)
 	require.Equal(t, ServerHalfRemovalInfo{
-		uid2: userServerHalfRemovalInfo{
-			userRemoved: true,
-			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+		uid2: UserServerHalfRemovalInfo{
+			UserRemoved: true,
+			DeviceServerHalfIDs: DeviceServerHalfRemovalInfo{
 				key2: []TLFCryptKeyServerHalfID{id2a, id2b},
 			},
 		},
@@ -603,20 +736,20 @@ func TestRevokeLastDeviceV2(t *testing.T) {
 		updatedWriterKeys, updatedReaderKeys, nil)
 	require.NoError(t, err)
 	require.Equal(t, ServerHalfRemovalInfo{
-		uid1: userServerHalfRemovalInfo{
-			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+		uid1: UserServerHalfRemovalInfo{
+			DeviceServerHalfIDs: DeviceServerHalfRemovalInfo{
 				key1: []TLFCryptKeyServerHalfID{id1},
 			},
 		},
-		uid2: userServerHalfRemovalInfo{
-			userRemoved: true,
-			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
+		uid2: UserServerHalfRemovalInfo{
+			UserRemoved: true,
+			DeviceServerHalfIDs: DeviceServerHalfRemovalInfo{
 				key2: []TLFCryptKeyServerHalfID{id2},
 			},
 		},
-		uid4: userServerHalfRemovalInfo{
-			userRemoved:         true,
-			deviceServerHalfIDs: deviceServerHalfRemovalInfo{},
+		uid4: UserServerHalfRemovalInfo{
+			UserRemoved:         true,
+			DeviceServerHalfIDs: DeviceServerHalfRemovalInfo{},
 		},
 	}, removalInfo)
 
@@ -762,7 +895,7 @@ func checkGetTLFCryptKeyV2(t *testing.T, keyGen KeyGen,
 			info, ok := rkb.RKeys[uid][pubKey.KID()]
 			require.True(t, ok)
 
-			_, _, ePubKey, err := getEphemeralPublicKeyInfoV2(
+			_, _, ePubKey, err := kbfsmd.GetEphemeralPublicKeyInfoV2(
 				info, *wkb, *rkb)
 			require.NoError(t, err)
 
@@ -906,7 +1039,7 @@ func checkKeyBundlesV2(t *testing.T, expectedRekeyInfos []expectedRekeyInfoV2,
 				expected.readerPrivKeys.toPublicKeys())
 			userPubKeys := userDeviceServerHalvesToPublicKeys(
 				expected.serverHalves[keyGen-FirstValidKeyGen])
-			require.Equal(t, expectedUserPubKeys.removeKeylessUsersForTest(), userPubKeys)
+			require.Equal(t, expectedUserPubKeys.RemoveKeylessUsersForTest(), userPubKeys)
 			checkGetTLFCryptKeyV2(t, keyGen, expected,
 				expectedTLFCryptKeys[keyGen-FirstValidKeyGen],
 				wkb, rkb)

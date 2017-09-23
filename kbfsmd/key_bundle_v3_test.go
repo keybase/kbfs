@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD
 // license that can be found in the LICENSE file.
 
-package libkbfs
+package kbfsmd
 
 import (
 	"testing"
@@ -115,7 +115,7 @@ func TestRemoveDevicesNotInV3(t *testing.T) {
 		},
 	}
 
-	removalInfo := udkimV3.removeDevicesNotIn(UserDevicePublicKeys{
+	removalInfo := udkimV3.RemoveDevicesNotIn(UserDevicePublicKeys{
 		uid2: {key2a: true, key2c: true},
 		uid3: {key3a: true},
 	})
@@ -140,17 +140,17 @@ func TestRemoveDevicesNotInV3(t *testing.T) {
 	}, udkimV3)
 
 	require.Equal(t, ServerHalfRemovalInfo{
-		uid1: userServerHalfRemovalInfo{
-			userRemoved: true,
-			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
-				key1a: []TLFCryptKeyServerHalfID{id1a},
-				key1b: []TLFCryptKeyServerHalfID{id1b},
+		uid1: UserServerHalfRemovalInfo{
+			UserRemoved: true,
+			DeviceServerHalfIDs: DeviceServerHalfRemovalInfo{
+				key1a: []kbfscrypto.TLFCryptKeyServerHalfID{id1a},
+				key1b: []kbfscrypto.TLFCryptKeyServerHalfID{id1b},
 			},
 		},
-		uid2: userServerHalfRemovalInfo{
-			userRemoved: false,
-			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
-				key2b: []TLFCryptKeyServerHalfID{id2b},
+		uid2: UserServerHalfRemovalInfo{
+			UserRemoved: false,
+			DeviceServerHalfIDs: DeviceServerHalfRemovalInfo{
+				key2b: []kbfscrypto.TLFCryptKeyServerHalfID{id2b},
 			},
 		},
 	}, removalInfo)
@@ -195,7 +195,7 @@ func TestRemoveLastDeviceV3(t *testing.T) {
 		uid4: DeviceKeyInfoMapV3{},
 	}
 
-	removalInfo := udkimV3.removeDevicesNotIn(UserDevicePublicKeys{
+	removalInfo := udkimV3.RemoveDevicesNotIn(UserDevicePublicKeys{
 		uid1: {},
 		uid3: {},
 	})
@@ -206,21 +206,21 @@ func TestRemoveLastDeviceV3(t *testing.T) {
 	}, udkimV3)
 
 	require.Equal(t, ServerHalfRemovalInfo{
-		uid1: userServerHalfRemovalInfo{
-			userRemoved: false,
-			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
-				key1: []TLFCryptKeyServerHalfID{id1},
+		uid1: UserServerHalfRemovalInfo{
+			UserRemoved: false,
+			DeviceServerHalfIDs: DeviceServerHalfRemovalInfo{
+				key1: []kbfscrypto.TLFCryptKeyServerHalfID{id1},
 			},
 		},
-		uid2: userServerHalfRemovalInfo{
-			userRemoved: true,
-			deviceServerHalfIDs: deviceServerHalfRemovalInfo{
-				key2: []TLFCryptKeyServerHalfID{id2},
+		uid2: UserServerHalfRemovalInfo{
+			UserRemoved: true,
+			DeviceServerHalfIDs: DeviceServerHalfRemovalInfo{
+				key2: []kbfscrypto.TLFCryptKeyServerHalfID{id2},
 			},
 		},
-		uid4: userServerHalfRemovalInfo{
-			userRemoved:         true,
-			deviceServerHalfIDs: deviceServerHalfRemovalInfo{},
+		uid4: UserServerHalfRemovalInfo{
+			UserRemoved:         true,
+			DeviceServerHalfIDs: DeviceServerHalfRemovalInfo{},
 		},
 	}, removalInfo)
 }
@@ -279,7 +279,7 @@ func makeFakeTLFWriterKeyBundleV3Future(t *testing.T) tlfWriterKeyBundleV3Future
 		kbfscrypto.TLFEphemeralPublicKeys{
 			kbfscrypto.MakeTLFEphemeralPublicKey([32]byte{0xb}),
 		},
-		EncryptedTLFCryptKeys{},
+		kbfscrypto.EncryptedTLFCryptKeys{},
 		codec.UnknownFieldSetHandler{},
 	}
 	return tlfWriterKeyBundleV3Future{

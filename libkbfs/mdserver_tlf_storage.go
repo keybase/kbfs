@@ -516,7 +516,7 @@ func (s *mdServerTlfStorage) getKeyBundlesReadLocked(tlfID tlf.ID,
 
 	var wkb *TLFWriterKeyBundleV3
 	if wkbID != (TLFWriterKeyBundleID{}) {
-		foundWKB, err := DeserializeTLFWriterKeyBundleV3(
+		foundWKB, err := kbfsmd.DeserializeTLFWriterKeyBundleV3(
 			s.codec, s.writerKeyBundleV3Path(wkbID))
 		if err != nil {
 			return nil, nil, err
@@ -531,7 +531,7 @@ func (s *mdServerTlfStorage) getKeyBundlesReadLocked(tlfID tlf.ID,
 
 	var rkb *TLFReaderKeyBundleV3
 	if rkbID != (TLFReaderKeyBundleID{}) {
-		foundRKB, err := DeserializeTLFReaderKeyBundleV3(
+		foundRKB, err := kbfsmd.DeserializeTLFReaderKeyBundleV3(
 			s.codec, s.readerKeyBundleV3Path(rkbID))
 		if err != nil {
 			return nil, nil, err

@@ -808,11 +808,11 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 
 		kops := km.config.KeyOps()
 		for uid, userRemovalInfo := range allRemovalInfo {
-			if userRemovalInfo.userRemoved {
+			if userRemovalInfo.UserRemoved {
 				km.log.CInfof(ctx, "Rekey %s: removed user %s entirely",
 					md.TlfID(), uid)
 			}
-			for key, serverHalfIDs := range userRemovalInfo.deviceServerHalfIDs {
+			for key, serverHalfIDs := range userRemovalInfo.DeviceServerHalfIDs {
 				km.log.CInfof(ctx, "Rekey %s: removing %d server key halves "+
 					" for device %s of user %s", md.TlfID(),
 					len(serverHalfIDs), key, uid)

@@ -416,7 +416,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(
 		}
 
 		mdV3.WriterMetadata.WKeyBundleID, err =
-			MakeTLFWriterKeyBundleID(codec, wkbV3)
+			kbfsmd.MakeTLFWriterKeyBundleID(codec, wkbV3)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -429,7 +429,7 @@ func (md *BareRootMetadataV2) makeSuccessorCopyV3(
 			return nil, nil, err
 		}
 		mdV3.RKeyBundleID, err =
-			MakeTLFReaderKeyBundleID(codec, rkbV3)
+			kbfsmd.MakeTLFReaderKeyBundleID(codec, rkbV3)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -660,11 +660,11 @@ func (md *BareRootMetadataV2) RevokeRemovedDevices(
 
 	var wRemovalInfo ServerHalfRemovalInfo
 	for _, wkb := range md.WKeys {
-		removalInfo := wkb.WKeys.removeDevicesNotIn(updatedWriterKeys)
+		removalInfo := wkb.WKeys.RemoveDevicesNotIn(updatedWriterKeys)
 		if wRemovalInfo == nil {
 			wRemovalInfo = removalInfo
 		} else {
-			err := wRemovalInfo.addGeneration(removalInfo)
+			err := wRemovalInfo.AddGeneration(removalInfo)
 			if err != nil {
 				return nil, err
 			}
@@ -673,18 +673,18 @@ func (md *BareRootMetadataV2) RevokeRemovedDevices(
 
 	var rRemovalInfo ServerHalfRemovalInfo
 	for _, rkb := range md.RKeys {
-		removalInfo := rkb.RKeys.removeDevicesNotIn(updatedReaderKeys)
+		removalInfo := rkb.RKeys.RemoveDevicesNotIn(updatedReaderKeys)
 		if rRemovalInfo == nil {
 			rRemovalInfo = removalInfo
 		} else {
-			err := rRemovalInfo.addGeneration(removalInfo)
+			err := rRemovalInfo.AddGeneration(removalInfo)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	return wRemovalInfo.mergeUsers(rRemovalInfo)
+	return wRemovalInfo.MergeUsers(rRemovalInfo)
 }
 
 // getTLFKeyBundles returns the bundles for a given key generation.
@@ -724,7 +724,7 @@ func (md *BareRootMetadataV2) GetUserDevicePublicKeys(_ ExtraMetadata) (
 	wUDKIM := md.WKeys[len(md.WKeys)-1]
 	rUDKIM := md.RKeys[len(md.RKeys)-1]
 
-	return wUDKIM.WKeys.toPublicKeys(), rUDKIM.RKeys.toPublicKeys(), nil
+	return wUDKIM.WKeys.ToPublicKeys(), rUDKIM.RKeys.ToPublicKeys(), nil
 }
 
 // GetTLFCryptKeyParams implements the BareRootMetadata interface for BareRootMetadataV2.
@@ -756,7 +756,7 @@ func (md *BareRootMetadataV2) GetTLFCryptKeyParams(
 			TLFCryptKeyServerHalfID{}, false, nil
 	}
 
-	_, _, ePubKey, err := getEphemeralPublicKeyInfoV2(info, *wkb, *rkb)
+	_, _, ePubKey, err := kbfsmd.GetEphemeralPublicKeyInfoV2(info, *wkb, *rkb)
 	if err != nil {
 		return kbfscrypto.TLFEphemeralPublicKey{},
 			EncryptedTLFCryptKeyClientHalf{},
@@ -1173,7 +1173,7 @@ func (md *BareRootMetadataV2) updateKeyGenerationForReaderRekey(
 	// strictly negative for reader ephemeral public keys.
 	newIndex := -len(rkb.TLFReaderEphemeralPublicKeys) - 1
 
-	rServerHalves, err := rkb.RKeys.fillInUserInfos(
+	rServerHalves, err := rkb.RKeys.FillInUserInfos(
 		newIndex, updatedReaderKeys, ePrivKey, tlfCryptKey)
 	if err != nil {
 		return nil, err
@@ -1207,19 +1207,19 @@ func (md *BareRootMetadataV2) updateKeyGeneration(
 
 	newIndex := len(wkb.TLFEphemeralPublicKeys)
 
-	wServerHalves, err := wkb.WKeys.fillInUserInfos(
+	wServerHalves, err := wkb.WKeys.FillInUserInfos(
 		newIndex, updatedWriterKeys, ePrivKey, tlfCryptKey)
 	if err != nil {
 		return nil, err
 	}
 
-	rServerHalves, err := rkb.RKeys.fillInUserInfos(
+	rServerHalves, err := rkb.RKeys.FillInUserInfos(
 		newIndex, updatedReaderKeys, ePrivKey, tlfCryptKey)
 	if err != nil {
 		return nil, err
 	}
 
-	serverHalves, err := wServerHalves.mergeUsers(rServerHalves)
+	serverHalves, err := wServerHalves.MergeUsers(rServerHalves)
 	if err != nil {
 		return nil, err
 	}
@@ -1267,7 +1267,7 @@ func (md *BareRootMetadataV2) AddKeyGeneration(
 
 	if len(md.WKeys) > 0 {
 		existingWriterKeys :=
-			md.WKeys[len(md.WKeys)-1].WKeys.toPublicKeys()
+			md.WKeys[len(md.WKeys)-1].WKeys.ToPublicKeys()
 		if !existingWriterKeys.Equals(updatedWriterKeys) {
 			return nil, nil, fmt.Errorf(
 				"existingWriterKeys=%+v != updatedWriterKeys=%+v",
@@ -1275,7 +1275,7 @@ func (md *BareRootMetadataV2) AddKeyGeneration(
 		}
 
 		existingReaderKeys :=
-			md.RKeys[len(md.RKeys)-1].RKeys.toPublicKeys()
+			md.RKeys[len(md.RKeys)-1].RKeys.ToPublicKeys()
 		if !existingReaderKeys.Equals(updatedReaderKeys) {
 			return nil, nil, fmt.Errorf(
 				"existingReaderKeys=%+v != updatedReaderKeys=%+v",
