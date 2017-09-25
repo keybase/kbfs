@@ -353,6 +353,17 @@ func (j journalMDOps) getRange(
 		return nil, err
 	}
 
+	if len(jirmds) != 0 && lockBeforeGet != nil {
+		// We need to grab locks, so we have to hit the server. But it's
+		// dangerous to bypass journal if we have revisions in this range from
+		// the journal. For now, we just return error here.
+		// NOTE: In the future if we ever need locking in places other than
+		// SyncFromServer, we can use the naked Lock RPC to grab the lock if
+		// everything we need is in the journal already.
+		return nil, errors.New(
+			"cannot lock when getting revisions that exist in journal")
+	}
+
 	// If it's empty, fall back to the server if this isn't a local
 	// squash branch.  TODO: we should be able to avoid server access
 	// for regular conflict branches when the journal is enabled, as
@@ -402,11 +413,6 @@ func (j journalMDOps) GetRange(ctx context.Context, id tlf.ID, start,
 	defer func() {
 		j.jServer.deferLog.LazyTrace(ctx, "jMDOps: GetRange %s %d-%d done (err=%v)", id, start, stop, err)
 	}()
-
-	if lockBeforeGet != nil {
-		// We need to grab locks. So bypass journal and hit server directly.
-		return j.MDOps.GetRange(ctx, id, start, stop, lockBeforeGet)
-	}
 
 	return j.getRange(ctx, id, NullBranchID, Merged, start, stop, lockBeforeGet,
 		j.MDOps.GetRange)

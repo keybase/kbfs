@@ -120,12 +120,13 @@ func (f *File) Close() error {
 }
 
 func (f *File) getLockID() keybase1.LockID {
-	// We must not change or remove this since it'd break locking guarantees.
+	// If we ever change this lock ID format, we must first come up with a
+	// transition plan and then upgrade all clients before transitioning.
 	return keybase1.LockIDFromBytes(
 		bytes.Join([][]byte{
-			f.fs.GetLockNamespace().Bytes(),
+			f.fs.GetLockNamespace(),
 			[]byte(f.Name()),
-		}, nil))
+		}, []byte{'/'}))
 }
 
 // Lock implements the billy.File interface for File.

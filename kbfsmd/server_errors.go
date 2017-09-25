@@ -51,7 +51,7 @@ const (
 	StatusCodeServerErrorCannotReadFinalizedTLF = 2812
 	// StatusCodeServerErrorRequiredLockIsNotHeld is the error code returned by
 	// a MD write operation to indicate that a lockID that client required the
-	// write to be contingent to is not held at the time server tries to commit
+	// write to be contingent on is not held at the time server tries to commit
 	// the MD, and as a result the MD is not written.
 	StatusCodeServerErrorRequiredLockIsNotHeld = 2813
 )

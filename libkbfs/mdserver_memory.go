@@ -79,7 +79,7 @@ type mdServerMemShared struct {
 	// (TLF ID, crypt public key) -> branch ID
 	branchDb            map[mdBranchKey]BranchID
 	truncateLockManager *mdServerLocalTruncateLockManager
-	lockIDs             map[mdLockMemKey]time.Time
+	lockIDs             map[mdLockMemKey]time.Time // tracks expire time
 
 	updateManager *mdServerLocalUpdateManager
 }
@@ -571,10 +571,14 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 
 func (md *MDServerMemory) isLockedLocked(ctx context.Context,
 	tlfID tlf.ID, lockID keybase1.LockID) bool {
-	return md.config.Clock().Now().Sub(md.lockIDs[mdLockMemKey{
+	expireTime, ok := md.lockIDs[mdLockMemKey{
 		tlfID:  tlfID,
 		lockID: lockID,
-	}]) < mdLockTimeout
+	}]
+	if !ok {
+		return false
+	}
+	return expireTime.After(md.config.Clock().Now())
 }
 
 func (md *MDServerMemory) lockLocked(ctx context.Context,
@@ -585,10 +589,10 @@ func (md *MDServerMemory) lockLocked(ctx context.Context,
 		tlfID:  tlfID,
 		lockID: lockID,
 	}
-	existing, ok := md.lockIDs[lockKey]
-	if !ok || md.config.Clock().Now().Sub(existing) >= mdLockTimeout {
+	expireTime, ok := md.lockIDs[lockKey]
+	if !ok || !expireTime.After(md.config.Clock().Now()) {
 		// The lock doesn't exists or has expired.
-		md.lockIDs[lockKey] = md.config.Clock().Now()
+		md.lockIDs[lockKey] = md.config.Clock().Now().Add(mdLockTimeout)
 	}
 	// The lock is already held; just return without refreshing timestamp.
 }
