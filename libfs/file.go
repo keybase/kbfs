@@ -177,7 +177,7 @@ func (f *File) Unlock() error {
 		})
 }
 
-// Truncate does not implement the billy.File interface for File.
+// Truncate implements the billy.File interface for File.
 func (f *File) Truncate(size int64) error {
-	return errors.New("not implemented")
+	return f.fs.config.KBFSOps().Truncate(f.fs.ctx, f.node, uint64(size))
 }
