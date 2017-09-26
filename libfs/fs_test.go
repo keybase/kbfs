@@ -242,7 +242,7 @@ func TestStat(t *testing.T) {
 			expectedMode |= 0200
 		}
 		require.Equal(t, expectedMode, fi.Mode())
-		require.Equal(t, clock.Now(), fi.ModTime())
+		require.True(t, clock.Now().Equal(fi.ModTime()))
 		require.True(t, fi.IsDir())
 	}
 	checkDir(fi, true)
@@ -258,7 +258,7 @@ func TestStat(t *testing.T) {
 			expectedMode |= 0200
 		}
 		require.Equal(t, expectedMode, fi.Mode())
-		require.Equal(t, clock.Now(), fi.ModTime())
+		require.True(t, clock.Now().Equal(fi.ModTime()))
 		require.False(t, fi.IsDir())
 	}
 	checkFile(fi, true)
@@ -535,7 +535,7 @@ func TestChtimes(t *testing.T) {
 
 	fi, err := fs.Stat("foo")
 	require.NoError(t, err)
-	require.Equal(t, clock.Now(), fi.ModTime())
+	require.True(t, clock.Now().Equal(fi.ModTime()))
 
 	mtime := time.Date(2015, 1, 2, 3, 4, 5, 6, time.Local)
 	err = fs.Chtimes("foo", time.Now(), mtime)
