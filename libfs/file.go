@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/libkbfs"
 	"github.com/pkg/errors"
 	billy "gopkg.in/src-d/go-billy.v3"
@@ -163,10 +164,10 @@ func (f *File) Unlock() error {
 		return err
 	}
 	jStatus, _ := jServer.JournalStatus(f.fs.root.GetFolderBranch().Tlf)
-	if jStatus.UnflushedBytes == 0 {
-		// Journal is all flushed and we haven't made any more writes. Calling
-		// FinishSingleOp won't make it to the server, so we make a naked
-		// request to server just to release the lock.
+	if jStatus.RevisionStart == kbfsmd.RevisionUninitialized {
+		// Journal MDs are all flushed and we haven't made any more writes.
+		// Calling FinishSingleOp won't make it to the server, so we make a
+		// naked request to server just to release the lock.
 		return f.fs.config.MDServer().ReleaseLock(f.fs.ctx,
 			f.fs.root.GetFolderBranch().Tlf, f.getLockID())
 	}
