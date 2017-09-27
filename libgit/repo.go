@@ -48,7 +48,8 @@ type InvalidRepoNameError struct {
 }
 
 func (e InvalidRepoNameError) Error() string {
-	return fmt.Sprintf("Invalid repo name %q", e.name)
+	// NOTE: Humans end up seeing this string in the GUI.
+	return fmt.Sprintf("%q isn't a valid repo name.", e.name)
 }
 
 // ToStatus implements the ExportableError interface for ServerError.
@@ -67,10 +68,8 @@ type RepoAlreadyCreatedError struct {
 }
 
 func (race RepoAlreadyCreatedError) Error() string {
-	return fmt.Sprintf(
-		"A repo named %s (id=%s) already existed when trying to create "+
-			"a repo named %s", race.ExistingConfig.Name,
-		race.ExistingConfig.ID, race.DesiredName)
+	// NOTE: Humans end up seeing this string in the GUI.
+	return fmt.Sprintf("A repo named %q already exists.", race.ExistingConfig.Name)
 }
 
 // ToStatus implements the ExportableError interface for ServerError.
