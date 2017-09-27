@@ -1634,12 +1634,15 @@ func (fbo *folderBranchOps) SetInitialHeadFromServer(
 				return err
 			}
 
-			func() {
-				fbo.headLock.Lock(lState)
-				defer fbo.headLock.Unlock(lState)
-				fbo.setLatestMergedRevisionLocked(ctx, lState,
-					mergedMD.Revision(), false)
-			}()
+			// GetForTLF may have returned an empty non-error result for us.
+			if mergedMD != (ImmutableRootMetadata{}) {
+				func() {
+					fbo.headLock.Lock(lState)
+					defer fbo.headLock.Unlock(lState)
+					fbo.setLatestMergedRevisionLocked(ctx, lState,
+						mergedMD.Revision(), false)
+				}()
+			}
 		}
 
 		fbo.headLock.Lock(lState)
