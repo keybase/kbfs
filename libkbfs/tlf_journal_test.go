@@ -1856,14 +1856,10 @@ func testTLFJournalWaitForBlockFlush(t *testing.T, ver MetadataVer) {
 
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
+	// Drain all state events so we don't block operations.
 	go func() {
-		// For waitForBlockFlush
-		delegate.requireNextState(ctx, bwBusy)
-		delegate.requireNextState(ctx, bwIdle)
-
-		// For finishSingleOp
-		delegate.requireNextState(ctx, bwBusy)
-		delegate.requireNextState(ctx, bwIdle)
+		for range delegate.stateCh {
+		}
 	}()
 
 	blockEntryCount, _, err := tlfJournal.getJournalEntryCounts()
