@@ -1854,18 +1854,22 @@ func testTLFJournalWaitForBlockFlush(t *testing.T, ver MetadataVer) {
 	defer teardownTLFJournalTest(
 		tempdir, config, ctx, cancel, tlfJournal, delegate)
 
+	tlfJournal.pauseBackgroundWork()
+
 	putBlock(ctx, t, config, tlfJournal, []byte{1, 2, 3, 4})
 
-	// Drain all state events so we don't block operations.
 	go func() {
-		for range delegate.stateCh {
-		}
+		delegate.requireNextState(ctx, bwPaused)
+		delegate.requireNextState(ctx, bwIdle)
+		delegate.requireNextState(ctx, bwBusy)
+		delegate.requireNextState(ctx, bwIdle)
 	}()
 
 	blockEntryCount, _, err := tlfJournal.getJournalEntryCounts()
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), blockEntryCount)
 
+	tlfJournal.resumeBackgroundWork()
 	err = tlfJournal.waitForBlockFlush(ctx)
 	require.NoError(t, err)
 
