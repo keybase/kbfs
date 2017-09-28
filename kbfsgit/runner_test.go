@@ -94,8 +94,8 @@ func TestRunnerInitRepo(t *testing.T) {
 	require.NoError(t, err)
 	err = r.processCommands(ctx)
 	require.NoError(t, err)
-	// Just one symref, from HEAD to master (and master has no commits yet).
-	require.Equal(t, output.String(), "@refs/heads/master HEAD\n\n")
+	// No refs yet, including the HEAD symref.
+	require.Equal(t, output.String(), "\n")
 
 	// Now there should be a valid git repo stored in KBFS.  Check the
 	// existence of the HEAD file to be sure.
@@ -111,7 +111,7 @@ func TestRunnerInitRepo(t *testing.T) {
 }
 
 func makeLocalRepoWithOneFile(t *testing.T,
-	gitDir, filename, contents string) {
+	gitDir, filename, contents, branch string) {
 	t.Logf("Make a new repo in %s with one file", gitDir)
 	err := ioutil.WriteFile(
 		filepath.Join(gitDir, filename), []byte(contents), 0600)
@@ -122,8 +122,16 @@ func makeLocalRepoWithOneFile(t *testing.T,
 	err = cmd.Run()
 	require.NoError(t, err)
 
+	if branch != "" {
+		cmd := exec.Command(
+			"git", "--git-dir", dotgit, "--work-tree", gitDir,
+			"checkout", "-b", branch)
+		err = cmd.Run()
+		require.NoError(t, err)
+	}
+
 	cmd = exec.Command(
-		"git", "--git-dir", dotgit, "--work-tree", gitDir, "add", "foo")
+		"git", "--git-dir", dotgit, "--work-tree", gitDir, "add", filename)
 	err = cmd.Run()
 	require.NoError(t, err)
 
@@ -135,8 +143,28 @@ func makeLocalRepoWithOneFile(t *testing.T,
 	require.NoError(t, err)
 }
 
-func testPush(t *testing.T, ctx context.Context, config libkbfs.Config,
-	gitDir, refspec string) {
+func addOneFileToRepo(t *testing.T, gitDir, filename, contents string) {
+	t.Logf("Make a new repo in %s with one file", gitDir)
+	err := ioutil.WriteFile(
+		filepath.Join(gitDir, filename), []byte(contents), 0600)
+	require.NoError(t, err)
+	dotgit := filepath.Join(gitDir, ".git")
+
+	cmd := exec.Command(
+		"git", "--git-dir", dotgit, "--work-tree", gitDir, "add", filename)
+	err = cmd.Run()
+	require.NoError(t, err)
+
+	cmd = exec.Command(
+		"git", "--git-dir", dotgit, "--work-tree", gitDir,
+		"-c", "user.name=Foo", "-c", "user.email=foo@foo.com",
+		"commit", "-a", "-m", "foo")
+	err = cmd.Run()
+	require.NoError(t, err)
+}
+
+func testPushWithTemplate(t *testing.T, ctx context.Context,
+	config libkbfs.Config, gitDir, refspec, outputTemplate string) {
 	// Use the runner to push the local data into the KBFS repo.
 	inputReader, inputWriter := io.Pipe()
 	defer inputWriter.Close()
@@ -150,9 +178,13 @@ func testPush(t *testing.T, ctx context.Context, config libkbfs.Config,
 	require.NoError(t, err)
 	err = r.processCommands(ctx)
 	require.NoError(t, err)
-	// Just one symref, from HEAD to master (and master has no commits yet).
 	dst := gogitcfg.RefSpec(refspec).Dst("")
-	require.Equal(t, fmt.Sprintf("ok %s\n\n", dst), output.String())
+	require.Equal(t, fmt.Sprintf(outputTemplate, dst), output.String())
+}
+
+func testPush(t *testing.T, ctx context.Context, config libkbfs.Config,
+	gitDir, refspec string) {
+	testPushWithTemplate(t, ctx, config, gitDir, refspec, "ok %s\n\n")
 }
 
 func testListAndGetHeads(t *testing.T, ctx context.Context,
@@ -201,7 +233,7 @@ func testListAndGetHeads(t *testing.T, ctx context.Context,
 // 3) User pushes from that repo into the remote KBFS repo.
 // 4) Initializes a second new repo on the local file system.
 // 5) User pulls from the remote KBFS repo into the second repo.
-func testRunnerPushFetch(t *testing.T, cloning bool) {
+func testRunnerPushFetch(t *testing.T, cloning bool, secondRepoHasBranch bool) {
 	ctx, config, tempdir := initConfigForRunner(t)
 	defer os.RemoveAll(tempdir)
 
@@ -209,7 +241,7 @@ func testRunnerPushFetch(t *testing.T, cloning bool) {
 	require.NoError(t, err)
 	defer os.RemoveAll(git1)
 
-	makeLocalRepoWithOneFile(t, git1, "foo", "hello")
+	makeLocalRepoWithOneFile(t, git1, "foo", "hello", "")
 
 	testPush(t, ctx, config, git1, "refs/heads/master:refs/heads/master")
 
@@ -233,6 +265,8 @@ func testRunnerPushFetch(t *testing.T, cloning bool) {
 	if cloning {
 		cloningStr = "option cloning true\n"
 		cloningRetStr = "ok\n"
+	} else if secondRepoHasBranch {
+		makeLocalRepoWithOneFile(t, git2, "foo2", "hello2", "b")
 	}
 
 	// Use the runner to fetch the KBFS data into the new git repo.
@@ -266,11 +300,15 @@ func testRunnerPushFetch(t *testing.T, cloning bool) {
 }
 
 func TestRunnerPushFetch(t *testing.T) {
-	testRunnerPushFetch(t, false)
+	testRunnerPushFetch(t, false, false)
 }
 
 func TestRunnerPushClone(t *testing.T) {
-	testRunnerPushFetch(t, true)
+	testRunnerPushFetch(t, true, false)
+}
+
+func TestRunnerPushFetchWithBranch(t *testing.T) {
+	testRunnerPushFetch(t, false, true)
 }
 
 func TestRunnerDeleteBranch(t *testing.T) {
@@ -281,7 +319,7 @@ func TestRunnerDeleteBranch(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(git)
 
-	makeLocalRepoWithOneFile(t, git, "foo", "hello")
+	makeLocalRepoWithOneFile(t, git, "foo", "hello", "")
 
 	testPush(t, ctx, config, git, "refs/heads/master:refs/heads/master")
 	testPush(t, ctx, config, git, "refs/heads/master:refs/heads/test")
@@ -304,7 +342,7 @@ func TestRunnerExitEarlyOnEOF(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(git)
 
-	makeLocalRepoWithOneFile(t, git, "foo", "hello")
+	makeLocalRepoWithOneFile(t, git, "foo", "hello", "")
 
 	h, err := libkbfs.ParseTlfHandle(ctx, config.KBPKI(), "user1", tlf.Private)
 	require.NoError(t, err)
@@ -329,4 +367,36 @@ func TestRunnerExitEarlyOnEOF(t *testing.T) {
 	// Make sure we don't hang when EOF comes early.
 	err = r.processCommands(ctx)
 	require.NoError(t, err)
+}
+
+func TestForcePush(t *testing.T) {
+	ctx, config, tempdir := initConfigForRunner(t)
+	defer os.RemoveAll(tempdir)
+
+	git, err := ioutil.TempDir(os.TempDir(), "kbfsgittest")
+	require.NoError(t, err)
+	defer os.RemoveAll(git)
+
+	makeLocalRepoWithOneFile(t, git, "foo", "hello", "")
+	testPush(t, ctx, config, git, "refs/heads/master:refs/heads/master")
+
+	// Push a second file.
+	addOneFileToRepo(t, git, "foo2", "hello2")
+	testPush(t, ctx, config, git, "refs/heads/master:refs/heads/master")
+
+	// Now revert to the old commit and add a different file.
+	dotgit := filepath.Join(git, ".git")
+	cmd := exec.Command(
+		"git", "--git-dir", dotgit, "--work-tree", git,
+		"reset", "--hard", "HEAD~1")
+	err = cmd.Run()
+	require.NoError(t, err)
+
+	addOneFileToRepo(t, git, "foo3", "hello3")
+	// A non-force push should fail.
+	testPushWithTemplate(
+		t, ctx, config, git, "refs/heads/master:refs/heads/master",
+		"error %s some refs were not updated\n\n")
+	// But a force push should work
+	testPush(t, ctx, config, git, "+refs/heads/master:refs/heads/master")
 }

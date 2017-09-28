@@ -51,6 +51,14 @@ func (e InvalidRepoNameError) Error() string {
 	return fmt.Sprintf("Invalid repo name %q", e.name)
 }
 
+// ToStatus implements the ExportableError interface for ServerError.
+func (e InvalidRepoNameError) ToStatus() (s keybase1.Status) {
+	s.Code = int(keybase1.StatusCode_SCGitInvalidRepoName)
+	s.Name = "GIT_INVALID_REPO_NAME"
+	s.Desc = e.Error()
+	return
+}
+
 // RepoAlreadyCreatedError is returned when trying to create a repo
 // that already exists.
 type RepoAlreadyCreatedError struct {
@@ -63,6 +71,14 @@ func (race RepoAlreadyCreatedError) Error() string {
 		"A repo named %s (id=%s) already existed when trying to create "+
 			"a repo named %s", race.ExistingConfig.Name,
 		race.ExistingConfig.ID, race.DesiredName)
+}
+
+// ToStatus implements the ExportableError interface for ServerError.
+func (race RepoAlreadyCreatedError) ToStatus() (s keybase1.Status) {
+	s.Code = int(keybase1.StatusCode_SCGitRepoAlreadyExists)
+	s.Name = "GIT_REPO_ALREADY_EXISTS"
+	s.Desc = race.Error()
+	return
 }
 
 // UpdateRepoMD lets the Keybase service know that a repo's MD has
@@ -102,10 +118,6 @@ func UpdateRepoMD(ctx context.Context, config libkbfs.Config,
 func createNewRepoAndID(
 	ctx context.Context, config libkbfs.Config, tlfHandle *libkbfs.TlfHandle,
 	repoName string, fs *libfs.FS) (ID, error) {
-	if !checkValidRepoName(repoName, config) {
-		return NullID, errors.WithStack(InvalidRepoNameError{repoName})
-	}
-
 	// TODO: take a global repo lock here to make sure only one
 	// client generates the repo ID.
 	repoID, err := makeRandomID()
@@ -172,6 +184,10 @@ func lookupOrCreateDir(ctx context.Context, config libkbfs.Config,
 func getOrCreateRepoAndID(
 	ctx context.Context, config libkbfs.Config, tlfHandle *libkbfs.TlfHandle,
 	repoName string, uniqID string, createOnly bool) (*libfs.FS, ID, error) {
+	if !checkValidRepoName(repoName, config) {
+		return nil, NullID, errors.WithStack(InvalidRepoNameError{repoName})
+	}
+
 	rootNode, _, err := config.KBFSOps().GetOrCreateRootNode(
 		ctx, tlfHandle, libkbfs.MasterBranch)
 	if err != nil {
