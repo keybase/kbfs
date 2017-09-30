@@ -627,8 +627,16 @@ func (r *runner) processGogitStatus(ctx context.Context,
 	lastByteCount := 0
 	cpuProf := ""
 	for {
+		if fsEvents == nil && statusChan == nil {
+			// Both channels are closed.
+			break
+		}
 		select {
-		case update := <-statusChan:
+		case update, ok := <-statusChan:
+			if !ok {
+				statusChan = nil
+				continue
+			}
 			if update.Stage != currStage {
 				if currStage != plumbing.StatusUnknown {
 					memProf := fmt.Sprintf("mem.%d.prof", currStage)
@@ -686,7 +694,11 @@ func (r *runner) processGogitStatus(ctx context.Context,
 			}
 
 			currStage = update.Stage
-		case fsEvent := <-fsEvents:
+		case fsEvent, ok := <-fsEvents:
+			if !ok {
+				fsEvents = nil
+				continue
+			}
 			switch fsEvent.EventType {
 			case libfs.FSEventLock:
 				if currStage == plumbing.StatusIndexOffset {
