@@ -140,6 +140,13 @@ func (f *File) getLockID() keybase1.LockID {
 
 // Lock implements the billy.File interface for File.
 func (f *File) Lock() (err error) {
+	done := make(chan struct{})
+	f.fs.sendEvents(FSEvent{
+		EventType: FSEventLock,
+		File:      f,
+		Done:      done,
+	})
+	defer close(done)
 	f.fs.log.CDebugf(f.fs.ctx, "Locking!")
 	f.lockedLock.Lock()
 	defer f.lockedLock.Unlock()
@@ -176,6 +183,13 @@ func (f *File) Lock() (err error) {
 
 // Unlock implements the billy.File interface for File.
 func (f *File) Unlock() (err error) {
+	done := make(chan struct{})
+	f.fs.sendEvents(FSEvent{
+		EventType: FSEventUnlock,
+		File:      f,
+		Done:      done,
+	})
+	defer close(done)
 	f.lockedLock.Lock()
 	defer f.lockedLock.Unlock()
 	if !f.locked {

@@ -376,30 +376,47 @@ func (r *runner) printJournalStatus(
 		r.errput.Write([]byte(str))
 	}
 
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(1 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
+			status, err := jServer.JournalStatus(tlf)
+			if err != nil {
+				r.log.CDebugf(ctx, "Error getting status: %+v", err)
+				return
+			}
+
+			if r.verbosity >= 1 && r.progress {
+				eraseStr := strings.Repeat("\b", lastByteCount)
+				flushed := firstStatus.UnflushedBytes - status.UnflushedBytes
+				str := fmt.Sprintf(
+					bytesFmt, percent(flushed, firstStatus.UnflushedBytes),
+					humanizeBytes(flushed, firstStatus.UnflushedBytes))
+				lastByteCount = len(str)
+				r.errput.Write([]byte(eraseStr + str))
+			}
+
+			if status.UnflushedBytes == 0 {
+				elapsedStr := r.getElapsedStr(ctx, startTime, "mem.flush.prof", "")
+				if r.verbosity >= 1 {
+					r.errput.Write([]byte("done." + elapsedStr + "\n"))
+				}
+				return
+			}
 		case <-doneCh:
-		}
-		status, err := jServer.JournalStatus(tlf)
-		if err != nil {
-			r.log.CDebugf(ctx, "Error getting status: %+v", err)
-			return
-		}
+			if r.verbosity >= 1 && r.progress {
+				eraseStr := strings.Repeat("\b", lastByteCount)
+				// doneCh is closed. So assume journal flushing is done and
+				// take the shortcut.
+				flushed := firstStatus.UnflushedBytes
+				str := fmt.Sprintf(
+					bytesFmt, percent(flushed, firstStatus.UnflushedBytes),
+					humanizeBytes(flushed, firstStatus.UnflushedBytes))
+				lastByteCount = len(str)
+				r.errput.Write([]byte(eraseStr + str))
+			}
 
-		if r.verbosity >= 1 && r.progress {
-			eraseStr := strings.Repeat("\b", lastByteCount)
-			flushed := firstStatus.UnflushedBytes - status.UnflushedBytes
-			str := fmt.Sprintf(
-				bytesFmt, percent(flushed, firstStatus.UnflushedBytes),
-				humanizeBytes(flushed, firstStatus.UnflushedBytes))
-			lastByteCount = len(str)
-			r.errput.Write([]byte(eraseStr + str))
-		}
-
-		if status.UnflushedBytes == 0 {
 			elapsedStr := r.getElapsedStr(ctx, startTime, "mem.flush.prof", "")
 			if r.verbosity >= 1 {
 				r.errput.Write([]byte("done." + elapsedStr + "\n"))
@@ -579,62 +596,109 @@ func humanizeObjects(n int, d int) string {
 	return fmt.Sprintf("%.2f/%.2fM", float64(n)/m, float64(d)/m)
 }
 
-func (r *runner) processGogitStatus(
-	ctx context.Context, statusChan <-chan plumbing.StatusUpdate) {
+func (r *runner) printJournalStatusUntilFlushed(
+	ctx context.Context, doneCh <-chan struct{}) {
+	rootNode, _, err := r.config.KBFSOps().GetOrCreateRootNode(
+		ctx, r.h, libkbfs.MasterBranch)
+	if err != nil {
+		r.log.CDebugf(ctx, "GetOrCreateRootNode error: %+v", err)
+		return
+	}
+
+	err = r.config.KBFSOps().SyncAll(ctx, rootNode.GetFolderBranch())
+	if err != nil {
+		r.log.CDebugf(ctx, "SyncAll error: %+v", err)
+		return
+	}
+
+	jServer, err := libkbfs.GetJournalServer(r.config)
+	if err != nil {
+		r.log.CDebugf(ctx, "No journal server: %+v", err)
+	}
+
+	r.printJournalStatus(
+		ctx, jServer, rootNode.GetFolderBranch().Tlf, doneCh)
+}
+
+func (r *runner) processGogitStatus(ctx context.Context,
+	statusChan <-chan plumbing.StatusUpdate, fsEvents <-chan libfs.FSEvent) {
 	currStage := plumbing.StatusUnknown
 	var startTime time.Time
 	lastByteCount := 0
 	cpuProf := ""
-	for update := range statusChan {
-		if update.Stage != currStage {
-			if currStage != plumbing.StatusUnknown {
-				memProf := fmt.Sprintf("mem.%d.prof", currStage)
-				elapsedStr := r.getElapsedStr(ctx, startTime, memProf, cpuProf)
-				r.errput.Write([]byte("done." + elapsedStr + "\n"))
+	for {
+		select {
+		case update := <-statusChan:
+			if update.Stage != currStage {
+				if currStage != plumbing.StatusUnknown {
+					memProf := fmt.Sprintf("mem.%d.prof", currStage)
+					elapsedStr := r.getElapsedStr(ctx, startTime, memProf, cpuProf)
+					// go-git seems to grab the lock during this phase. So we'd
+					// be flushing the journal before
+					// plumbing.StatusIndexOffset is done. So just skip
+					// printing "done." for this status here, but print it
+					// along with a newline when FSEventLock event is received
+					// in the case below.
+					if currStage != plumbing.StatusIndexOffset {
+						r.errput.Write([]byte("done." + elapsedStr + "\n"))
+					}
+				}
+				if r.verbosity >= 4 {
+					cpuProf = filepath.Join(
+						os.TempDir(), fmt.Sprintf("cpu.%d.prof", update.Stage))
+					f, err := os.Create(cpuProf)
+					if err != nil {
+						r.log.CDebugf(
+							ctx, "Couldn't create CPU profile: %s", cpuProf)
+						cpuProf = ""
+					} else {
+						pprof.StartCPUProfile(f)
+					}
+				}
+				r.errput.Write([]byte(gogitStagesToStatus[update.Stage]))
+				lastByteCount = 0
+				currStage = update.Stage
+				startTime = r.config.Clock().Now()
+				r.log.CDebugf(ctx, "Entering stage: %s %s total",
+					gogitStagesToStatus[update.Stage], update.ObjectsTotal)
 			}
-			if r.verbosity >= 4 {
-				cpuProf = filepath.Join(
-					os.TempDir(), fmt.Sprintf("cpu.%d.prof", update.Stage))
-				f, err := os.Create(cpuProf)
-				if err != nil {
-					r.log.CDebugf(
-						ctx, "Couldn't create CPU profile: %s", cpuProf)
-					cpuProf = ""
-				} else {
-					pprof.StartCPUProfile(f)
+			eraseStr := strings.Repeat("\b", lastByteCount)
+			newStr := ""
+
+			switch update.Stage {
+			case plumbing.StatusDone:
+				r.log.CDebugf(ctx, "Status processing done")
+				return
+			case plumbing.StatusCount:
+				newStr = fmt.Sprintf(
+					"%s objects... ", humanizeObjects(update.ObjectsTotal, 1))
+			case plumbing.StatusSort:
+			default:
+				newStr = fmt.Sprintf(
+					"(%.2f%%) %s objects... ",
+					percent(int64(update.ObjectsDone), int64(update.ObjectsTotal)),
+					humanizeObjects(update.ObjectsDone, update.ObjectsTotal))
+			}
+
+			lastByteCount = len(newStr)
+			if r.progress {
+				r.errput.Write([]byte(eraseStr + newStr))
+			}
+
+			currStage = update.Stage
+		case fsEvent := <-fsEvents:
+			switch fsEvent.EventType {
+			case libfs.FSEventLock:
+				if currStage == plumbing.StatusIndexOffset {
+					// See comment above about plumbing.StatusIndexOffset. This
+					// event happens before IndexOffset is done, so we print
+					// "done." along with a newline here and start waiting for
+					// journal.
+					fmt.Fprintf(r.errput, "done.\n")
+					r.printJournalStatusUntilFlushed(ctx, fsEvent.Done)
 				}
 			}
-			r.errput.Write([]byte(gogitStagesToStatus[update.Stage]))
-			lastByteCount = 0
-			currStage = update.Stage
-			startTime = r.config.Clock().Now()
-			r.log.CDebugf(ctx, "Entering stage: %s %s total",
-				gogitStagesToStatus[update.Stage], update.ObjectsTotal)
 		}
-		eraseStr := strings.Repeat("\b", lastByteCount)
-		newStr := ""
-
-		switch update.Stage {
-		case plumbing.StatusDone:
-			r.log.CDebugf(ctx, "Status processing done")
-			return
-		case plumbing.StatusCount:
-			newStr = fmt.Sprintf(
-				"%s objects... ", humanizeObjects(update.ObjectsTotal, 1))
-		case plumbing.StatusSort:
-		default:
-			newStr = fmt.Sprintf(
-				"(%.2f%%) %s objects... ",
-				percent(int64(update.ObjectsDone), int64(update.ObjectsTotal)),
-				humanizeObjects(update.ObjectsDone, update.ObjectsTotal))
-		}
-
-		lastByteCount = len(newStr)
-		if r.progress {
-			r.errput.Write([]byte(eraseStr + newStr))
-		}
-
-		currStage = update.Stage
 	}
 	r.log.CDebugf(ctx, "Status channel closed")
 	r.errput.Write([]byte("\n"))
@@ -891,7 +955,7 @@ func (r *runner) handleFetchBatch(ctx context.Context, args [][]string) (
 		s := make(chan plumbing.StatusUpdate)
 		defer close(s)
 		statusChan = plumbing.StatusChan(s)
-		go r.processGogitStatus(ctx, s)
+		go r.processGogitStatus(ctx, s, nil)
 	}
 
 	// Now "push" into the local repo to get it to store objects
@@ -1008,7 +1072,15 @@ func (r *runner) handlePushBatch(ctx context.Context, args [][]string) (
 			s := make(chan plumbing.StatusUpdate)
 			defer close(s)
 			statusChan = plumbing.StatusChan(s)
-			go r.processGogitStatus(ctx, s)
+			go func() {
+				events := make(chan libfs.FSEvent)
+				fs.SubscribeToEvents(events)
+				r.processGogitStatus(ctx, s, events)
+				fs.UnsubscribeToEvents(events)
+				// Drain any pending writes to the channel.
+				for range events {
+				}
+			}()
 		}
 
 		err = remote.FetchContext(ctx, &gogit.FetchOptions{
