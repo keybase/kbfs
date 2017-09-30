@@ -626,6 +626,7 @@ func (r *runner) processGogitStatus(ctx context.Context,
 	var startTime time.Time
 	lastByteCount := 0
 	cpuProf := ""
+	donePrinted := true
 	for {
 		if fsEvents == nil && statusChan == nil {
 			// Both channels are closed.
@@ -647,8 +648,9 @@ func (r *runner) processGogitStatus(ctx context.Context,
 					// printing "done." for this status here, but print it
 					// along with a newline when FSEventLock event is received
 					// in the case below.
-					if currStage != plumbing.StatusIndexOffset {
+					if currStage != plumbing.StatusIndexOffset && !donePrinted {
 						r.errput.Write([]byte("done." + elapsedStr + "\n"))
+						donePrinted = true
 					}
 				}
 				if r.verbosity >= 4 {
@@ -664,6 +666,7 @@ func (r *runner) processGogitStatus(ctx context.Context,
 					}
 				}
 				r.errput.Write([]byte(gogitStagesToStatus[update.Stage]))
+				donePrinted = false
 				lastByteCount = 0
 				currStage = update.Stage
 				startTime = r.config.Clock().Now()
@@ -706,7 +709,10 @@ func (r *runner) processGogitStatus(ctx context.Context,
 					// event happens before IndexOffset is done, so we print
 					// "done." along with a newline here and start waiting for
 					// journal.
-					fmt.Fprintf(r.errput, "done.\n")
+					if !donePrinted {
+						fmt.Fprintf(r.errput, "done.\n")
+						donePrinted = true
+					}
 					r.printJournalStatusUntilFlushed(ctx, fsEvent.Done)
 				}
 			}
