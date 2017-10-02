@@ -183,6 +183,13 @@ func (f *File) Lock() (err error) {
 
 // Unlock implements the billy.File interface for File.
 func (f *File) Unlock() (err error) {
+	f.lockedLock.Lock()
+	defer f.lockedLock.Unlock()
+	if !f.locked {
+		return nil
+	}
+
+	// Send the event only if f.locked == true.
 	done := make(chan struct{})
 	f.fs.sendEvents(FSEvent{
 		EventType: FSEventUnlock,
@@ -190,11 +197,7 @@ func (f *File) Unlock() (err error) {
 		Done:      done,
 	})
 	defer close(done)
-	f.lockedLock.Lock()
-	defer f.lockedLock.Unlock()
-	if !f.locked {
-		return nil
-	}
+
 	defer func() {
 		if err == nil {
 			f.locked = false

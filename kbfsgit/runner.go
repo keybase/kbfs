@@ -344,6 +344,7 @@ func humanizeBytes(n int64, d int64) string {
 	return fmt.Sprintf("%.2f/%.2f GB", float64(n)/gbf, float64(d)/gbf)
 }
 
+// caller should make sure doneCh is closed when journal is all flushed.
 func (r *runner) printJournalStatus(
 	ctx context.Context, jServer *libkbfs.JournalServer, tlf tlf.ID,
 	doneCh <-chan struct{}) {
@@ -376,7 +377,7 @@ func (r *runner) printJournalStatus(
 		r.errput.Write([]byte(str))
 	}
 
-	ticker := time.NewTicker(1 * time.Millisecond)
+	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
@@ -395,14 +396,6 @@ func (r *runner) printJournalStatus(
 					humanizeBytes(flushed, firstStatus.UnflushedBytes))
 				lastByteCount = len(str)
 				r.errput.Write([]byte(eraseStr + str))
-			}
-
-			if status.UnflushedBytes == 0 {
-				elapsedStr := r.getElapsedStr(ctx, startTime, "mem.flush.prof", "")
-				if r.verbosity >= 1 {
-					r.errput.Write([]byte("done." + elapsedStr + "\n"))
-				}
-				return
 			}
 		case <-doneCh:
 			if r.verbosity >= 1 && r.progress {
@@ -620,6 +613,8 @@ func (r *runner) printJournalStatusUntilFlushed(
 		ctx, jServer, rootNode.GetFolderBranch().Tlf, doneCh)
 }
 
+const unlockPrintBytesStatusThreshold = time.Second / 2
+
 func (r *runner) processGogitStatus(ctx context.Context,
 	statusChan <-chan plumbing.StatusUpdate, fsEvents <-chan libfs.FSEvent) {
 	currStage := plumbing.StatusUnknown
@@ -629,7 +624,10 @@ func (r *runner) processGogitStatus(ctx context.Context,
 	donePrinted := true
 	for {
 		if fsEvents == nil && statusChan == nil {
-			// Both channels are closed.
+			// statusChan is passed in as nil. So if both of them are nil, then
+			// they have both been closed in the select/case below, because
+			// receive failed. So instead of let select block forever, we break
+			// out of the loop here.
 			break
 		}
 		select {
@@ -642,15 +640,17 @@ func (r *runner) processGogitStatus(ctx context.Context,
 				if currStage != plumbing.StatusUnknown {
 					memProf := fmt.Sprintf("mem.%d.prof", currStage)
 					elapsedStr := r.getElapsedStr(ctx, startTime, memProf, cpuProf)
-					// go-git seems to grab the lock during this phase. So we'd
-					// be flushing the journal before
-					// plumbing.StatusIndexOffset is done. So just skip
-					// printing "done." for this status here, but print it
-					// along with a newline when FSEventLock event is received
-					// in the case below.
-					if currStage != plumbing.StatusIndexOffset && !donePrinted {
+					// go-git grabs the lock right after
+					// plumbing.StatusIndexOffset, but before sending the Done
+					// status update. As a result, it would look like we are
+					// flushing the journal before plumbing.StatusIndexOffset
+					// is done. So instead, print "done." only if it's not
+					// printed yet.
+					if !donePrinted {
 						r.errput.Write([]byte("done." + elapsedStr + "\n"))
-						donePrinted = true
+						// Technically we've printed "done.", but there's no
+						// need to set donePrinted=true here since it's
+						// overridden below immediately.
 					}
 				}
 				if r.verbosity >= 4 {
@@ -703,17 +703,22 @@ func (r *runner) processGogitStatus(ctx context.Context,
 				continue
 			}
 			switch fsEvent.EventType {
-			case libfs.FSEventLock:
-				if currStage == plumbing.StatusIndexOffset {
-					// See comment above about plumbing.StatusIndexOffset. This
-					// event happens before IndexOffset is done, so we print
-					// "done." along with a newline here and start waiting for
-					// journal.
-					if !donePrinted {
-						fmt.Fprintf(r.errput, "done.\n")
-						donePrinted = true
-					}
+			case libfs.FSEventLock, libfs.FSEventUnlock:
+				if !donePrinted {
+					fmt.Fprintf(r.errput, "done.\n")
+					donePrinted = true
+				}
+				// Since we flush all blocks in Lock, subsequent calls to
+				// Lock/Unlock normally don't take much time. So we only print
+				// journal status if it's been longer than
+				// unlockPrintBytesStatusThreshold and fsEvent.Done hasn't been
+				// closed.
+				timer := time.NewTimer(unlockPrintBytesStatusThreshold)
+				select {
+				case <-timer.C:
 					r.printJournalStatusUntilFlushed(ctx, fsEvent.Done)
+				case <-fsEvent.Done:
+					timer.Stop()
 				}
 			}
 		}
