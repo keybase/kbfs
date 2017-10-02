@@ -31,6 +31,7 @@ import (
 	gogitcfg "gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/storage"
+	"gopkg.in/src-d/go-git.v4/storage/filesystem"
 )
 
 const (
@@ -74,6 +75,9 @@ const (
 	// push, we actually fetch from the local repo and write the
 	// objects into the bare repo.
 	localRepoRemoteName = "local"
+
+	packedRefsPath     = "packed-refs"
+	packedRefsTempPath = "._packed-refs"
 )
 
 type ctxCommandTagKey int
@@ -247,8 +251,14 @@ func (r *runner) initRepoIfNeeded(ctx context.Context, forCmd string) (
 		}()
 	}
 
-	fs, _, err = libgit.GetOrCreateRepoAndID(
-		ctx, r.config, r.h, r.repo, r.uniqID)
+	// Only allow lazy creates for public and multi-user TLFs.
+	if r.h.Type() == tlf.Public || len(r.h.ResolvedWriters()) > 1 {
+		fs, _, err = libgit.GetOrCreateRepoAndID(
+			ctx, r.config, r.h, r.repo, r.uniqID)
+	} else {
+		fs, _, err = libgit.GetRepoAndID(
+			ctx, r.config, r.h, r.repo, r.uniqID)
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -344,8 +354,9 @@ func humanizeBytes(n int64, d int64) string {
 	return fmt.Sprintf("%.2f/%.2f GB", float64(n)/gbf, float64(d)/gbf)
 }
 
+// caller should make sure doneCh is closed when journal is all flushed.
 func (r *runner) printJournalStatus(
-	ctx context.Context, jServer *libkbfs.JournalServer, tlf tlf.ID,
+	ctx context.Context, jServer *libkbfs.JournalServer, tlfID tlf.ID,
 	doneCh <-chan struct{}) {
 	// Note: the "first" status here gets us the number of unflushed
 	// bytes left at the time we started printing.  However, we don't
@@ -353,7 +364,7 @@ func (r *runner) printJournalStatus(
 	// throughout the whole operation, which would be more
 	// informative.  It would be better to have that as the
 	// denominator, but there's no easy way to get it right now.
-	firstStatus, err := jServer.JournalStatus(tlf)
+	firstStatus, err := jServer.JournalStatus(tlfID)
 	if err != nil {
 		r.log.CDebugf(ctx, "Error getting status: %+v", err)
 		return
@@ -361,8 +372,12 @@ func (r *runner) printJournalStatus(
 	if firstStatus.UnflushedBytes == 0 {
 		return
 	}
+	adj := "encrypted"
+	if r.h.Type() == tlf.Public {
+		adj = "signed"
+	}
 	if r.verbosity >= 1 {
-		r.errput.Write([]byte("Syncing data to Keybase: "))
+		r.errput.Write([]byte(fmt.Sprintf("Syncing %s data to Keybase: ", adj)))
 	}
 	startTime := r.config.Clock().Now()
 	r.log.CDebugf(ctx, "Waiting for %d journal bytes to flush",
@@ -381,25 +396,34 @@ func (r *runner) printJournalStatus(
 	for {
 		select {
 		case <-ticker.C:
+			status, err := jServer.JournalStatus(tlfID)
+			if err != nil {
+				r.log.CDebugf(ctx, "Error getting status: %+v", err)
+				return
+			}
+
+			if r.verbosity >= 1 && r.progress {
+				eraseStr := strings.Repeat("\b", lastByteCount)
+				flushed := firstStatus.UnflushedBytes - status.UnflushedBytes
+				str := fmt.Sprintf(
+					bytesFmt, percent(flushed, firstStatus.UnflushedBytes),
+					humanizeBytes(flushed, firstStatus.UnflushedBytes))
+				lastByteCount = len(str)
+				r.errput.Write([]byte(eraseStr + str))
+			}
 		case <-doneCh:
-		}
-		status, err := jServer.JournalStatus(tlf)
-		if err != nil {
-			r.log.CDebugf(ctx, "Error getting status: %+v", err)
-			return
-		}
+			if r.verbosity >= 1 && r.progress {
+				eraseStr := strings.Repeat("\b", lastByteCount)
+				// doneCh is closed. So assume journal flushing is done and
+				// take the shortcut.
+				flushed := firstStatus.UnflushedBytes
+				str := fmt.Sprintf(
+					bytesFmt, percent(flushed, firstStatus.UnflushedBytes),
+					humanizeBytes(flushed, firstStatus.UnflushedBytes))
+				lastByteCount = len(str)
+				r.errput.Write([]byte(eraseStr + str))
+			}
 
-		if r.verbosity >= 1 && r.progress {
-			eraseStr := strings.Repeat("\b", lastByteCount)
-			flushed := firstStatus.UnflushedBytes - status.UnflushedBytes
-			str := fmt.Sprintf(
-				bytesFmt, percent(flushed, firstStatus.UnflushedBytes),
-				humanizeBytes(flushed, firstStatus.UnflushedBytes))
-			lastByteCount = len(str)
-			r.errput.Write([]byte(eraseStr + str))
-		}
-
-		if status.UnflushedBytes == 0 {
 			elapsedStr := r.getElapsedStr(ctx, startTime, "mem.flush.prof", "")
 			if r.verbosity >= 1 {
 				r.errput.Write([]byte("done." + elapsedStr + "\n"))
@@ -579,62 +603,147 @@ func humanizeObjects(n int, d int) string {
 	return fmt.Sprintf("%.2f/%.2fM", float64(n)/m, float64(d)/m)
 }
 
-func (r *runner) processGogitStatus(
-	ctx context.Context, statusChan <-chan plumbing.StatusUpdate) {
+func (r *runner) printJournalStatusUntilFlushed(
+	ctx context.Context, doneCh <-chan struct{}) {
+	rootNode, _, err := r.config.KBFSOps().GetOrCreateRootNode(
+		ctx, r.h, libkbfs.MasterBranch)
+	if err != nil {
+		r.log.CDebugf(ctx, "GetOrCreateRootNode error: %+v", err)
+		return
+	}
+
+	err = r.config.KBFSOps().SyncAll(ctx, rootNode.GetFolderBranch())
+	if err != nil {
+		r.log.CDebugf(ctx, "SyncAll error: %+v", err)
+		return
+	}
+
+	jServer, err := libkbfs.GetJournalServer(r.config)
+	if err != nil {
+		r.log.CDebugf(ctx, "No journal server: %+v", err)
+	}
+
+	r.printJournalStatus(
+		ctx, jServer, rootNode.GetFolderBranch().Tlf, doneCh)
+}
+
+const unlockPrintBytesStatusThreshold = time.Second / 2
+
+func (r *runner) processGogitStatus(ctx context.Context,
+	statusChan <-chan plumbing.StatusUpdate, fsEvents <-chan libfs.FSEvent) {
+	if r.h.Type() == tlf.Public {
+		gogitStagesToStatus[plumbing.StatusFetch] = "Preparing and signing: "
+	}
+
 	currStage := plumbing.StatusUnknown
 	var startTime time.Time
 	lastByteCount := 0
 	cpuProf := ""
-	for update := range statusChan {
-		if update.Stage != currStage {
-			if currStage != plumbing.StatusUnknown {
-				memProf := fmt.Sprintf("mem.%d.prof", currStage)
-				elapsedStr := r.getElapsedStr(ctx, startTime, memProf, cpuProf)
-				r.errput.Write([]byte("done." + elapsedStr + "\n"))
+	donePrinted := true
+	for {
+		if fsEvents == nil && statusChan == nil {
+			// statusChan is passed in as nil. So if both of them are nil, then
+			// they have both been closed in the select/case below, because
+			// receive failed. So instead of letting select block forever, we
+			// break out of the loop here.
+			break
+		}
+		select {
+		case update, ok := <-statusChan:
+			if !ok {
+				statusChan = nil
+				continue
 			}
-			if r.verbosity >= 4 {
-				cpuProf = filepath.Join(
-					os.TempDir(), fmt.Sprintf("cpu.%d.prof", update.Stage))
-				f, err := os.Create(cpuProf)
-				if err != nil {
-					r.log.CDebugf(
-						ctx, "Couldn't create CPU profile: %s", cpuProf)
-					cpuProf = ""
-				} else {
-					pprof.StartCPUProfile(f)
+			if update.Stage != currStage {
+				if currStage != plumbing.StatusUnknown {
+					memProf := fmt.Sprintf("mem.%d.prof", currStage)
+					elapsedStr := r.getElapsedStr(ctx, startTime, memProf, cpuProf)
+					// go-git grabs the lock right after
+					// plumbing.StatusIndexOffset, but before sending the Done
+					// status update. As a result, it would look like we are
+					// flushing the journal before plumbing.StatusIndexOffset
+					// is done. So instead, print "done." only if it's not
+					// printed yet.
+					if !donePrinted {
+						r.errput.Write([]byte("done." + elapsedStr + "\n"))
+						// Technically we've printed "done.", but there's no
+						// need to set donePrinted=true here since it's
+						// overridden below immediately.
+					}
+				}
+				if r.verbosity >= 4 {
+					cpuProf = filepath.Join(
+						os.TempDir(), fmt.Sprintf("cpu.%d.prof", update.Stage))
+					f, err := os.Create(cpuProf)
+					if err != nil {
+						r.log.CDebugf(
+							ctx, "Couldn't create CPU profile: %s", cpuProf)
+						cpuProf = ""
+					} else {
+						pprof.StartCPUProfile(f)
+					}
+				}
+				r.errput.Write([]byte(gogitStagesToStatus[update.Stage]))
+				donePrinted = false
+				lastByteCount = 0
+				currStage = update.Stage
+				startTime = r.config.Clock().Now()
+				if stage, ok := gogitStagesToStatus[update.Stage]; ok {
+					r.log.CDebugf(ctx, "Entering stage: %s - %d total objects",
+						stage, update.ObjectsTotal)
 				}
 			}
-			r.errput.Write([]byte(gogitStagesToStatus[update.Stage]))
-			lastByteCount = 0
+			eraseStr := strings.Repeat("\b", lastByteCount)
+			newStr := ""
+
+			switch update.Stage {
+			case plumbing.StatusDone:
+				r.log.CDebugf(ctx, "Status processing done")
+				return
+			case plumbing.StatusCount:
+				newStr = fmt.Sprintf(
+					"%s objects... ", humanizeObjects(update.ObjectsTotal, 1))
+			case plumbing.StatusSort:
+			default:
+				newStr = fmt.Sprintf(
+					"(%.2f%%) %s objects... ",
+					percent(int64(update.ObjectsDone), int64(update.ObjectsTotal)),
+					humanizeObjects(update.ObjectsDone, update.ObjectsTotal))
+			}
+
+			lastByteCount = len(newStr)
+			if r.progress {
+				r.errput.Write([]byte(eraseStr + newStr))
+			}
+
 			currStage = update.Stage
-			startTime = r.config.Clock().Now()
-			r.log.CDebugf(ctx, "Entering stage: %s %s total",
-				gogitStagesToStatus[update.Stage], update.ObjectsTotal)
+		case fsEvent, ok := <-fsEvents:
+			if !ok {
+				fsEvents = nil
+				continue
+			}
+			switch fsEvent.EventType {
+			case libfs.FSEventLock, libfs.FSEventUnlock:
+				if !donePrinted {
+					fmt.Fprintf(r.errput, "done.\n")
+					donePrinted = true
+				}
+				// Since we flush all blocks in Lock, subsequent calls to
+				// Lock/Unlock normally don't take much time. So we only print
+				// journal status if it's been longer than
+				// unlockPrintBytesStatusThreshold and fsEvent.Done hasn't been
+				// closed.
+				timer := time.NewTimer(unlockPrintBytesStatusThreshold)
+				select {
+				case <-timer.C:
+					r.printJournalStatusUntilFlushed(ctx, fsEvent.Done)
+				case <-fsEvent.Done:
+					timer.Stop()
+				case <-ctx.Done():
+					timer.Stop()
+				}
+			}
 		}
-		eraseStr := strings.Repeat("\b", lastByteCount)
-		newStr := ""
-
-		switch update.Stage {
-		case plumbing.StatusDone:
-			r.log.CDebugf(ctx, "Status processing done")
-			return
-		case plumbing.StatusCount:
-			newStr = fmt.Sprintf(
-				"%s objects... ", humanizeObjects(update.ObjectsTotal, 1))
-		case plumbing.StatusSort:
-		default:
-			newStr = fmt.Sprintf(
-				"(%.2f%%) %s objects... ",
-				percent(int64(update.ObjectsDone), int64(update.ObjectsTotal)),
-				humanizeObjects(update.ObjectsDone, update.ObjectsTotal))
-		}
-
-		lastByteCount = len(newStr)
-		if r.progress {
-			r.errput.Write([]byte(eraseStr + newStr))
-		}
-
-		currStage = update.Stage
 	}
 	r.log.CDebugf(ctx, "Status channel closed")
 	r.errput.Write([]byte("\n"))
@@ -733,6 +842,47 @@ func (r *runner) copyFile(
 	return err
 }
 
+func (r *runner) copyFileWithCount(
+	ctx context.Context, from billy.Filesystem, to billy.Filesystem,
+	name, countingText, countingProf, copyingText, copyingProf string) error {
+	var sw *statusWriter
+	if r.verbosity >= 1 {
+		// Get the total number of bytes we expect to fetch, for the
+		// progress report.
+		startTime := r.config.Clock().Now()
+		zeroStr := fmt.Sprintf("%s... ", humanizeBytes(0, 1))
+		r.errput.Write([]byte(fmt.Sprintf("%s: %s", countingText, zeroStr)))
+		fi, err := from.Stat(name)
+		if err != nil {
+			return err
+		}
+		eraseStr := strings.Repeat("\b", len(zeroStr))
+		newStr := fmt.Sprintf("%s... done.", humanizeBytes(fi.Size(), 1))
+		r.errput.Write([]byte(eraseStr + newStr))
+
+		elapsedStr := r.getElapsedStr(
+			ctx, startTime, fmt.Sprintf("mem.%s.prof", countingProf), "")
+		r.errput.Write([]byte("done." + elapsedStr + "\n"))
+
+		sw = &statusWriter{r, nil, 0, fi.Size(), 0}
+		r.errput.Write([]byte(fmt.Sprintf("%s: ", copyingText)))
+	}
+
+	// Copy the file directly into the other file system.
+	startTime := r.config.Clock().Now()
+	err := r.copyFile(ctx, from, to, name, sw)
+	if err != nil {
+		return err
+	}
+
+	if r.verbosity >= 1 {
+		elapsedStr := r.getElapsedStr(
+			ctx, startTime, fmt.Sprintf("mem.%s.prof", copyingProf), "")
+		r.errput.Write([]byte("done." + elapsedStr + "\n"))
+	}
+	return nil
+}
+
 // recursiveCopy copies the entire subdirectory rooted at `fs` to
 // `localFS`.
 func (r *runner) recursiveCopy(
@@ -771,6 +921,44 @@ func (r *runner) recursiveCopy(
 	return nil
 }
 
+func (r *runner) recursiveCopyWithCounts(
+	ctx context.Context, from billy.Filesystem, to billy.Filesystem,
+	countingText, countingProf, copyingText, copyingProf string) error {
+	var sw *statusWriter
+	if r.verbosity >= 1 {
+		// Get the total number of bytes we expect to fetch, for the
+		// progress report.
+		startTime := r.config.Clock().Now()
+		r.errput.Write([]byte(fmt.Sprintf("%s: ", countingText)))
+		b, _, err := r.recursiveByteCount(ctx, from, 0, 0)
+		if err != nil {
+			return err
+		}
+		elapsedStr := r.getElapsedStr(
+			ctx, startTime, fmt.Sprintf("mem.%s.prof", countingProf), "")
+		r.errput.Write([]byte("done." + elapsedStr + "\n"))
+
+		sw = &statusWriter{r, nil, 0, b, 0}
+		r.errput.Write([]byte(fmt.Sprintf("%s: ", copyingText)))
+	}
+
+	// Copy the entire subdirectory straight into the other file
+	// system.  This saves time and memory relative to going through
+	// go-git.
+	startTime := r.config.Clock().Now()
+	err := r.recursiveCopy(ctx, from, to, sw)
+	if err != nil {
+		return err
+	}
+
+	if r.verbosity >= 1 {
+		elapsedStr := r.getElapsedStr(
+			ctx, startTime, fmt.Sprintf("mem.%s.prof", copyingProf), "")
+		r.errput.Write([]byte("done." + elapsedStr + "\n"))
+	}
+	return nil
+}
+
 // handleClone copies all the object files of a KBFS repo directly
 // into the local git dir, instead of using go-git to calculate the
 // full set of objects that are to be transferred (which is slow and
@@ -803,35 +991,11 @@ func (r *runner) handleClone(ctx context.Context) (err error) {
 	}
 	localFSObjects := osfs.New(localObjectsPath)
 
-	var sw *statusWriter
-	if r.verbosity >= 1 {
-		// Get the total number of bytes we expect to fetch, for the
-		// progress report.
-		startTime := r.config.Clock().Now()
-		r.errput.Write([]byte("Counting: "))
-		b, _, err := r.recursiveByteCount(ctx, fsObjects, 0, 0)
-		if err != nil {
-			return err
-		}
-		elapsedStr := r.getElapsedStr(ctx, startTime, "mem.count.prof", "")
-		r.errput.Write([]byte("done." + elapsedStr + "\n"))
-
-		sw = &statusWriter{r, nil, 0, b, 0}
-		r.errput.Write([]byte("Cryptographic cloning: "))
-	}
-
-	// Copy the entire objects subdirectory straight into the git
-	// directory.  This saves time and memory from having to calculate
-	// packfiles.
-	startTime := r.config.Clock().Now()
-	err = r.recursiveCopy(ctx, fsObjects, localFSObjects, sw)
+	err = r.recursiveCopyWithCounts(
+		ctx, fsObjects, localFSObjects,
+		"Counting", "count", "Cryptographic cloning", "clone")
 	if err != nil {
 		return err
-	}
-
-	if r.verbosity >= 1 {
-		elapsedStr := r.getElapsedStr(ctx, startTime, "mem.clone.prof", "")
-		r.errput.Write([]byte("done." + elapsedStr + "\n"))
 	}
 	_, err = r.output.Write([]byte("\n"))
 	return err
@@ -891,7 +1055,7 @@ func (r *runner) handleFetchBatch(ctx context.Context, args [][]string) (
 		s := make(chan plumbing.StatusUpdate)
 		defer close(s)
 		statusChan = plumbing.StatusChan(s)
-		go r.processGogitStatus(ctx, s)
+		go r.processGogitStatus(ctx, s, nil)
 	}
 
 	// Now "push" into the local repo to get it to store objects
@@ -923,6 +1087,258 @@ func (r *runner) handleFetchBatch(ctx context.Context, args [][]string) (
 
 	_, err = r.output.Write([]byte("\n"))
 	return err
+}
+
+// canPushAll returns true if a) the KBFS repo is currently empty, and
+// b) we've been asked to push all the local references (i.e.,
+// --all/--mirror).
+func (r *runner) canPushAll(
+	ctx context.Context, repo *gogit.Repository, args [][]string) (
+	canPushAll, kbfsRepoEmpty bool, err error) {
+	refs, err := repo.References()
+	if err != nil {
+		return false, false, err
+	}
+	defer refs.Close()
+
+	for {
+		ref, err := refs.Next()
+		if errors.Cause(err) == io.EOF {
+			break
+		} else if err != nil {
+			return false, false, err
+		}
+
+		if ref.Type() != plumbing.SymbolicReference {
+			r.log.CDebugf(ctx, "Remote has at least one non-symbolic ref: %s",
+				ref.String())
+			return false, false, nil
+		}
+	}
+
+	sources := make(map[string]bool)
+	for _, push := range args {
+		if len(push) != 1 {
+			return false, false, errors.Errorf("Bad push request: %v", push)
+		}
+		refspec := gogitcfg.RefSpec(push[0])
+		// If some ref is being pushed to a different name on the
+		// remote, we can't do a push-all.
+		if refspec.Src() != refspec.Dst("").String() {
+			return false, true, nil
+		}
+
+		src := refspec.Src()
+		sources[src] = true
+	}
+
+	localGit := osfs.New(r.gitDir)
+	localStorer, err := filesystem.NewStorage(localGit)
+	if err != nil {
+		return false, false, err
+	}
+	// The worktree is not used for listing refs, but is required to
+	// be non-nil to open a non-bare repo.
+	fakeWorktree := osfs.New("/dev/null")
+	localRepo, err := gogit.Open(localStorer, fakeWorktree)
+	if err != nil {
+		return false, false, err
+	}
+
+	localRefs, err := localRepo.References()
+	if err != nil {
+		return false, false, err
+	}
+
+	for {
+		ref, err := localRefs.Next()
+		if errors.Cause(err) == io.EOF {
+			break
+		}
+		if err != nil {
+			return false, false, err
+		}
+
+		if ref.Type() == plumbing.SymbolicReference {
+			continue
+		}
+
+		// If the local repo has a non-symbolic ref that's not being
+		// pushed, we can't push everything blindly, otherwise we
+		// might leak some data.
+		if !sources[ref.Name().String()] {
+			r.log.CDebugf(ctx, "Not pushing local ref %s", ref)
+			return false, true, nil
+		}
+	}
+
+	return true, true, nil
+}
+
+func (r *runner) pushAll(ctx context.Context, fs *libfs.FS) (err error) {
+	r.log.CDebugf(ctx, "Pushing the entire local repo")
+	localFS := osfs.New(r.gitDir)
+
+	// First copy objects.
+	localFSObjects, err := localFS.Chroot("objects")
+	if err != nil {
+		return err
+	}
+	fsObjects, err := fs.Chroot("objects")
+	if err != nil {
+		return err
+	}
+
+	verb := "encrypting"
+	if r.h.Type() == tlf.Public {
+		verb = "signing"
+	}
+
+	err = r.recursiveCopyWithCounts(
+		ctx, localFSObjects, fsObjects,
+		"Counting objects", "countobj",
+		fmt.Sprintf("Preparing and %s objects", verb), "pushobj")
+	if err != nil {
+		return err
+	}
+
+	// Hold the packed refs lock file while transferring, so we don't
+	// clash with anyone else trying to push-init this repo.  go-git
+	// takes the same lock while writing packed-refs during a
+	// `Remote.Fetch()` operation (used in `pushSome()` below).
+	lockFile, err := fs.Create(packedRefsTempPath)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		closeErr := lockFile.Close()
+		if closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
+
+	err = lockFile.Lock()
+	if err != nil {
+		return err
+	}
+
+	// Next, copy refs.
+	localFSRefs, err := localFS.Chroot("refs")
+	if err != nil {
+		return err
+	}
+	fsRefs, err := fs.Chroot("refs")
+	if err != nil {
+		return err
+	}
+	err = r.recursiveCopyWithCounts(
+		ctx, localFSRefs, fsRefs,
+		"Counting refs", "countref",
+		fmt.Sprintf("Preparing and %s refs", verb), "pushref")
+	if err != nil {
+		return err
+	}
+
+	// Finally, packed refs if it exists.
+	_, err = localFS.Stat(packedRefsPath)
+	if os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	return r.copyFileWithCount(ctx, localFS, fs, packedRefsPath,
+		"Counting packed refs", "countprefs",
+		fmt.Sprintf("Preparing and %s packed refs", verb), "pushprefs")
+}
+
+func (r *runner) pushSome(
+	ctx context.Context, repo *gogit.Repository, fs *libfs.FS, args [][]string,
+	kbfsRepoEmpty bool) (map[string]error, error) {
+	r.log.CDebugf(ctx, "Pushing %d refs into %s", len(args), r.gitDir)
+
+	remote, err := repo.CreateRemote(&gogitcfg.RemoteConfig{
+		Name: localRepoRemoteName,
+		URLs: []string{r.gitDir},
+	})
+
+	results := make(map[string]error, len(args))
+	var refspecs []gogitcfg.RefSpec
+	for _, push := range args {
+		if len(push) != 1 {
+			return nil, errors.Errorf("Bad push request: %v", push)
+		}
+		refspec := gogitcfg.RefSpec(push[0])
+		err := refspec.Validate()
+		if err != nil {
+			return nil, err
+		}
+
+		// Delete the reference in the repo if needed; otherwise,
+		// fetch from the local repo into the remote repo.
+		if refspec.IsDelete() {
+			start := strings.Index(push[0], ":") + 1
+			dst := push[0][start:]
+
+			if refspec.IsWildcard() {
+				results[dst] = errors.Errorf(
+					"Wildcards not supported for deletes: %s", refspec)
+				continue
+			}
+			err = repo.Storer.RemoveReference(plumbing.ReferenceName(dst))
+			if err == gogit.NoErrAlreadyUpToDate {
+				err = nil
+			}
+			results[dst] = err
+		} else {
+			refspecs = append(refspecs, refspec)
+		}
+		if err != nil {
+			r.log.CDebugf(ctx, "Error fetching %s: %+v", refspec, err)
+		}
+	}
+
+	if len(refspecs) > 0 {
+		var statusChan plumbing.StatusChan
+		if r.verbosity >= 1 {
+			s := make(chan plumbing.StatusUpdate)
+			defer close(s)
+			statusChan = plumbing.StatusChan(s)
+			go func() {
+				events := make(chan libfs.FSEvent)
+				fs.SubscribeToEvents(events)
+				r.processGogitStatus(ctx, s, events)
+				fs.UnsubscribeToEvents(events)
+				// Drain any pending writes to the channel.
+				for range events {
+				}
+			}()
+		}
+
+		if kbfsRepoEmpty {
+			r.log.CDebugf(
+				ctx, "Requesting a pack-refs file for %d refs", len(refspecs))
+		}
+
+		err = remote.FetchContext(ctx, &gogit.FetchOptions{
+			RemoteName: localRepoRemoteName,
+			RefSpecs:   refspecs,
+			StatusChan: statusChan,
+			PackRefs:   kbfsRepoEmpty,
+		})
+		if err == gogit.NoErrAlreadyUpToDate {
+			err = nil
+		}
+
+		// All non-delete refspecs in the batch get the same error.
+		for _, refspec := range refspecs {
+			refStr := refspec.String()
+			start := strings.Index(refStr, ":") + 1
+			dst := refStr[start:]
+			results[dst] = err
+		}
+	}
+	return results, nil
 }
 
 // handlePushBatch: From https://git-scm.com/docs/git-remote-helpers
@@ -959,73 +1375,29 @@ func (r *runner) handlePushBatch(ctx context.Context, args [][]string) (
 		return err
 	}
 
-	r.log.CDebugf(ctx, "Pushing %d refs into %s", len(args), r.gitDir)
-
-	remote, err := repo.CreateRemote(&gogitcfg.RemoteConfig{
-		Name: localRepoRemoteName,
-		URLs: []string{r.gitDir},
-	})
-
-	results := make(map[string]error, len(args))
-	var refspecs []gogitcfg.RefSpec
-	for _, push := range args {
-		if len(push) != 1 {
-			return errors.Errorf("Bad push request: %v", push)
-		}
-		refspec := gogitcfg.RefSpec(push[0])
-		err := refspec.Validate()
-		if err != nil {
-			return err
-		}
-
-		// Delete the reference in the repo if needed; otherwise,
-		// fetch from the local repo into the remote repo.
-		if refspec.IsDelete() {
-			start := strings.Index(push[0], ":") + 1
-			dst := push[0][start:]
-
-			if refspec.IsWildcard() {
-				results[dst] = errors.Errorf(
-					"Wildcards not supported for deletes: %s", refspec)
-				continue
-			}
-			err = repo.Storer.RemoveReference(plumbing.ReferenceName(dst))
-			if err == gogit.NoErrAlreadyUpToDate {
-				err = nil
-			}
-			results[dst] = err
-		} else {
-			refspecs = append(refspecs, refspec)
-		}
-		if err != nil {
-			r.log.CDebugf(ctx, "Error fetching %s: %+v", refspec, err)
-		}
+	canPushAll, kbfsRepoEmpty, err := r.canPushAll(ctx, repo, args)
+	if err != nil {
+		return err
 	}
 
-	if len(refspecs) > 0 {
-		var statusChan plumbing.StatusChan
-		if r.verbosity >= 1 {
-			s := make(chan plumbing.StatusUpdate)
-			defer close(s)
-			statusChan = plumbing.StatusChan(s)
-			go r.processGogitStatus(ctx, s)
-		}
-
-		err = remote.FetchContext(ctx, &gogit.FetchOptions{
-			RemoteName: localRepoRemoteName,
-			RefSpecs:   refspecs,
-			StatusChan: statusChan,
-		})
-		if err == gogit.NoErrAlreadyUpToDate {
-			err = nil
-		}
-		// All non-delete refspecs in the batch get the same error.
-		for _, refspec := range refspecs {
-			refStr := refspec.String()
-			start := strings.Index(refStr, ":") + 1
-			dst := refStr[start:]
+	var results map[string]error
+	if canPushAll {
+		err = r.pushAll(ctx, fs)
+		// All refs in the batch get the same error.
+		results = make(map[string]error, len(args))
+		for _, push := range args {
+			if len(push) != 1 {
+				return errors.Errorf("Bad push request: %v", push)
+			}
+			start := strings.Index(push[0], ":") + 1
+			dst := push[0][start:]
 			results[dst] = err
 		}
+	} else {
+		results, err = r.pushSome(ctx, repo, fs, args, kbfsRepoEmpty)
+	}
+	if err != nil {
+		return err
 	}
 
 	err = r.waitForJournal(ctx)

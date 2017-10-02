@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libkbfs"
@@ -22,6 +23,7 @@ import (
 const (
 	kbfsRepoDir         = ".kbfs_git"
 	kbfsConfigName      = "kbfs_config"
+	kbfsConfigNameTemp  = "._kbfs_config"
 	gitSuffixToIgnore   = ".git"
 	kbfsDeletedReposDir = ".kbfs_deleted_repos"
 )
@@ -40,45 +42,6 @@ func checkValidRepoName(repoName string, config libkbfs.Config) bool {
 		uint32(len(repoName)) <= config.MaxNameBytes() &&
 		(os.Getenv("KBFS_GIT_REPONAME_SKIP_CHECK") != "" ||
 			repoNameRE.MatchString(repoName))
-}
-
-// InvalidRepoNameError indicates that a repo name is invalid.
-type InvalidRepoNameError struct {
-	name string
-}
-
-func (e InvalidRepoNameError) Error() string {
-	return fmt.Sprintf("Invalid repo name %q", e.name)
-}
-
-// ToStatus implements the ExportableError interface for ServerError.
-func (e InvalidRepoNameError) ToStatus() (s keybase1.Status) {
-	s.Code = int(keybase1.StatusCode_SCGitInvalidRepoName)
-	s.Name = "GIT_INVALID_REPO_NAME"
-	s.Desc = e.Error()
-	return
-}
-
-// RepoAlreadyCreatedError is returned when trying to create a repo
-// that already exists.
-type RepoAlreadyCreatedError struct {
-	DesiredName    string
-	ExistingConfig Config
-}
-
-func (race RepoAlreadyCreatedError) Error() string {
-	return fmt.Sprintf(
-		"A repo named %s (id=%s) already existed when trying to create "+
-			"a repo named %s", race.ExistingConfig.Name,
-		race.ExistingConfig.ID, race.DesiredName)
-}
-
-// ToStatus implements the ExportableError interface for ServerError.
-func (race RepoAlreadyCreatedError) ToStatus() (s keybase1.Status) {
-	s.Code = int(keybase1.StatusCode_SCGitRepoAlreadyExists)
-	s.Name = "GIT_REPO_ALREADY_EXISTS"
-	s.Desc = race.Error()
-	return
 }
 
 // UpdateRepoMD lets the Keybase service know that a repo's MD has
@@ -128,11 +91,58 @@ func createNewRepoAndID(
 		"Creating a new repo %s in %s: repoID=%s",
 		repoName, tlfHandle.GetCanonicalPath(), repoID)
 
-	session, err := config.KBPKI().GetCurrentSession(ctx)
+	// Lock a temp file to avoid a duplicate create of the actual
+	// file.  TODO: clean up this file at some point?
+	lockFile, err := fs.Create(kbfsConfigNameTemp)
+	if err != nil && !os.IsExist(err) {
+		return NullID, err
+	} else if os.IsExist(err) {
+		lockFile, err = fs.Open(kbfsConfigNameTemp)
+	}
+	if err != nil {
+		return NullID, err
+	}
+	defer lockFile.Close()
+
+	// Take a lock during creation.
+	err = lockFile.Lock()
 	if err != nil {
 		return NullID, err
 	}
 
+	f, err := fs.Create(kbfsConfigName)
+	if err != nil && !os.IsExist(err) {
+		return NullID, err
+	} else if os.IsExist(err) {
+		// The config file already exists, so someone else already
+		// initialized the repo.
+		config.MakeLogger("").CDebugf(
+			ctx, "Config file for repo %s already exists", repoName)
+		f, err := fs.Open(kbfsConfigName)
+		if err != nil {
+			return NullID, err
+		}
+		defer f.Close()
+		buf, err := ioutil.ReadAll(f)
+		if err != nil {
+			return NullID, err
+		}
+		existingConfig, err := configFromBytes(buf)
+		if err != nil {
+			return NullID, err
+		}
+		return NullID, errors.WithStack(libkb.RepoAlreadyExistsError{
+			DesiredName:  repoName,
+			ExistingName: existingConfig.Name,
+			ExistingID:   existingConfig.ID.String(),
+		})
+	}
+	defer f.Close()
+
+	session, err := config.KBPKI().GetCurrentSession(ctx)
+	if err != nil {
+		return NullID, err
+	}
 	c := &Config{
 		ID:         repoID,
 		Name:       repoName,
@@ -143,11 +153,6 @@ func createNewRepoAndID(
 	if err != nil {
 		return NullID, err
 	}
-	f, err := fs.Create(kbfsConfigName)
-	if err != nil {
-		return NullID, err
-	}
-	defer f.Close()
 	_, err = f.Write(buf)
 	if err != nil {
 		return NullID, err
@@ -181,11 +186,29 @@ func lookupOrCreateDir(ctx context.Context, config libkbfs.Config,
 	return newNode, nil
 }
 
+type repoOpType int
+
+const (
+	getOrCreate repoOpType = iota
+	createOnly
+	getOnly
+)
+
+// NoSuchRepoError indicates that a repo doesn't yet exist, and it
+// will not be created.
+type NoSuchRepoError struct {
+	name string
+}
+
+func (nsre NoSuchRepoError) Error() string {
+	return fmt.Sprintf("A repo named %s hasn't been created yet", nsre.name)
+}
+
 func getOrCreateRepoAndID(
 	ctx context.Context, config libkbfs.Config, tlfHandle *libkbfs.TlfHandle,
-	repoName string, uniqID string, createOnly bool) (*libfs.FS, ID, error) {
+	repoName string, uniqID string, op repoOpType) (*libfs.FS, ID, error) {
 	if !checkValidRepoName(repoName, config) {
-		return nil, NullID, errors.WithStack(InvalidRepoNameError{repoName})
+		return nil, NullID, errors.WithStack(libkb.InvalidRepoNameError{Name: repoName})
 	}
 
 	rootNode, _, err := config.KBFSOps().GetOrCreateRootNode(
@@ -199,9 +222,20 @@ func getOrCreateRepoAndID(
 	if err != nil {
 		return nil, NullID, err
 	}
-	_, err = lookupOrCreateDir(ctx, config, repoDir, normalizedRepoName)
-	if err != nil {
-		return nil, NullID, err
+	if op == getOnly {
+		_, _, err = config.KBFSOps().Lookup(ctx, repoDir, normalizedRepoName)
+		switch errors.Cause(err).(type) {
+		case libkbfs.NoSuchNameError:
+			return nil, NullID, errors.WithStack(NoSuchRepoError{repoName})
+		case nil:
+		default:
+			return nil, NullID, err
+		}
+	} else {
+		_, err = lookupOrCreateDir(ctx, config, repoDir, normalizedRepoName)
+		if err != nil {
+			return nil, NullID, err
+		}
 	}
 
 	fs, err := libfs.NewFS(
@@ -215,6 +249,10 @@ func getOrCreateRepoAndID(
 	if err != nil && !os.IsNotExist(err) {
 		return nil, NullID, err
 	} else if os.IsNotExist(err) {
+		if op == getOnly {
+			return nil, NullID, errors.WithStack(NoSuchRepoError{repoName})
+		}
+
 		// Create a new repo ID.
 		repoID, err := createNewRepoAndID(ctx, config, tlfHandle, repoName, fs)
 		if err != nil {
@@ -233,10 +271,14 @@ func getOrCreateRepoAndID(
 		return nil, NullID, err
 	}
 
-	if createOnly {
+	if op == createOnly {
 		// If this was already created, but we were expected to create
 		// it, then send back an error.
-		return nil, NullID, RepoAlreadyCreatedError{repoName, *c}
+		return nil, NullID, libkb.RepoAlreadyExistsError{
+			DesiredName:  repoName,
+			ExistingName: c.Name,
+			ExistingID:   c.ID.String(),
+		}
 	}
 
 	fs.SetLockNamespace(c.ID.Bytes())
@@ -253,12 +295,22 @@ func GetOrCreateRepoAndID(
 	ctx context.Context, config libkbfs.Config, tlfHandle *libkbfs.TlfHandle,
 	repoName string, uniqID string) (*libfs.FS, ID, error) {
 	return getOrCreateRepoAndID(
-		ctx, config, tlfHandle, repoName, uniqID, false)
+		ctx, config, tlfHandle, repoName, uniqID, getOrCreate)
+}
+
+// GetRepoAndID returns a filesystem object rooted at the
+// specified repo, along with the stable repo ID, if it already
+// exists.
+func GetRepoAndID(
+	ctx context.Context, config libkbfs.Config, tlfHandle *libkbfs.TlfHandle,
+	repoName string, uniqID string) (*libfs.FS, ID, error) {
+	return getOrCreateRepoAndID(
+		ctx, config, tlfHandle, repoName, uniqID, getOnly)
 }
 
 // CreateRepoAndID returns a new stable repo ID for the provided
 // repoName in the given TLF.  If the repo has already been created,
-// it returns a `RepoAlreadyCreatedError`.  The caller is responsible
+// it returns a `RepoAlreadyExistsError`.  The caller is responsible
 // for syncing the FS and flushing the journal, if desired.  It
 // expects the `config` object to be unique during the lifetime of
 // this call.
@@ -274,7 +326,7 @@ func CreateRepoAndID(
 	uniqID := fmt.Sprintf("%s-%p", session.VerifyingKey.String(), config)
 
 	fs, id, err := getOrCreateRepoAndID(
-		ctx, config, tlfHandle, repoName, uniqID, true)
+		ctx, config, tlfHandle, repoName, uniqID, createOnly)
 	if err != nil {
 		return NullID, err
 	}

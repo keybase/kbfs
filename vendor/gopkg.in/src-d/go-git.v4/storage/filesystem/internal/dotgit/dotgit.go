@@ -261,6 +261,12 @@ func (d *DotGit) checkReferenceAndTruncate(f billy.File, old *plumbing.Reference
 	if err != nil {
 		return err
 	}
+	if ref.Hash().IsZero() {
+		ref, err = d.packedRef(old.Name())
+		if err != nil {
+			return err
+		}
+	}
 	if ref.Hash() != old.Hash() {
 		return fmt.Errorf("reference has changed concurrently")
 	}
@@ -275,7 +281,7 @@ func (d *DotGit) checkReferenceAndTruncate(f billy.File, old *plumbing.Reference
 	return nil
 }
 
-func (d *DotGit) SetRef(r, old *plumbing.Reference) error {
+func (d *DotGit) SetRef(r, old *plumbing.Reference) (err error) {
 	var content string
 	switch r.Type() {
 	case plumbing.SymbolicReference:
@@ -346,7 +352,7 @@ func (d *DotGit) Ref(name plumbing.ReferenceName) (*plumbing.Reference, error) {
 	return d.packedRef(name)
 }
 
-func (d *DotGit) syncPackedRefs() error {
+func (d *DotGit) syncPackedRefs() (err error) {
 	fi, err := d.fs.Stat(packedRefsPath)
 	if os.IsNotExist(err) {
 		return nil
@@ -567,6 +573,45 @@ func (d *DotGit) readReferenceFile(path, name string) (ref *plumbing.Reference, 
 	defer ioutil.CheckClose(f, &err)
 
 	return d.readReferenceFrom(f, name)
+}
+
+func (d *DotGit) SetPackedRefs(refs []plumbing.Reference) (err error) {
+	// Lock it using a temp file.  TODO: clean this up?
+	lockFile, err := d.fs.Create(tmpPackedRefsPrefix)
+	if err != nil {
+		return err
+	}
+	defer ioutil.CheckClose(lockFile, &err)
+
+	err = lockFile.Lock()
+	if err != nil {
+		return err
+	}
+
+	f, err := d.fs.Create(packedRefsPath)
+	if err != nil {
+		return err
+	}
+	defer ioutil.CheckClose(f, &err)
+
+	// Check that the file is empty. Technically the locked create
+	// above should fail if the file exists yet, but let's just be
+	// safe and check.
+	buf, err := stdioutil.ReadAll(f)
+	if err != nil {
+		return err
+	}
+	if len(buf) != 0 {
+		return errors.New("packed-refs file already initialized")
+	}
+
+	for _, ref := range refs {
+		_, err := f.Write([]byte(ref.String() + "\n"))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Module return a billy.Filesystem poiting to the module folder
