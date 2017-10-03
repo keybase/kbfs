@@ -360,12 +360,29 @@ func humanizeBytes(n int64, d int64) string {
 	return fmt.Sprintf("%.2f/%.2f GB", float64(n)/gbf, float64(d)/gbf)
 }
 
+// printStageEndIfNeeded should only be used to end stages started with
+// printStageStart.
+func (r *runner) printStageEndIfNeeded(ctx context.Context) {
+	r.printStageLock.Lock()
+	defer r.printStageLock.Unlock()
+	// go-git grabs the lock right after plumbing.StatusIndexOffset, but before
+	// sending the Done status update. As a result, it would look like we are
+	// flushing the journal before plumbing.StatusIndexOffset is done. So
+	// instead, print "done." only if it's not printed yet.
+	if r.needPrintDone {
+		elapsedStr := r.getElapsedStr(ctx,
+			r.stageStartTime, r.stageMemProfName, r.stageCPUProfPath)
+		r.errput.Write([]byte("done." + elapsedStr + "\n"))
+		r.needPrintDone = false
+	}
+}
+
 func (r *runner) printStageStart(ctx context.Context,
 	toPrint []byte, memProfName, cpuProfName string) {
 	if len(toPrint) == 0 {
 		return
 	}
-	r.printStageEndMaybe(ctx)
+	r.printStageEndIfNeeded(ctx)
 
 	r.printStageLock.Lock()
 	defer r.printStageLock.Unlock()
@@ -391,28 +408,11 @@ func (r *runner) printStageStart(ctx context.Context,
 	r.needPrintDone = true
 }
 
-// printStageEndMaybe should only be used to end stages started with
-// printStageStart.
-func (r *runner) printStageEndMaybe(ctx context.Context) {
-	r.printStageLock.Lock()
-	defer r.printStageLock.Unlock()
-	// go-git grabs the lock right after plumbing.StatusIndexOffset, but before
-	// sending the Done status update. As a result, it would look like we are
-	// flushing the journal before plumbing.StatusIndexOffset is done. So
-	// instead, print "done." only if it's not printed yet.
-	if r.needPrintDone {
-		elapsedStr := r.getElapsedStr(ctx,
-			r.stageStartTime, r.stageMemProfName, r.stageCPUProfPath)
-		r.errput.Write([]byte("done." + elapsedStr + "\n"))
-		r.needPrintDone = false
-	}
-}
-
 // caller should make sure doneCh is closed when journal is all flushed.
 func (r *runner) printJournalStatus(
 	ctx context.Context, jServer *libkbfs.JournalServer, tlfID tlf.ID,
 	doneCh <-chan struct{}) {
-	r.printStageEndMaybe(ctx)
+	r.printStageEndIfNeeded(ctx)
 	// Note: the "first" status here gets us the number of unflushed
 	// bytes left at the time we started printing.  However, we don't
 	// have the total number of bytes being flushed to the server
@@ -481,7 +481,7 @@ func (r *runner) printJournalStatus(
 			}
 
 			if r.verbosity >= 1 {
-				r.printStageEndMaybe(ctx)
+				r.printStageEndIfNeeded(ctx)
 			}
 			return
 		}
@@ -708,7 +708,7 @@ func (r *runner) processGogitStatus(ctx context.Context,
 			}
 			if update.Stage != currStage {
 				if currStage != plumbing.StatusUnknown {
-					r.printStageEndMaybe(ctx)
+					r.printStageEndIfNeeded(ctx)
 				}
 				r.printStageStart(ctx,
 					[]byte(gogitStagesToStatus[update.Stage]),
@@ -753,7 +753,7 @@ func (r *runner) processGogitStatus(ctx context.Context,
 			}
 			switch fsEvent.EventType {
 			case libfs.FSEventLock, libfs.FSEventUnlock:
-				r.printStageEndMaybe(ctx)
+				r.printStageEndIfNeeded(ctx)
 				// Since we flush all blocks in Lock, subsequent calls to
 				// Lock/Unlock normally don't take much time. So we only print
 				// journal status if it's been longer than
@@ -772,7 +772,7 @@ func (r *runner) processGogitStatus(ctx context.Context,
 		}
 	}
 	r.log.CDebugf(ctx, "Status channel closed")
-	r.printStageEndMaybe(ctx)
+	r.printStageEndIfNeeded(ctx)
 }
 
 // recursiveByteCount returns a sum of the size of all files under the
