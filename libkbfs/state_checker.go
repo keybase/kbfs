@@ -93,13 +93,15 @@ func (sc *StateChecker) getLastGCData(ctx context.Context,
 
 	var latestTime time.Time
 	var latestRev kbfsmd.Revision
-	for _, c := range *config.allKnownConfigsForTesting {
-		ops := c.KBFSOps().(*KBFSOpsStandard).getOps(context.Background(),
-			FolderBranch{tlfID, MasterBranch}, FavoritesOpNoChange)
-		rt, rev := ops.fbm.getLastQRData()
-		if rt.After(latestTime) && rev > latestRev {
-			latestTime = rt
-			latestRev = rev
+	if config.allKnownConfigsForTesting != nil {
+		for _, c := range *config.allKnownConfigsForTesting {
+			ops := c.KBFSOps().(*KBFSOpsStandard).getOps(context.Background(),
+				FolderBranch{tlfID, MasterBranch}, FavoritesOpNoChange)
+			rt, rev := ops.fbm.getLastQRData()
+			if rt.After(latestTime) && rev > latestRev {
+				latestTime = rt
+				latestRev = rev
+			}
 		}
 	}
 	if latestTime.IsZero() {
