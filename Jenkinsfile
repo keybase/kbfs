@@ -158,11 +158,7 @@ helpers.rootLinuxNode(env, {
                         sh "cp ${env.GOPATH}/bin/git-remote-keybase ./kbfsgit/git-remote-keybase/git-remote-keybase"
                         withCredentials([[$class: 'StringBinding', credentialsId: 'kbfs-docker-cert-b64-new', variable: 'KBFS_DOCKER_CERT_B64']]) {
                             println "Building Docker"
-                            sh '''
-                                set +x
-                                KBFS_DOCKER_CERT=$(echo '$KBFS_DOCKER_CERT_B64' | base64 -d);
-                                docker build -t keybaseprivate/kbfsfuse --build-arg KEYBASE_TEST_ROOT_CERT_PEM=\"$$KBFS_DOCKER_CERT\" --build-arg KEYBASE_TEST_ROOT_CERT_PEM_B64=\"$KBFS_DOCKER_CERT_B64\" .
-                            '''
+                            sh "bash docker.build.jenkins"
                         }
                         sh "docker save keybaseprivate/kbfsfuse | gzip > kbfsfuse.tar.gz"
                         archive("kbfsfuse.tar.gz")
