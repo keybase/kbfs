@@ -160,7 +160,7 @@ helpers.rootLinuxNode(env, {
                             println "Building Docker"
                             sh '''
                                 set +x
-                                docker build -t keybaseprivate/kbfsfuse --build-arg KEYBASE_TEST_ROOT_CERT_PEM_B64=\"$KBFS_DOCKER_CERT_B64\" .
+                                docker build -t keybaseprivate/kbfsfuse --build-arg KEYBASE_TEST_ROOT_CERT_PEM=\"$(echo $KBFS_DOCKER_CERT_B64 | base64 -d)\" --build-arg KEYBASE_TEST_ROOT_CERT_PEM_B64=\"$KBFS_DOCKER_CERT_B64\" .
                             '''
                         }
                         sh "docker save keybaseprivate/kbfsfuse | gzip > kbfsfuse.tar.gz"
