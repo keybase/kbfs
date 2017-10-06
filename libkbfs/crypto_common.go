@@ -388,12 +388,7 @@ func (c CryptoCommon) VerifyTLFCryptKeyServerHalfID(
 	serverHalfID TLFCryptKeyServerHalfID,
 	user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey,
 	serverHalf kbfscrypto.TLFCryptKeyServerHalf) error {
-	key, err := serverHalf.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	data := append(user.ToBytes(), devicePubKey.KID().ToBytes()...)
-	return serverHalfID.ID.Verify(key, data)
+	return kbfscrypto.VerifyTLFCryptKeyServerHalfID(serverHalfID, user, devicePubKey, serverHalf)
 }
 
 // EncryptMerkleLeaf encrypts a Merkle leaf node with the

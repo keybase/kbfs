@@ -393,6 +393,19 @@ func MakeTLFCryptKeyServerHalfID(
 	}, nil
 }
 
+// VerifyTLFCryptKeyServerHalfID verifies the ID is the proper HMAC result.
+func VerifyTLFCryptKeyServerHalfID(
+	serverHalfID TLFCryptKeyServerHalfID,
+	user keybase1.UID, devicePubKey CryptPublicKey,
+	serverHalf TLFCryptKeyServerHalf) error {
+	key, err := serverHalf.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	data := append(user.ToBytes(), devicePubKey.KID().ToBytes()...)
+	return serverHalfID.ID.Verify(key, data)
+}
+
 // TLFCryptKeyClientHalf (t_u^{f,k,i} for a user u, a folder f, a key
 // generation k, and a device i) is the masked, client-side half of a
 // TLFCryptKey, which can be recovered only with both halves. (See
