@@ -578,30 +578,15 @@ type ReportedError struct {
 	Stack []uintptr
 }
 
-// MergeStatus represents the merge status of a TLF.
-type MergeStatus int
+// MergeStatus is a temporary alias.
+type MergeStatus = kbfsmd.MergeStatus
 
 const (
-	// Merged means that the TLF is merged and no conflict
-	// resolution needs to be done.
-	Merged MergeStatus = iota
-	// Unmerged means that the TLF is unmerged and conflict
-	// resolution needs to be done. Metadata blocks which
-	// represent unmerged history should have a non-null
-	// branch ID defined.
-	Unmerged
+	// Merged is a temporary alias.
+	Merged MergeStatus = kbfsmd.Merged
+	// Unmerged is a temporary alias.
+	Unmerged MergeStatus = kbfsmd.Unmerged
 )
-
-func (m MergeStatus) String() string {
-	switch m {
-	case Merged:
-		return "merged"
-	case Unmerged:
-		return "unmerged"
-	default:
-		return "unknown"
-	}
-}
 
 // OpSummary describes the changes performed by a single op, and is
 // suitable for encoding directly as JSON.
