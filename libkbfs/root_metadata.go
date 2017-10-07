@@ -20,22 +20,22 @@ import (
 	"golang.org/x/net/context"
 )
 
-// MetadataFlags bitfield.
-type MetadataFlags byte
+// MetadataFlags is a temporary alias.
+type MetadataFlags = kbfsmd.MetadataFlags
 
-// Possible flags set in the MetadataFlags bitfield.
+// Temporary aliases.
 const (
-	MetadataFlagRekey MetadataFlags = 1 << iota
-	MetadataFlagWriterMetadataCopied
-	MetadataFlagFinal
+	MetadataFlagRekey                MetadataFlags = kbfsmd.MetadataFlagRekey
+	MetadataFlagWriterMetadataCopied MetadataFlags = kbfsmd.MetadataFlagWriterMetadataCopied
+	MetadataFlagFinal                MetadataFlags = kbfsmd.MetadataFlagFinal
 )
 
-// WriterFlags bitfield.
-type WriterFlags byte
+// WriterFlags is a temporary alias.
+type WriterFlags = kbfsmd.WriterFlags
 
-// Possible flags set in the WriterFlags bitfield.
+// Temporary aliases.
 const (
-	MetadataFlagUnmerged WriterFlags = 1 << iota
+	MetadataFlagUnmerged WriterFlags = kbfsmd.MetadataFlagUnmerged
 )
 
 // PrivateMetadata contains the portion of metadata that's secret for private
