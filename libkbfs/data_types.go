@@ -124,42 +124,21 @@ const (
 	FirstValidKeyGen KeyGen = kbfsmd.FirstValidKeyGen
 )
 
-// MetadataVer is the type of a version for marshalled KBFS metadata
-// structures.
-type MetadataVer int
+// MetadataVer is a temporary alias.
+type MetadataVer = kbfsmd.MetadataVer
 
 const (
-	// FirstValidMetadataVer is the first value that is considered a
-	// valid data version. For historical reasons 0 is considered
-	// valid.
-	FirstValidMetadataVer MetadataVer = 0
-	// PreExtraMetadataVer is the latest metadata version that did not include
-	// support for extra MD fields.
-	PreExtraMetadataVer MetadataVer = 1
-	// InitialExtraMetadataVer is the first metadata version that did
-	// include support for extra MD fields.
-	InitialExtraMetadataVer MetadataVer = 2
-	// SegregatedKeyBundlesVer is the first metadata version to allow separate
-	// storage of key bundles.
-	SegregatedKeyBundlesVer MetadataVer = 3
+	// FirstValidMetadataVer is a temporary alias.
+	FirstValidMetadataVer MetadataVer = kbfsmd.FirstValidMetadataVer
+	// PreExtraMetadataVer is a temporary alias.
+	PreExtraMetadataVer MetadataVer = kbfsmd.PreExtraMetadataVer
+	// InitialExtraMetadataVer is a temporary alias.
+	InitialExtraMetadataVer MetadataVer = kbfsmd.InitialExtraMetadataVer
+	// SegregatedKeyBundlesVer is a temporary alias.
+	SegregatedKeyBundlesVer MetadataVer = kbfsmd.SegregatedKeyBundlesVer
 
-	defaultClientMetadataVer MetadataVer = SegregatedKeyBundlesVer
+	defaultClientMetadataVer MetadataVer = kbfsmd.SegregatedKeyBundlesVer
 )
-
-func (v MetadataVer) String() string {
-	switch v {
-	case FirstValidMetadataVer:
-		return "MDVer(FirstValid)"
-	case PreExtraMetadataVer:
-		return "MDVer(PreExtra)"
-	case InitialExtraMetadataVer:
-		return "MDVer(InitialExtra)"
-	case SegregatedKeyBundlesVer:
-		return "MDVer(SegregatedKeyBundles)"
-	default:
-		return fmt.Sprintf("MDVer(%d)", v)
-	}
-}
 
 // DataVer is the type of a version for marshalled KBFS data
 // structures.
