@@ -535,22 +535,21 @@ type CurrentSessionGetter interface {
 	GetCurrentSession(ctx context.Context) (SessionInfo, error)
 }
 
-// TeamMembershipChecker is an interface for objects that can check
-// the writer/reader membership of teams.
-type TeamMembershipChecker interface {
-	// IsTeamWriter checks whether the given user (with the given
-	// verifying key) is a writer of the given team right now.
+// TeamMembershipChecker is a temporary alias.
+type TeamMembershipChecker = kbfsmd.TeamMembershipChecker
+
+// teamMembershipChecker is a copy of kbfsmd.TeamMembershipChecker for
+// embedding in KBPKI. Unfortunately, this is necessary since mockgen
+// can't handle embedded interfaces living in other packages.
+type teamMembershipChecker interface {
+	// IsTeamWriter is a copy of
+	// kbfsmd.TeamMembershipChecker.IsTeamWriter.
 	IsTeamWriter(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID,
 		verifyingKey kbfscrypto.VerifyingKey) (bool, error)
-	// IsTeamReader checks whether the given user is a reader of the
-	// given team right now.
+	// IsTeamReader is a copy of
+	// kbfsmd.TeamMembershipChecker.IsTeamWriter.
 	IsTeamReader(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID) (
 		bool, error)
-	// TODO: add Was* method for figuring out whether the user was a
-	// writer/reader at a particular Merkle root.  Not sure whether
-	// these calls should also verify that sequence number corresponds
-	// to a given TLF revision, or leave that work to another
-	// component.
 }
 
 type teamKeysGetter interface {
@@ -578,7 +577,7 @@ type KBPKI interface {
 	identifier
 	normalizedUsernameGetter
 	merkleRootGetter
-	TeamMembershipChecker
+	teamMembershipChecker
 	teamKeysGetter
 	teamRootIDGetter
 	gitMetadataPutter

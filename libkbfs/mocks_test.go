@@ -1765,31 +1765,31 @@ func (mr *MockCurrentSessionGetterMockRecorder) GetCurrentSession(ctx interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentSession", reflect.TypeOf((*MockCurrentSessionGetter)(nil).GetCurrentSession), ctx)
 }
 
-// MockTeamMembershipChecker is a mock of TeamMembershipChecker interface
-type MockTeamMembershipChecker struct {
+// MockteamMembershipChecker is a mock of teamMembershipChecker interface
+type MockteamMembershipChecker struct {
 	ctrl     *gomock.Controller
-	recorder *MockTeamMembershipCheckerMockRecorder
+	recorder *MockteamMembershipCheckerMockRecorder
 }
 
-// MockTeamMembershipCheckerMockRecorder is the mock recorder for MockTeamMembershipChecker
-type MockTeamMembershipCheckerMockRecorder struct {
-	mock *MockTeamMembershipChecker
+// MockteamMembershipCheckerMockRecorder is the mock recorder for MockteamMembershipChecker
+type MockteamMembershipCheckerMockRecorder struct {
+	mock *MockteamMembershipChecker
 }
 
-// NewMockTeamMembershipChecker creates a new mock instance
-func NewMockTeamMembershipChecker(ctrl *gomock.Controller) *MockTeamMembershipChecker {
-	mock := &MockTeamMembershipChecker{ctrl: ctrl}
-	mock.recorder = &MockTeamMembershipCheckerMockRecorder{mock}
+// NewMockteamMembershipChecker creates a new mock instance
+func NewMockteamMembershipChecker(ctrl *gomock.Controller) *MockteamMembershipChecker {
+	mock := &MockteamMembershipChecker{ctrl: ctrl}
+	mock.recorder = &MockteamMembershipCheckerMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use
-func (m *MockTeamMembershipChecker) EXPECT() *MockTeamMembershipCheckerMockRecorder {
+func (m *MockteamMembershipChecker) EXPECT() *MockteamMembershipCheckerMockRecorder {
 	return m.recorder
 }
 
 // IsTeamWriter mocks base method
-func (m *MockTeamMembershipChecker) IsTeamWriter(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID, verifyingKey kbfscrypto.VerifyingKey) (bool, error) {
+func (m *MockteamMembershipChecker) IsTeamWriter(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID, verifyingKey kbfscrypto.VerifyingKey) (bool, error) {
 	ret := m.ctrl.Call(m, "IsTeamWriter", ctx, tid, uid, verifyingKey)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
@@ -1797,12 +1797,12 @@ func (m *MockTeamMembershipChecker) IsTeamWriter(ctx context.Context, tid keybas
 }
 
 // IsTeamWriter indicates an expected call of IsTeamWriter
-func (mr *MockTeamMembershipCheckerMockRecorder) IsTeamWriter(ctx, tid, uid, verifyingKey interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsTeamWriter", reflect.TypeOf((*MockTeamMembershipChecker)(nil).IsTeamWriter), ctx, tid, uid, verifyingKey)
+func (mr *MockteamMembershipCheckerMockRecorder) IsTeamWriter(ctx, tid, uid, verifyingKey interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsTeamWriter", reflect.TypeOf((*MockteamMembershipChecker)(nil).IsTeamWriter), ctx, tid, uid, verifyingKey)
 }
 
 // IsTeamReader mocks base method
-func (m *MockTeamMembershipChecker) IsTeamReader(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID) (bool, error) {
+func (m *MockteamMembershipChecker) IsTeamReader(ctx context.Context, tid keybase1.TeamID, uid keybase1.UID) (bool, error) {
 	ret := m.ctrl.Call(m, "IsTeamReader", ctx, tid, uid)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
@@ -1810,8 +1810,8 @@ func (m *MockTeamMembershipChecker) IsTeamReader(ctx context.Context, tid keybas
 }
 
 // IsTeamReader indicates an expected call of IsTeamReader
-func (mr *MockTeamMembershipCheckerMockRecorder) IsTeamReader(ctx, tid, uid interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsTeamReader", reflect.TypeOf((*MockTeamMembershipChecker)(nil).IsTeamReader), ctx, tid, uid)
+func (mr *MockteamMembershipCheckerMockRecorder) IsTeamReader(ctx, tid, uid interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsTeamReader", reflect.TypeOf((*MockteamMembershipChecker)(nil).IsTeamReader), ctx, tid, uid)
 }
 
 // MockteamKeysGetter is a mock of teamKeysGetter interface
