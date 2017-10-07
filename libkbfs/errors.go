@@ -764,16 +764,6 @@ func (e KeyHalfMismatchError) Error() string {
 		e.Expected, e.Actual)
 }
 
-// InvalidBranchID indicates whether the branch ID string is not
-// parseable or invalid.
-type InvalidBranchID struct {
-	id string
-}
-
-func (e InvalidBranchID) Error() string {
-	return fmt.Sprintf("Invalid branch ID %q", e.id)
-}
-
 // MDServerDisconnected indicates the MDServer has been disconnected for clients waiting
 // on an update channel.
 type MDServerDisconnected struct {

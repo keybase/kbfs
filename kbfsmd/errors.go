@@ -21,3 +21,13 @@ func (e MissingDataError) Error() string {
 	return fmt.Sprintf("No serialized private data in the metadata "+
 		"for directory %v", e.tlfID)
 }
+
+// InvalidBranchID indicates whether the branch ID string is not
+// parseable or invalid.
+type InvalidBranchID struct {
+	id string
+}
+
+func (e InvalidBranchID) Error() string {
+	return fmt.Sprintf("Invalid branch ID %q", e.id)
+}
