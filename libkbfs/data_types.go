@@ -77,8 +77,8 @@ type SessionInfo struct {
 // EncryptionVer is a temporary alias.
 type EncryptionVer = kbfscrypto.EncryptionVer
 
+// Temporary aliases.
 const (
-	// EncryptionSecretbox is a temporary alias.
 	EncryptionSecretbox EncryptionVer = kbfscrypto.EncryptionSecretbox
 )
 
@@ -115,26 +115,21 @@ type EncryptedTLFCryptKeyClientAndEphemeral struct {
 // KeyGen is a temporary alias.
 type KeyGen = kbfsmd.KeyGen
 
+// Temporary aliases.
 const (
-	// PublicKeyGen is a temporary alias.
-	PublicKeyGen KeyGen = kbfsmd.PublicKeyGen
-	// UnspecifiedKeyGen is a temporary alias.
+	PublicKeyGen      KeyGen = kbfsmd.PublicKeyGen
 	UnspecifiedKeyGen KeyGen = kbfsmd.UnspecifiedKeyGen
-	// FirstValidKeyGen is a temporary alias.
-	FirstValidKeyGen KeyGen = kbfsmd.FirstValidKeyGen
+	FirstValidKeyGen  KeyGen = kbfsmd.FirstValidKeyGen
 )
 
 // MetadataVer is a temporary alias.
 type MetadataVer = kbfsmd.MetadataVer
 
+// Temporary aliases.
 const (
-	// FirstValidMetadataVer is a temporary alias.
-	FirstValidMetadataVer MetadataVer = kbfsmd.FirstValidMetadataVer
-	// PreExtraMetadataVer is a temporary alias.
-	PreExtraMetadataVer MetadataVer = kbfsmd.PreExtraMetadataVer
-	// InitialExtraMetadataVer is a temporary alias.
+	FirstValidMetadataVer   MetadataVer = kbfsmd.FirstValidMetadataVer
+	PreExtraMetadataVer     MetadataVer = kbfsmd.PreExtraMetadataVer
 	InitialExtraMetadataVer MetadataVer = kbfsmd.InitialExtraMetadataVer
-	// SegregatedKeyBundlesVer is a temporary alias.
 	SegregatedKeyBundlesVer MetadataVer = kbfsmd.SegregatedKeyBundlesVer
 
 	defaultClientMetadataVer MetadataVer = kbfsmd.SegregatedKeyBundlesVer
@@ -581,10 +576,9 @@ type ReportedError struct {
 // MergeStatus is a temporary alias.
 type MergeStatus = kbfsmd.MergeStatus
 
+// Temporary aliases.
 const (
-	// Merged is a temporary alias.
-	Merged MergeStatus = kbfsmd.Merged
-	// Unmerged is a temporary alias.
+	Merged   MergeStatus = kbfsmd.Merged
 	Unmerged MergeStatus = kbfsmd.Unmerged
 )
 
