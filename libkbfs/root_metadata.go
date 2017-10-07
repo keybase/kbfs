@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -71,7 +71,7 @@ func DumpPrivateMetadata(
 	}
 
 	s := fmt.Sprintf("Size: %d bytes\n", len(serializedPMD))
-	s += dumpConfig().Sdump(pmd)
+	s += kbfsmd.DumpConfig().Sdump(pmd)
 	return s, nil
 }
 
@@ -92,29 +92,6 @@ func (p PrivateMetadata) ChangesBlockInfo() BlockInfo {
 
 // ExtraMetadata is a temporary alias.
 type ExtraMetadata = kbfsmd.ExtraMetadata
-
-// DumpExtraMetadata returns a detailed dump of the given
-// ExtraMetadata's contents.
-func DumpExtraMetadata(
-	codec kbfscodec.Codec, extra ExtraMetadata) (string, error) {
-	var s string
-	switch extra := extra.(type) {
-	case *ExtraMetadataV3:
-		serializedWKB, err := codec.Encode(extra.GetWriterKeyBundle())
-		if err != nil {
-			return "", err
-		}
-		serializedRKB, err := codec.Encode(extra.GetReaderKeyBundle())
-		if err != nil {
-			return "", err
-		}
-		s = fmt.Sprintf("WKB size: %d\nRKB size: %d\n",
-			len(serializedWKB), len(serializedRKB))
-	}
-
-	s += dumpConfig().Sdump(extra)
-	return s, nil
-}
 
 // A RootMetadata is a BareRootMetadata but with a deserialized
 // PrivateMetadata. However, note that it is possible that the
@@ -169,7 +146,7 @@ func makeInitialRootMetadata(
 		return nil, err
 	}
 
-	bareMD, err := MakeInitialBareRootMetadata(ver, tlfID, bh)
+	bareMD, err := kbfsmd.MakeInitialRootMetadata(ver, tlfID, bh)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +219,7 @@ func (md *RootMetadata) MakeSuccessor(
 		return nil, errors.New("Empty MdID in MakeSuccessor")
 	}
 	if md.IsFinal() {
-		return nil, MetadataIsFinalError{}
+		return nil, kbfsmd.MetadataIsFinalError{}
 	}
 
 	isReadableAndWriter := md.IsReadable() && isWriter
@@ -777,7 +754,7 @@ func (md *RootMetadata) fakeInitialRekey() {
 	if err != nil {
 		panic(err)
 	}
-	md.extra = FakeInitialRekey(md.bareMd, bh, kbfscrypto.TLFPublicKey{})
+	md.extra = kbfsmd.FakeInitialRekey(md.bareMd, bh, kbfscrypto.TLFPublicKey{})
 }
 
 // GetBareRootMetadata returns an interface to the underlying serializeable metadata.
@@ -970,7 +947,7 @@ func MakeImmutableRootMetadata(
 	if localTimestamp.IsZero() {
 		panic("zero localTimestamp passed to MakeImmutableRootMetadata")
 	}
-	if bareMDV2, ok := rmd.bareMd.(*BareRootMetadataV2); ok {
+	if bareMDV2, ok := rmd.bareMd.(*kbfsmd.RootMetadataV2); ok {
 		writerSig := bareMDV2.WriterMetadataSigInfo
 		if writerSig.IsNil() {
 			panic("MDV2 with nil writer signature")
@@ -1025,7 +1002,7 @@ type RootMetadataSigned struct {
 }
 
 func checkWriterSig(rmds *RootMetadataSigned) error {
-	if mdv2, ok := rmds.MD.(*BareRootMetadataV2); ok {
+	if mdv2, ok := rmds.MD.(*kbfsmd.RootMetadataV2); ok {
 		if !mdv2.WriterMetadataSigInfo.Equals(rmds.WriterSigInfo) {
 			return fmt.Errorf(
 				"Expected writer sig info %v, got %v",
@@ -1069,7 +1046,7 @@ func SignBareRootMetadata(
 	}
 
 	var sigInfo, writerSigInfo kbfscrypto.SignatureInfo
-	if mdv2, ok := brmd.(*BareRootMetadataV2); ok {
+	if mdv2, ok := brmd.(*kbfsmd.RootMetadataV2); ok {
 		// sign the root metadata
 		sigInfo, err = rootMetadataSigner.Sign(ctx, buf)
 		if err != nil {
@@ -1128,7 +1105,7 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(
 			finalizedInfo)
 	}
 	if rmds.MD.IsFinal() {
-		return nil, MetadataIsFinalError{}
+		return nil, kbfsmd.MetadataIsFinalError{}
 	}
 	newBareMd, err := rmds.MD.DeepCopy(codec)
 	if err != nil {
@@ -1278,7 +1255,7 @@ func DecodeRootMetadata(codec kbfscodec.Codec, tlf tlf.ID,
 	ver, max MetadataVer, buf []byte) (
 	MutableBareRootMetadata, error) {
 	if ver < FirstValidMetadataVer {
-		return nil, InvalidMetadataVersionError{tlf, ver}
+		return nil, kbfsmd.InvalidMetadataVersionError{TlfID: tlf, MetadataVer: ver}
 	} else if ver > max {
 		return nil, NewMetadataVersionError{tlf, ver}
 	}
@@ -1287,13 +1264,13 @@ func DecodeRootMetadata(codec kbfscodec.Codec, tlf tlf.ID,
 		panic("Invalid metadata version")
 	}
 	if ver < SegregatedKeyBundlesVer {
-		var brmd BareRootMetadataV2
+		var brmd kbfsmd.RootMetadataV2
 		if err := codec.Decode(buf, &brmd); err != nil {
 			return nil, err
 		}
 		return &brmd, nil
 	}
-	var brmd BareRootMetadataV3
+	var brmd kbfsmd.RootMetadataV3
 	if err := codec.Decode(buf, &brmd); err != nil {
 		return nil, err
 	}
@@ -1307,7 +1284,7 @@ func DecodeRootMetadataSigned(
 	untrustedServerTimestamp time.Time) (
 	*RootMetadataSigned, error) {
 	if ver < FirstValidMetadataVer {
-		return nil, InvalidMetadataVersionError{tlf, ver}
+		return nil, kbfsmd.InvalidMetadataVersionError{TlfID: tlf, MetadataVer: ver}
 	} else if ver > max {
 		return nil, NewMetadataVersionError{tlf, ver}
 	}
@@ -1317,9 +1294,9 @@ func DecodeRootMetadataSigned(
 	}
 	var rmds RootMetadataSigned
 	if ver < SegregatedKeyBundlesVer {
-		rmds.MD = &BareRootMetadataV2{}
+		rmds.MD = &kbfsmd.RootMetadataV2{}
 	} else {
-		rmds.MD = &BareRootMetadataV3{}
+		rmds.MD = &kbfsmd.RootMetadataV3{}
 	}
 	if err := codec.Decode(buf, &rmds); err != nil {
 		return nil, err
@@ -1334,7 +1311,7 @@ func DecodeRootMetadataSigned(
 					"writer signature %s",
 				ver, rmds.WriterSigInfo)
 		}
-		mdv2 := rmds.MD.(*BareRootMetadataV2)
+		mdv2 := rmds.MD.(*kbfsmd.RootMetadataV2)
 		rmds.WriterSigInfo = mdv2.WriterMetadataSigInfo
 	}
 	rmds.untrustedServerTimestamp = untrustedServerTimestamp

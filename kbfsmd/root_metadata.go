@@ -6,7 +6,9 @@ package kbfsmd
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
@@ -296,4 +298,69 @@ type MutableRootMetadata interface {
 	// FinalizeRekey must be called called after all rekeying work
 	// has been performed on the underlying metadata.
 	FinalizeRekey(codec kbfscodec.Codec, extra ExtraMetadata) error
+}
+
+// TODO: Wrap errors coming from RootMetadata.
+
+// MakeInitialRootMetadata creates a new MutableRootMetadata
+// instance of the given MetadataVer with revision
+// RevisionInitial, and the given TLF ID and handle. Note that
+// if the given ID/handle are private, rekeying must be done
+// separately.
+func MakeInitialRootMetadata(
+	ver MetadataVer, tlfID tlf.ID, h tlf.Handle) (
+	MutableRootMetadata, error) {
+	if ver < FirstValidMetadataVer {
+		return nil, InvalidMetadataVersionError{tlfID, ver}
+	}
+	if ver > SegregatedKeyBundlesVer {
+		// Shouldn't be possible at the moment.
+		panic("Invalid metadata version")
+	}
+	if ver < SegregatedKeyBundlesVer {
+		return MakeInitialRootMetadataV2(tlfID, h)
+	}
+
+	return MakeInitialRootMetadataV3(tlfID, h)
+}
+
+// DumpConfig returns the *spew.ConfigState used by DumpRootMetadata
+// and related functions.
+func DumpConfig() *spew.ConfigState {
+	c := spew.NewDefaultConfig()
+	c.Indent = "  "
+	c.DisablePointerAddresses = true
+	c.DisableCapacities = true
+	c.SortKeys = true
+	return c
+}
+
+// DumpRootMetadata returns a detailed dump of the given
+// RootMetadata's contents.
+func DumpRootMetadata(
+	codec kbfscodec.Codec, brmd RootMetadata) (string, error) {
+	serializedBRMD, err := codec.Encode(brmd)
+	if err != nil {
+		return "", err
+	}
+
+	// Make a copy so we can zero out SerializedPrivateMetadata.
+	brmdCopy, err := brmd.DeepCopy(codec)
+	if err != nil {
+		return "", err
+	}
+
+	switch brmdCopy := brmdCopy.(type) {
+	case *RootMetadataV2:
+		brmdCopy.SerializedPrivateMetadata = nil
+	case *RootMetadataV3:
+		brmdCopy.WriterMetadata.SerializedPrivateMetadata = nil
+	default:
+		// Do nothing, and let SerializedPrivateMetadata get
+		// spewed, I guess.
+	}
+	s := fmt.Sprintf("MD size: %d bytes\n"+
+		"MD version: %s\n\n", len(serializedBRMD), brmd.Version())
+	s += DumpConfig().Sdump(brmdCopy)
+	return s, nil
 }
