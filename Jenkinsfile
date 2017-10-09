@@ -160,7 +160,10 @@ helpers.rootLinuxNode(env, {
                             println "Building Docker"
                             sh '''
                                 set +x
-                                docker build -t keybaseprivate/kbfsfuse --build-arg KEYBASE_TEST_ROOT_CERT_PEM_B64=\"$KBFS_DOCKER_CERT_B64\" .
+                                KBFS_DOCKER_CERT="$(echo $KBFS_DOCKER_CERT_B64 | sed 's/ //g' | base64 -d)"
+                                docker build -t keybaseprivate/kbfsfuse \
+                                    --build-arg KEYBASE_TEST_ROOT_CERT_PEM="$KBFS_DOCKER_CERT" \
+                                    --build-arg KEYBASE_TEST_ROOT_CERT_PEM_B64="$KBFS_DOCKER_CERT_B64" .
                             '''
                         }
                         sh "docker save keybaseprivate/kbfsfuse | gzip > kbfsfuse.tar.gz"
@@ -245,8 +248,6 @@ def runNixTest(prefix) {
         sh 'test -z $(gofmt -l $(go list ./... 2>/dev/null | grep -v /vendor/ | sed -e s/github.com.keybase.kbfs.// ))'
     }
     tests[prefix+'vet'] = {
-        sh 'go get -u github.com/golang/lint/golint'
-        sh 'go install github.com/golang/lint/golint'
         sh '''
             lint=$(make -s lint);
             echo 2>&1 "$lint";
@@ -257,7 +258,6 @@ def runNixTest(prefix) {
     tests[prefix+'gen_mocks'] = {
         dir('libkbfs') {
             // Make sure our mock library is up to date.
-            sh 'go get -u github.com/golang/mock/gomock github.com/golang/mock/mockgen'
             sh './gen_mocks.sh'
             sh 'git diff --exit-code'
         }
