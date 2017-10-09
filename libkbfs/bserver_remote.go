@@ -101,6 +101,22 @@ func (b *blockServerRemoteClientHandler) initNewConnection() {
 	b.client = keybase1.BlockClient{Cli: b.conn.GetClient()}
 }
 
+func (md *MDServerRemote) reconnect() error {
+	md.connMu.Lock()
+	defer md.connMu.Unlock()
+
+	if md.conn != nil {
+		ctx, cancel := context.WithTimeout(
+			context.Background(), reconnectTimeout)
+		defer cancel()
+		return md.conn.ForceReconnect(ctx)
+	}
+
+	md.initNewConnection()
+	return nil
+
+}
+
 func (b *blockServerRemoteClientHandler) shutdown() {
 	if b.authToken != nil {
 		b.authToken.Shutdown()
@@ -268,7 +284,9 @@ func (b *blockServerRemoteClientHandler) pingOnce(ctx context.Context) {
 	if err == context.DeadlineExceeded {
 		b.log.CDebugf(
 			ctx, "%s: Ping timeout -- reinitializing connection", b.name)
-		b.initNewConnection()
+		if err = md.reconnect(); err != nil {
+			md.log.CDebugf(ctx, "reconnect error: %v", err)
+		}
 	} else if err != nil {
 		b.log.CDebugf(ctx, "%s: ping error %s", b.name, err)
 	}
