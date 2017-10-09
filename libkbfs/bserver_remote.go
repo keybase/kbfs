@@ -101,7 +101,7 @@ func (b *blockServerRemoteClientHandler) initNewConnection() {
 	b.client = keybase1.BlockClient{Cli: b.conn.GetClient()}
 }
 
-func (md *MDServerRemote) reconnect() error {
+func (md *blockServerRemoteClientHandler) reconnect() error {
 	md.connMu.Lock()
 	defer md.connMu.Unlock()
 
