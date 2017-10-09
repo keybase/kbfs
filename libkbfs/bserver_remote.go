@@ -101,18 +101,18 @@ func (b *blockServerRemoteClientHandler) initNewConnection() {
 	b.client = keybase1.BlockClient{Cli: b.conn.GetClient()}
 }
 
-func (md *blockServerRemoteClientHandler) reconnect() error {
-	md.connMu.Lock()
-	defer md.connMu.Unlock()
+func (b *blockServerRemoteClientHandler) reconnect() error {
+	b.connMu.Lock()
+	defer b.connMu.Unlock()
 
-	if md.conn != nil {
+	if b.conn != nil {
 		ctx, cancel := context.WithTimeout(
 			context.Background(), reconnectTimeout)
 		defer cancel()
-		return md.conn.ForceReconnect(ctx)
+		return b.conn.ForceReconnect(ctx)
 	}
 
-	md.initNewConnection()
+	b.initNewConnection()
 	return nil
 
 }
@@ -284,8 +284,8 @@ func (b *blockServerRemoteClientHandler) pingOnce(ctx context.Context) {
 	if err == context.DeadlineExceeded {
 		b.log.CDebugf(
 			ctx, "%s: Ping timeout -- reinitializing connection", b.name)
-		if err = md.reconnect(); err != nil {
-			md.log.CDebugf(ctx, "reconnect error: %v", err)
+		if err = b.reconnect(); err != nil {
+			b.log.CDebugf(ctx, "reconnect error: %v", err)
 		}
 	} else if err != nil {
 		b.log.CDebugf(ctx, "%s: ping error %s", b.name, err)
