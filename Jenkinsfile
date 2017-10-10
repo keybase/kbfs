@@ -396,8 +396,13 @@ def runNixTest(prefix) {
         dir('test') {
             println "Test with Race but no Fuse"
             sh 'go test -race -c -o test.race'
-            timeout(12) {
-                sh './test.race -test.timeout 12m'
+            try {
+                timeout(12) {
+                    sh './test.race -test.timeout 12m'
+                }
+            } catch (ex) {
+                sh 'killall -ABRT test.race'
+                throw ex
             }
         }
     }
@@ -405,8 +410,13 @@ def runNixTest(prefix) {
         dir('test') {
             println "Test with Fuse but no Race"
             sh 'go test -c -tags fuse -o test.fuse'
-            timeout(12) {
-                sh './test.fuse -test.timeout 12m'
+            try {
+                timeout(12) {
+                    sh './test.fuse -test.timeout 12m'
+                }
+            } catch (ex) {
+                sh 'killall -ABRT test.fuse'
+                throw ex
             }
         }
     }
