@@ -428,6 +428,9 @@ func (fs *KBFSOpsStandard) getMDByHandle(ctx context.Context,
 func (fs *KBFSOpsStandard) GetTLFCryptKeys(
 	ctx context.Context, tlfHandle *TlfHandle) (
 	keys []kbfscrypto.TLFCryptKey, id tlf.ID, err error) {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	fs.log.CDebugf(ctx, "GetTLFCryptKeys(%s)", tlfHandle.GetCanonicalPath())
 	defer func() { fs.deferLog.CDebugf(ctx, "Done: %+v", err) }()
 
@@ -544,6 +547,9 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 	ctx context.Context, h *TlfHandle, branch BranchName) (
 	node Node, ei EntryInfo, err error) {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	return fs.getMaybeCreateRootNode(ctx, h, branch, true)
 }
 
@@ -553,6 +559,9 @@ func (fs *KBFSOpsStandard) GetOrCreateRootNode(
 func (fs *KBFSOpsStandard) GetRootNode(
 	ctx context.Context, h *TlfHandle, branch BranchName) (
 	node Node, ei EntryInfo, err error) {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	return fs.getMaybeCreateRootNode(ctx, h, branch, false)
 }
 
@@ -589,6 +598,9 @@ func (fs *KBFSOpsStandard) Stat(ctx context.Context, node Node) (
 // CreateDir implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) CreateDir(
 	ctx context.Context, dir Node, name string) (Node, EntryInfo, error) {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.CreateDir(ctx, dir, name)
 }
@@ -597,6 +609,9 @@ func (fs *KBFSOpsStandard) CreateDir(
 func (fs *KBFSOpsStandard) CreateFile(
 	ctx context.Context, dir Node, name string, isExec bool, excl Excl) (
 	Node, EntryInfo, error) {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.CreateFile(ctx, dir, name, isExec, excl)
 }
@@ -605,6 +620,9 @@ func (fs *KBFSOpsStandard) CreateFile(
 func (fs *KBFSOpsStandard) CreateLink(
 	ctx context.Context, dir Node, fromName string, toPath string) (
 	EntryInfo, error) {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.CreateLink(ctx, dir, fromName, toPath)
 }
@@ -612,6 +630,9 @@ func (fs *KBFSOpsStandard) CreateLink(
 // RemoveDir implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) RemoveDir(
 	ctx context.Context, dir Node, name string) error {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.RemoveDir(ctx, dir, name)
 }
@@ -619,6 +640,9 @@ func (fs *KBFSOpsStandard) RemoveDir(
 // RemoveEntry implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) RemoveEntry(
 	ctx context.Context, dir Node, name string) error {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	ops := fs.getOpsByNode(ctx, dir)
 	return ops.RemoveEntry(ctx, dir, name)
 }
@@ -627,6 +651,9 @@ func (fs *KBFSOpsStandard) RemoveEntry(
 func (fs *KBFSOpsStandard) Rename(
 	ctx context.Context, oldParent Node, oldName string, newParent Node,
 	newName string) error {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	oldFB := oldParent.GetFolderBranch()
 	newFB := newParent.GetFolderBranch()
 
@@ -643,6 +670,9 @@ func (fs *KBFSOpsStandard) Rename(
 func (fs *KBFSOpsStandard) Read(
 	ctx context.Context, file Node, dest []byte, off int64) (
 	numRead int64, err error) {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	ops := fs.getOpsByNode(ctx, file)
 	return ops.Read(ctx, file, dest, off)
 }
@@ -650,6 +680,9 @@ func (fs *KBFSOpsStandard) Read(
 // Write implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) Write(
 	ctx context.Context, file Node, data []byte, off int64) error {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	ops := fs.getOpsByNode(ctx, file)
 	return ops.Write(ctx, file, data, off)
 }
@@ -657,6 +690,9 @@ func (fs *KBFSOpsStandard) Write(
 // Truncate implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) Truncate(
 	ctx context.Context, file Node, size uint64) error {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	ops := fs.getOpsByNode(ctx, file)
 	return ops.Truncate(ctx, file, size)
 }
@@ -664,6 +700,9 @@ func (fs *KBFSOpsStandard) Truncate(
 // SetEx implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) SetEx(
 	ctx context.Context, file Node, ex bool) error {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	ops := fs.getOpsByNode(ctx, file)
 	return ops.SetEx(ctx, file, ex)
 }
@@ -671,6 +710,9 @@ func (fs *KBFSOpsStandard) SetEx(
 // SetMtime implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) SetMtime(
 	ctx context.Context, file Node, mtime *time.Time) error {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	ops := fs.getOpsByNode(ctx, file)
 	return ops.SetMtime(ctx, file, mtime)
 }
@@ -678,6 +720,9 @@ func (fs *KBFSOpsStandard) SetMtime(
 // SyncAll implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) SyncAll(
 	ctx context.Context, folderBranch FolderBranch) error {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	ops := fs.getOps(ctx, folderBranch, FavoritesOpAdd)
 	return ops.SyncAll(ctx, folderBranch)
 }
@@ -686,6 +731,9 @@ func (fs *KBFSOpsStandard) SyncAll(
 func (fs *KBFSOpsStandard) FolderStatus(
 	ctx context.Context, folderBranch FolderBranch) (
 	FolderBranchStatus, <-chan StatusUpdate, error) {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	ops := fs.getOps(ctx, folderBranch, FavoritesOpNoChange)
 	return ops.FolderStatus(ctx, folderBranch)
 }
@@ -755,6 +803,9 @@ func (fs *KBFSOpsStandard) Status(ctx context.Context) (
 // TODO: remove once we have automatic conflict resolution
 func (fs *KBFSOpsStandard) UnstageForTesting(
 	ctx context.Context, folderBranch FolderBranch) error {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	ops := fs.getOps(ctx, folderBranch, FavoritesOpAdd)
 	return ops.UnstageForTesting(ctx, folderBranch)
 }
@@ -813,6 +864,9 @@ func (fs *KBFSOpsStandard) GetNodeMetadata(ctx context.Context, node Node) (
 // TeamNameChanged implements the KBFSOps interface for KBFSOpsStandard
 func (fs *KBFSOpsStandard) TeamNameChanged(
 	ctx context.Context, tid keybase1.TeamID) {
+	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
+	defer timeTrackerDone()
+
 	fs.log.CDebugf(ctx, "Got TeamNameChanged for %s", tid)
 	fs.opsLock.Lock()
 	defer fs.opsLock.Unlock()
