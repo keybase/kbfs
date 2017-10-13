@@ -1260,7 +1260,7 @@ func (fbo *folderBranchOps) getSuccessorMDForWriteLockedForFilename(
 	// writes.  The caller must pass this into `finalizeMDWriteLocked`
 	// or the changes will be lost.
 	return md.MakeSuccessor(ctx, fbo.config.MetadataVersion(),
-		fbo.config.Codec(), fbo.config.Crypto(),
+		fbo.config.Codec(),
 		fbo.config.KeyManager(), fbo.config.KBPKI(), fbo.config.KBPKI(),
 		md.mdID, true)
 }
@@ -1299,7 +1299,7 @@ func (fbo *folderBranchOps) getMDForRekeyWriteLocked(
 	}
 
 	newMd, err := md.MakeSuccessor(ctx, fbo.config.MetadataVersion(),
-		fbo.config.Codec(), fbo.config.Crypto(),
+		fbo.config.Codec(),
 		fbo.config.KeyManager(), fbo.config.KBPKI(), fbo.config.KBPKI(),
 		md.mdID, handle.IsWriter(session.UID))
 	if err != nil {
@@ -1582,11 +1582,10 @@ func (fbo *folderBranchOps) SetInitialHeadFromServer(
 	}()
 
 	if md.IsReadable() && fbo.config.Mode() != InitMinimal {
-		// We will prefetch this as on-demand so that it triggers downstream
-		// prefetches.
-		fbo.config.BlockOps().Prefetcher().PrefetchBlock(
-			&DirBlock{}, md.data.Dir.BlockPointer, md,
-			defaultOnDemandRequestPriority)
+		// We `Get` the root block to ensure downstream prefetches occur.
+		_ = fbo.config.BlockOps().BlockRetriever().Request(ctx,
+			defaultOnDemandRequestPriority, md, md.data.Dir.BlockPointer,
+			&DirBlock{}, TransientEntry)
 	} else {
 		fbo.log.CDebugf(ctx,
 			"Setting an unreadable head with revision=%d", md.Revision())
@@ -3383,6 +3382,26 @@ func (fbo *folderBranchOps) renameLocked(
 		if err != nil {
 			return err
 		}
+	} else {
+		// If the entry doesn't exist yet, see if the new name will
+		// make the new parent directory too big.  If the entry is
+		// remaining in the same directory, only check the size
+		// difference.
+		checkName := newName
+		if oldParent == newParent {
+			if extra := len(newName) - len(oldName); extra <= 0 {
+				checkName = ""
+			} else {
+				checkName = newName[:extra]
+			}
+		}
+		if len(checkName) > 0 {
+			if err := fbo.checkNewDirSize(
+				ctx, lState, md.ReadOnly(), newParentPath,
+				checkName); err != nil {
+				return err
+			}
+		}
 	}
 
 	// Only the ctime changes on the directory entry itself.
@@ -4192,6 +4211,18 @@ func (fbo *folderBranchOps) syncAllUnlocked(
 	ctx context.Context, lState *lockState) error {
 	fbo.mdWriterLock.Lock(lState)
 	defer fbo.mdWriterLock.Unlock(lState)
+
+	select {
+	case <-ctx.Done():
+		// We've already been canceled, possibly because we're a CR
+		// and a write just called cr.ForceCancel.  Don't allow the
+		// SyncAll to complete, because if no other writes happen
+		// we'll get stuck forever (see KBFS-2505).  Instead, wait for
+		// the next `SyncAll` to trigger.
+		return ctx.Err()
+	default:
+	}
+
 	return fbo.syncAllLocked(ctx, lState, NoExcl)
 }
 
@@ -4296,6 +4327,7 @@ func (fbo *folderBranchOps) searchForNode(ctx context.Context,
 func (fbo *folderBranchOps) getUnlinkPathBeforeUpdatingPointers(
 	ctx context.Context, lState *lockState, md ReadOnlyRootMetadata, op op) (
 	unlinkPath path, unlinkDe DirEntry, toUnlink bool, err error) {
+	fbo.mdWriterLock.AssertLocked(lState)
 	if len(md.data.Changes.Ops) == 0 {
 		return path{}, DirEntry{}, false, errors.New("md needs at least one op")
 	}
@@ -4338,8 +4370,12 @@ func (fbo *folderBranchOps) getUnlinkPathBeforeUpdatingPointers(
 
 	// If the first op in this MD update is a resolutionOp, we need to
 	// inspect it to look for the *real* original pointer for this
-	// node.
-	if resOp, ok := md.data.Changes.Ops[0].(*resolutionOp); ok {
+	// node.  Though only do that if the op we're processing is
+	// actually a part of this MD object; if it's the latest cached
+	// dirOp, then the resOp we're looking at belongs to a previous
+	// revision.
+	if resOp, ok := md.data.Changes.Ops[0].(*resolutionOp); ok &&
+		(len(fbo.dirOps) == 0 || op != fbo.dirOps[len(fbo.dirOps)-1].dirOp) {
 		for _, update := range resOp.allUpdates() {
 			if update.Ref == p.tailPointer() {
 				fbo.log.CDebugf(ctx,
@@ -4394,7 +4430,7 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 	// We need to get unlinkPath before calling UpdatePointers so that
 	// nodeCache.Unlink can properly update cachedPath.
 	unlinkPath, unlinkDe, toUnlink, err :=
-		fbo.getUnlinkPathBeforeUpdatingPointers(ctx, lState, md.ReadOnly(), op)
+		fbo.getUnlinkPathBeforeUpdatingPointers(ctx, lState, md, op)
 	if err != nil {
 		return err
 	}

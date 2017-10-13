@@ -81,6 +81,10 @@ type syncedTlfGetterSetter interface {
 	SetTlfSyncState(tlfID tlf.ID, isSynced bool) error
 }
 
+type blockRetrieverGetter interface {
+	BlockRetriever() BlockRetriever
+}
+
 // Block just needs to be (de)serialized using msgpack
 type Block interface {
 	dataVersioner
@@ -664,7 +668,7 @@ type KeyMetadata interface {
 
 	// GetHistoricTLFCryptKey attempts to symmetrically decrypt the key at the given
 	// generation using the current generation's TLFCryptKey.
-	GetHistoricTLFCryptKey(c cryptoPure, keyGen KeyGen,
+	GetHistoricTLFCryptKey(codec kbfscodec.Codec, keyGen KeyGen,
 		currentKey kbfscrypto.TLFCryptKey) (
 		kbfscrypto.TLFCryptKey, error)
 }
@@ -785,6 +789,18 @@ type KeyCache interface {
 
 // BlockCacheLifetime denotes the lifetime of an entry in BlockCache.
 type BlockCacheLifetime int
+
+func (l BlockCacheLifetime) String() string {
+	switch l {
+	case NoCacheEntry:
+		return "NoCacheEntry"
+	case TransientEntry:
+		return "TransientEntry"
+	case PermanentEntry:
+		return "PermanentEntry"
+	}
+	return "Unknown"
+}
 
 const (
 	// NoCacheEntry means that the entry will not be cached.
@@ -1001,23 +1017,11 @@ type cryptoPure interface {
 	// single key generation of a TLF.
 	MakeRandomTLFKeys() (kbfscrypto.TLFPublicKey,
 		kbfscrypto.TLFPrivateKey, kbfscrypto.TLFCryptKey, error)
-	// MakeRandomTLFCryptKeyServerHalf generates the server-side of a
-	// top-level folder crypt key.
-	MakeRandomTLFCryptKeyServerHalf() (
-		kbfscrypto.TLFCryptKeyServerHalf, error)
 
 	// MakeRandomBlockCryptKeyServerHalf generates the server-side of
 	// a block crypt key.
 	MakeRandomBlockCryptKeyServerHalf() (
 		kbfscrypto.BlockCryptKeyServerHalf, error)
-
-	// EncryptTLFCryptKeyClientHalf encrypts a TLFCryptKeyClientHalf
-	// using both a TLF's ephemeral private key and a device pubkey.
-	EncryptTLFCryptKeyClientHalf(
-		privateKey kbfscrypto.TLFEphemeralPrivateKey,
-		publicKey kbfscrypto.CryptPublicKey,
-		clientHalf kbfscrypto.TLFCryptKeyClientHalf) (
-		EncryptedTLFCryptKeyClientHalf, error)
 
 	// EncryptPrivateMetadata encrypts a PrivateMetadata object.
 	EncryptPrivateMetadata(
@@ -1040,18 +1044,6 @@ type cryptoPure interface {
 	DecryptBlock(encryptedBlock EncryptedBlock,
 		key kbfscrypto.BlockCryptKey, block Block) error
 
-	// GetTLFCryptKeyServerHalfID creates a unique ID for this particular
-	// kbfscrypto.TLFCryptKeyServerHalf.
-	GetTLFCryptKeyServerHalfID(
-		user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey,
-		serverHalf kbfscrypto.TLFCryptKeyServerHalf) (
-		TLFCryptKeyServerHalfID, error)
-
-	// VerifyTLFCryptKeyServerHalfID verifies the ID is the proper HMAC result.
-	VerifyTLFCryptKeyServerHalfID(serverHalfID TLFCryptKeyServerHalfID,
-		user keybase1.UID, devicePubKey kbfscrypto.CryptPublicKey,
-		serverHalf kbfscrypto.TLFCryptKeyServerHalf) error
-
 	// EncryptMerkleLeaf encrypts a Merkle leaf node with the TLFPublicKey.
 	EncryptMerkleLeaf(leaf MerkleLeaf, pubKey kbfscrypto.TLFPublicKey,
 		nonce *[24]byte, ePrivKey kbfscrypto.TLFEphemeralPrivateKey) (
@@ -1061,21 +1053,6 @@ type cryptoPure interface {
 	DecryptMerkleLeaf(encryptedLeaf EncryptedMerkleLeaf,
 		privKey kbfscrypto.TLFPrivateKey, nonce *[24]byte,
 		ePubKey kbfscrypto.TLFEphemeralPublicKey) (*MerkleLeaf, error)
-
-	// MakeTLFWriterKeyBundleID hashes a TLFWriterKeyBundleV3 to create an ID.
-	MakeTLFWriterKeyBundleID(wkb TLFWriterKeyBundleV3) (TLFWriterKeyBundleID, error)
-
-	// MakeTLFReaderKeyBundleID hashes a TLFReaderKeyBundleV3 to create an ID.
-	MakeTLFReaderKeyBundleID(rkb TLFReaderKeyBundleV3) (TLFReaderKeyBundleID, error)
-
-	// EncryptTLFCryptKeys encrypts an array of historic TLFCryptKeys.
-	EncryptTLFCryptKeys(oldKeys []kbfscrypto.TLFCryptKey,
-		key kbfscrypto.TLFCryptKey) (EncryptedTLFCryptKeys, error)
-
-	// DecryptTLFCryptKeys decrypts an array of historic TLFCryptKeys.
-	DecryptTLFCryptKeys(
-		encKeys EncryptedTLFCryptKeys, key kbfscrypto.TLFCryptKey) (
-		[]kbfscrypto.TLFCryptKey, error)
 }
 
 // Crypto signs, verifies, encrypts, and decrypts stuff.
@@ -1234,36 +1211,26 @@ type KeyOps interface {
 
 // Prefetcher is an interface to a block prefetcher.
 type Prefetcher interface {
-	// PrefetchBlock directs the prefetcher to prefetch a block.
-	PrefetchBlock(block Block, blockPtr BlockPointer, kmd KeyMetadata,
-		priority int) (doneCh, errCh <-chan struct{}, err error)
-	// PrefetchAfterBlockRetrieved allows the prefetcher to trigger prefetches
-	// after a block has been retrieved. Whichever component is responsible for
-	// retrieving blocks will call this method once it's done retrieving a
-	// block.
-	// `doneCh` is a semaphore with a `numBlocks` count. Once we've read from
-	// it `numBlocks` times, the whole underlying block tree has been
-	// prefetched.
-	// `errCh` can be read up to `numBlocks` times, but any writes to it mean
-	// that the deep prefetch won't complete. So even a single read from
-	// `errCh` by a caller can be used to communicate failure of the deep
-	// prefetch to its parent.
-	PrefetchAfterBlockRetrieved(b Block, blockPtr BlockPointer,
-		kmd KeyMetadata) (doneCh, errCh <-chan struct{}, numBlocks int)
+	// ProcessBlockForPrefetch potentially triggers and monitors a prefetch.
+	ProcessBlockForPrefetch(ctx context.Context, ptr BlockPointer, block Block,
+		kmd KeyMetadata, priority int, lifetime BlockCacheLifetime,
+		prefetchStatus PrefetchStatus)
+	// CancelPrefetch notifies the prefetcher that a prefetch should be
+	// canceled.
+	CancelPrefetch(kbfsblock.ID)
 	// Shutdown shuts down the prefetcher idempotently. Future calls to
 	// the various Prefetch* methods will return io.EOF. The returned channel
 	// allows upstream components to block until all pending prefetches are
 	// complete. This feature is mainly used for testing, but also to toggle
 	// the prefetcher on and off.
 	Shutdown() <-chan struct{}
-	// ShutdownCh returns a channel that is closed if and when the prefetcher
-	// is shut down.
-	ShutdownCh() <-chan struct{}
 }
 
 // BlockOps gets and puts data blocks to a BlockServer. It performs
 // the necessary crypto operations on each block.
 type BlockOps interface {
+	blockRetrieverGetter
+
 	// Get gets the block associated with the given block pointer
 	// (which belongs to the TLF with the given key metadata),
 	// decrypts it if necessary, and fills in the provided block
@@ -1300,10 +1267,7 @@ type BlockOps interface {
 	Archive(ctx context.Context, tlfID tlf.ID, ptrs []BlockPointer) error
 
 	// TogglePrefetcher activates or deactivates the prefetcher.
-	TogglePrefetcher(ctx context.Context, enable bool) error
-
-	// BlockRetriever obtains the block retriever
-	BlockRetriever() BlockRetriever
+	TogglePrefetcher(enable bool) <-chan struct{}
 
 	// Prefetcher retrieves this BlockOps' Prefetcher.
 	Prefetcher() Prefetcher
@@ -2036,7 +2000,7 @@ type BareRootMetadata interface {
 	// version. tlfCryptKeyGetter should be a function that
 	// returns a list of TLFCryptKeys for all key generations in
 	// ascending order.
-	MakeSuccessorCopy(codec kbfscodec.Codec, crypto cryptoPure,
+	MakeSuccessorCopy(codec kbfscodec.Codec,
 		extra ExtraMetadata, latestMDVer MetadataVer,
 		tlfCryptKeyGetter func() ([]kbfscrypto.TLFCryptKey, error),
 		isReadableAndWriter bool) (mdCopy MutableBareRootMetadata,
@@ -2074,7 +2038,7 @@ type BareRootMetadata interface {
 	// the current device key (using IsLastModifiedBy), or by
 	// checking with KBPKI.
 	IsValidAndSigned(ctx context.Context, codec kbfscodec.Codec,
-		crypto cryptoPure, teamMemChecker TeamMembershipChecker,
+		teamMemChecker TeamMembershipChecker,
 		extra ExtraMetadata, writerVerifyingKey kbfscrypto.VerifyingKey) error
 	// IsLastModifiedBy verifies that the BareRootMetadata is
 	// written by the given user and device (identified by the
@@ -2129,7 +2093,7 @@ type BareRootMetadata interface {
 	StoresHistoricTLFCryptKeys() bool
 	// GetHistoricTLFCryptKey attempts to symmetrically decrypt the key at the given
 	// generation using the current generation's TLFCryptKey.
-	GetHistoricTLFCryptKey(c cryptoPure, keyGen KeyGen,
+	GetHistoricTLFCryptKey(codec kbfscodec.Codec, keyGen KeyGen,
 		currentKey kbfscrypto.TLFCryptKey, extra ExtraMetadata) (
 		kbfscrypto.TLFCryptKey, error)
 }
@@ -2215,8 +2179,7 @@ type MutableBareRootMetadata interface {
 	//
 	// Note that the TLFPrivateKey corresponding to privKey must
 	// also be stored in PrivateMetadata.
-	AddKeyGeneration(codec kbfscodec.Codec, crypto cryptoPure,
-		currExtra ExtraMetadata,
+	AddKeyGeneration(codec kbfscodec.Codec, currExtra ExtraMetadata,
 		updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 		ePubKey kbfscrypto.TLFEphemeralPublicKey,
 		ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
@@ -2248,7 +2211,7 @@ type MutableBareRootMetadata interface {
 	// An array of server halves to push to the server are
 	// returned, with each entry corresponding to each key
 	// generation in KeyGenerationsToUpdate(), in ascending order.
-	UpdateKeyBundles(crypto cryptoPure, extra ExtraMetadata,
+	UpdateKeyBundles(codec kbfscodec.Codec, extra ExtraMetadata,
 		updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 		ePubKey kbfscrypto.TLFEphemeralPublicKey,
 		ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
@@ -2273,7 +2236,7 @@ type MutableBareRootMetadata interface {
 
 	// FinalizeRekey must be called called after all rekeying work
 	// has been performed on the underlying metadata.
-	FinalizeRekey(c cryptoPure, extra ExtraMetadata) error
+	FinalizeRekey(codec kbfscodec.Codec, extra ExtraMetadata) error
 }
 
 // KeyBundleCache is an interface to a key bundle cache for use with v3 metadata.
@@ -2319,19 +2282,11 @@ type BlockRetriever interface {
 	// Request retrieves blocks asynchronously.
 	Request(ctx context.Context, priority int, kmd KeyMetadata,
 		ptr BlockPointer, block Block, lifetime BlockCacheLifetime) <-chan error
-	// RequestWithPrefetch retrieves blocks asynchronously and accepts channels
-	// to notify when child blocks are done prefetching.
-	RequestWithPrefetch(ctx context.Context, priority int, kmd KeyMetadata,
-		ptr BlockPointer, block Block, lifetime BlockCacheLifetime,
-		deepPrefetchDoneCh, deepPrefetchCancelCh chan<- struct{}) <-chan error
-	// CacheAndPrefetch caches a block along with its prefetch status, and then
-	// triggers prefetches as appropriate.
-	// `deepPrefetchDoneCh` and `deepPrefetchCancelCh` can be nil so the caller doesn't always
-	// have to instantiate a channel if it doesn't care about waiting for the
-	// prefetch to complete. In that case, the `blockRetrievalQueue` instantiates
-	// each channel to monitor the prefetches.
-	CacheAndPrefetch(ctx context.Context, ptr BlockPointer, block Block,
-		kmd KeyMetadata, priority int, lifetime BlockCacheLifetime,
-		prefetchStatus PrefetchStatus,
-		deepPrefetchDoneCh, deepPrefetchCancelCh chan<- struct{}) error
+	// PutInCaches puts the block into the in-memory cache, and ensures that
+	// the disk cache metadata is updated.
+	PutInCaches(ctx context.Context, ptr BlockPointer, tlfID tlf.ID,
+		block Block, lifetime BlockCacheLifetime,
+		prefetchStatus PrefetchStatus) error
+	// TogglePrefetcher creates a new prefetcher.
+	TogglePrefetcher(enable bool, syncCh <-chan struct{}) <-chan struct{}
 }

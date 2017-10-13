@@ -5,13 +5,17 @@
 package libgit
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -21,11 +25,13 @@ import (
 )
 
 const (
-	kbfsRepoDir         = ".kbfs_git"
-	kbfsConfigName      = "kbfs_config"
-	kbfsConfigNameTemp  = "._kbfs_config"
-	gitSuffixToIgnore   = ".git"
-	kbfsDeletedReposDir = ".kbfs_deleted_repos"
+	kbfsRepoDir              = ".kbfs_git"
+	kbfsConfigName           = "kbfs_config"
+	kbfsConfigNameTemp       = "._kbfs_config"
+	gitSuffixToIgnore        = ".git"
+	kbfsDeletedReposDir      = ".kbfs_deleted_repos"
+	minDeletedAgeForCleaning = 1 * time.Hour
+	cleaningTimeLimit        = 2 * time.Second
 )
 
 // This character set is what Github supports in repo names.  It's
@@ -42,6 +48,127 @@ func checkValidRepoName(repoName string, config libkbfs.Config) bool {
 		uint32(len(repoName)) <= config.MaxNameBytes() &&
 		(os.Getenv("KBFS_GIT_REPONAME_SKIP_CHECK") != "" ||
 			repoNameRE.MatchString(repoName))
+}
+
+// For the common "repo doesn't exist" case, use the error type that the client can recognize.
+func castNoSuchNameError(err error, repoName string) error {
+	switch errors.Cause(err).(type) {
+	case libkbfs.NoSuchNameError:
+		return libkb.RepoDoesntExistError{
+			Name: repoName,
+		}
+	default:
+		return err
+	}
+}
+
+func recursiveDelete(
+	ctx context.Context, fs *libfs.FS, fi os.FileInfo) error {
+	if !fi.IsDir() {
+		// Delete regular files and symlinks directly.
+		return fs.Remove(fi.Name())
+	}
+
+	subdirFS, err := fs.Chroot(fi.Name())
+	if err != nil {
+		return err
+	}
+
+	children, err := subdirFS.ReadDir("/")
+	if err != nil {
+		return err
+	}
+	for _, childFI := range children {
+		err := recursiveDelete(ctx, subdirFS.(*libfs.FS), childFI)
+		if err != nil {
+			return err
+		}
+	}
+
+	return fs.Remove(fi.Name())
+}
+
+// CleanOldDeletedRepos completely removes any "deleted" repos that
+// have been deleted for longer than `minDeletedAgeForCleaning`.  The
+// caller is responsible for syncing any data to disk, if desired.
+func CleanOldDeletedRepos(
+	ctx context.Context, config libkbfs.Config,
+	tlfHandle *libkbfs.TlfHandle) (err error) {
+	fs, err := libfs.NewFS(
+		ctx, config, tlfHandle, path.Join(kbfsRepoDir, kbfsDeletedReposDir),
+		"" /* uniq ID isn't used for removals */)
+	switch errors.Cause(err).(type) {
+	case libkbfs.NoSuchNameError:
+		// Nothing to clean.
+		return nil
+	case nil:
+	default:
+		return err
+	}
+
+	deletedRepos, err := fs.ReadDir("/")
+	if err != nil {
+		return err
+	}
+
+	if len(deletedRepos) == 0 {
+		return nil
+	}
+
+	log := config.MakeLogger("")
+	now := config.Clock().Now()
+
+	log.CDebugf(ctx, "Checking %d deleted repos for cleaning in %s",
+		len(deletedRepos), tlfHandle.GetCanonicalPath())
+	defer func() {
+		log.CDebugf(ctx, "Done checking deleted repos: %+v", err)
+	}()
+	for _, fi := range deletedRepos {
+		parts := strings.Split(fi.Name(), "-")
+		if len(parts) < 2 {
+			log.CDebugf(ctx,
+				"Ignoring deleted repo name with wrong format: %s", fi.Name())
+			continue
+		}
+
+		deletedTimeUnixNano, err := strconv.ParseInt(
+			parts[len(parts)-1], 10, 64)
+		if err != nil {
+			log.CDebugf(ctx,
+				"Ignoring deleted repo name with wrong format: %s: %+v",
+				fi.Name(), err)
+			continue
+		}
+
+		deletedTime := time.Unix(0, deletedTimeUnixNano)
+		if deletedTime.Add(minDeletedAgeForCleaning).After(now) {
+			// Repo was deleted too recently.
+			continue
+		}
+
+		log.CDebugf(ctx, "Cleaning deleted repo %s", fi.Name())
+		err = recursiveDelete(ctx, fs, fi)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CleanOldDeletedReposTimeLimited is the same as
+// `CleanOldDeletedRepos`, except it limits the time spent on
+// cleaning, deleting as much data as possible within the given time
+// limit (without returning an error).
+func CleanOldDeletedReposTimeLimited(
+	ctx context.Context, config libkbfs.Config,
+	tlfHandle *libkbfs.TlfHandle) error {
+	ctx, cancel := context.WithTimeout(ctx, cleaningTimeLimit)
+	defer cancel()
+	err := CleanOldDeletedRepos(ctx, config, tlfHandle)
+	if errors.Cause(err) == context.DeadlineExceeded {
+		return nil
+	}
+	return err
 }
 
 // UpdateRepoMD lets the Keybase service know that a repo's MD has
@@ -78,6 +205,52 @@ func UpdateRepoMD(ctx context.Context, config libkbfs.Config,
 	return nil
 }
 
+func normalizeRepoName(repoName string) string {
+	return strings.TrimSuffix(strings.ToLower(repoName), gitSuffixToIgnore)
+}
+
+func takeConfigLock(
+	fs *libfs.FS, tlfHandle *libkbfs.TlfHandle, repoName string) (
+	closer io.Closer, err error) {
+	// Double-check that the namespace of the FS matches the
+	// normalized repo name, so that we're locking only the config
+	// file within the actual repo we care about.  This is appended to
+	// the default locknamespace for a libfs.FS instance.
+	normalizedRepoName := normalizeRepoName(repoName)
+	nsPath := path.Join(
+		"/keybase", tlfHandle.Type().String(), kbfsRepoDir, normalizedRepoName)
+	expectedNamespace := make([]byte, len(nsPath))
+	copy(expectedNamespace, nsPath)
+	if !bytes.Equal(expectedNamespace, fs.GetLockNamespace()) {
+		return nil, errors.Errorf("Unexpected FS namespace for repo %s: %s",
+			repoName, string(fs.GetLockNamespace()))
+	}
+
+	// Lock a temp file to avoid a duplicate create of the actual
+	// file.  TODO: clean up this file at some point?
+	f, err := fs.Create(kbfsConfigNameTemp)
+	if err != nil && !os.IsExist(err) {
+		return nil, err
+	} else if os.IsExist(err) {
+		f, err = fs.Open(kbfsConfigNameTemp)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			f.Close()
+		}
+	}()
+
+	// Take the lock
+	err = f.Lock()
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
 func createNewRepoAndID(
 	ctx context.Context, config libkbfs.Config, tlfHandle *libkbfs.TlfHandle,
 	repoName string, fs *libfs.FS) (ID, error) {
@@ -91,24 +264,11 @@ func createNewRepoAndID(
 		"Creating a new repo %s in %s: repoID=%s",
 		repoName, tlfHandle.GetCanonicalPath(), repoID)
 
-	// Lock a temp file to avoid a duplicate create of the actual
-	// file.  TODO: clean up this file at some point?
-	lockFile, err := fs.Create(kbfsConfigNameTemp)
-	if err != nil && !os.IsExist(err) {
-		return NullID, err
-	} else if os.IsExist(err) {
-		lockFile, err = fs.Open(kbfsConfigNameTemp)
-	}
+	lockFile, err := takeConfigLock(fs, tlfHandle, repoName)
 	if err != nil {
 		return NullID, err
 	}
 	defer lockFile.Close()
-
-	// Take a lock during creation.
-	err = lockFile.Lock()
-	if err != nil {
-		return NullID, err
-	}
 
 	f, err := fs.Create(kbfsConfigName)
 	if err != nil && !os.IsExist(err) {
@@ -166,10 +326,6 @@ func createNewRepoAndID(
 	return repoID, nil
 }
 
-func normalizeRepoName(repoName string) string {
-	return strings.TrimSuffix(strings.ToLower(repoName), gitSuffixToIgnore)
-}
-
 func lookupOrCreateDir(ctx context.Context, config libkbfs.Config,
 	n libkbfs.Node, name string) (libkbfs.Node, error) {
 	newNode, _, err := config.KBFSOps().Lookup(ctx, n, name)
@@ -194,19 +350,10 @@ const (
 	getOnly
 )
 
-// NoSuchRepoError indicates that a repo doesn't yet exist, and it
-// will not be created.
-type NoSuchRepoError struct {
-	name string
-}
-
-func (nsre NoSuchRepoError) Error() string {
-	return fmt.Sprintf("A repo named %s hasn't been created yet", nsre.name)
-}
-
 func getOrCreateRepoAndID(
 	ctx context.Context, config libkbfs.Config, tlfHandle *libkbfs.TlfHandle,
-	repoName string, uniqID string, op repoOpType) (*libfs.FS, ID, error) {
+	repoName string, uniqID string, op repoOpType) (
+	fs *libfs.FS, id ID, err error) {
 	if !checkValidRepoName(repoName, config) {
 		return nil, NullID, errors.WithStack(libkb.InvalidRepoNameError{Name: repoName})
 	}
@@ -218,6 +365,16 @@ func getOrCreateRepoAndID(
 	}
 	normalizedRepoName := normalizeRepoName(repoName)
 
+	// If the user doesn't have write access, but the repo doesn't
+	// exist, give them a nice error message.
+	repoExists := false
+	defer func() {
+		_, isWriteAccessErr := errors.Cause(err).(libkbfs.WriteAccessError)
+		if !repoExists && isWriteAccessErr {
+			err = libkb.RepoDoesntExistError{Name: repoName}
+		}
+	}()
+
 	repoDir, err := lookupOrCreateDir(ctx, config, rootNode, kbfsRepoDir)
 	if err != nil {
 		return nil, NullID, err
@@ -226,7 +383,7 @@ func getOrCreateRepoAndID(
 		_, _, err = config.KBFSOps().Lookup(ctx, repoDir, normalizedRepoName)
 		switch errors.Cause(err).(type) {
 		case libkbfs.NoSuchNameError:
-			return nil, NullID, errors.WithStack(NoSuchRepoError{repoName})
+			return nil, NullID, errors.WithStack(libkb.RepoDoesntExistError{Name: repoName})
 		case nil:
 		default:
 			return nil, NullID, err
@@ -237,8 +394,9 @@ func getOrCreateRepoAndID(
 			return nil, NullID, err
 		}
 	}
+	repoExists = true
 
-	fs, err := libfs.NewFS(
+	fs, err = libfs.NewFS(
 		ctx, config, tlfHandle, path.Join(kbfsRepoDir, normalizedRepoName),
 		uniqID)
 	if err != nil {
@@ -250,7 +408,7 @@ func getOrCreateRepoAndID(
 		return nil, NullID, err
 	} else if os.IsNotExist(err) {
 		if op == getOnly {
-			return nil, NullID, errors.WithStack(NoSuchRepoError{repoName})
+			return nil, NullID, errors.WithStack(libkb.RepoDoesntExistError{Name: repoName})
 		}
 
 		// Create a new repo ID.
@@ -258,6 +416,7 @@ func getOrCreateRepoAndID(
 		if err != nil {
 			return nil, NullID, err
 		}
+		fs.SetLockNamespace(repoID.Bytes())
 		return fs, repoID, nil
 	}
 	defer f.Close()
@@ -363,12 +522,12 @@ func DeleteRepo(
 
 	repoNode, _, err := kbfsOps.Lookup(ctx, rootNode, kbfsRepoDir)
 	if err != nil {
-		return err
+		return castNoSuchNameError(err, repoName)
 	}
 
 	_, _, err = kbfsOps.Lookup(ctx, repoNode, normalizedRepoName)
 	if err != nil {
-		return err
+		return castNoSuchNameError(err, repoName)
 	}
 
 	deletedReposNode, err := lookupOrCreateDir(
@@ -379,8 +538,7 @@ func DeleteRepo(
 
 	// For now, just rename the repo out of the way, using the device
 	// ID and the current time in nanoseconds to make uniqueness
-	// probable.  TODO(KBFS-2442): periodically delete old-enough
-	// repos from `kbfsDeletedReposDir`.
+	// probable.
 	dirSuffix := fmt.Sprintf(
 		"%s-%d", session.VerifyingKey.String(), config.Clock().Now().UnixNano())
 	return kbfsOps.Rename(

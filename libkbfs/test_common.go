@@ -43,7 +43,7 @@ const (
 // TODO: Move more common code here.
 func newConfigForTest(mode InitMode,
 	loggerFn func(module string) logger.Logger) *ConfigLocal {
-	config := NewConfigLocal(mode|InitTest, loggerFn, "")
+	config := NewConfigLocal(mode|InitTest, loggerFn, "", false)
 
 	bops := NewBlockOpsStandard(config,
 		testBlockRetrievalWorkerQueueSize, testPrefetchWorkerQueueSize)
@@ -136,14 +136,6 @@ func MakeTestConfigOrBustLoggedInWithMode(
 		}
 
 	case len(mdServerAddr) != 0:
-		var err error
-		// start/restart local in-memory DynamoDB
-		runner, err := NewTestDynamoDBRunner()
-		if err != nil {
-			t.Fatal(err)
-		}
-		runner.Run(t)
-
 		// connect to server
 		mdServer = NewMDServerRemote(config, mdServerAddr, env.NewContext().NewRPCLogFactory())
 		// for now the MD server acts as the key server in production
@@ -281,7 +273,7 @@ func configAsUserWithMode(config *ConfigLocal,
 // `config`.
 func ConfigAsUser(config *ConfigLocal,
 	loggedInUser libkb.NormalizedUsername) *ConfigLocal {
-	return configAsUserWithMode(config, loggedInUser, InitDefault)
+	return configAsUserWithMode(config, loggedInUser, config.Mode())
 }
 
 // FakeBranchID creates a fake branch ID from the given

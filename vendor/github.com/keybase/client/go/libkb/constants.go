@@ -109,7 +109,8 @@ const (
 	LinkCacheSize     = 0x10000
 	LinkCacheCleanDur = 1 * time.Minute
 
-	UPAKCacheSize = 2000
+	UPAKCacheSize           = 2000
+	UIDMapFullNameCacheSize = 100000
 
 	SigShortIDBytes  = 27
 	LocalTrackMaxAge = 48 * time.Hour
@@ -259,6 +260,7 @@ const (
 	SCAccountReset             = int(keybase1.StatusCode_SCAccountReset)
 	SCIdentifiesFailed         = int(keybase1.StatusCode_SCIdentifiesFailed)
 	SCTeamReadError            = int(keybase1.StatusCode_SCTeamReadError)
+	SCNoOp                     = int(keybase1.StatusCode_SCNoOp)
 	SCTeamNotFound             = int(keybase1.StatusCode_SCTeamNotFound)
 	SCTeamTarDuplicate         = int(keybase1.StatusCode_SCTeamTarDuplicate)
 	SCTeamTarNotFound          = int(keybase1.StatusCode_SCTeamTarNotFound)
@@ -271,6 +273,9 @@ const (
 	SCGitRepoAlreadyExists     = int(keybase1.StatusCode_SCGitRepoAlreadyExists)
 	SCGitInvalidRepoName       = int(keybase1.StatusCode_SCGitInvalidRepoName)
 	SCGitCannotDelete          = int(keybase1.StatusCode_SCGitCannotDelete)
+	SCGitRepoDoesntExist       = int(keybase1.StatusCode_SCGitRepoDoesntExist)
+	SCTeamBanned               = int(keybase1.StatusCode_SCTeamBanned)
+	SCTeamInvalidBan           = int(keybase1.StatusCode_SCTeamInvalidBan)
 )
 
 const (
@@ -309,6 +314,8 @@ const (
 	LinkTypeDeleteRoot       LinkType = "team.delete_root"
 	LinkTypeDeleteSubteam    LinkType = "team.delete_subteam"
 	LinkTypeDeleteUpPointer  LinkType = "team.delete_up_pointer"
+	LinkTypeLegacyTLFUpgrade LinkType = "team.legacy_tlf_upgrade"
+	LinkTypeSettings         LinkType = "team.settings"
 
 	DelegationTypeEldest    DelegationType = "eldest"
 	DelegationTypePGPUpdate DelegationType = "pgp_update"
@@ -625,15 +632,7 @@ func CurrentSaltpackVersion() saltpack.Version {
 }
 
 const (
-	SeqTypePublic      int = 1
-	SeqTypePrivate         = 2
-	SeqTypeSemiprivate     = 3
-)
-
-const (
-	RootTeamIDTag byte = 0x24
-	SubteamIDTag       = 0x25
-	InviteIDTag        = 0x27
+	InviteIDTag = 0x27
 )
 
 const CurrentGitMetadataEncryptionVersion = 1

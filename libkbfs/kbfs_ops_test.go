@@ -104,21 +104,15 @@ func kbfsOpsInit(t *testing.T) (mockCtrl *gomock.Controller,
 	// Ignore Archive calls for now
 	config.mockBops.EXPECT().Archive(gomock.Any(), gomock.Any(),
 		gomock.Any()).AnyTimes().Return(nil)
-	// Ignore Prefetcher calls
+	// Ignore BlockRetriever calls
 	brc := &testBlockRetrievalConfig{nil, newTestLogMaker(t),
 		config.BlockCache(), nil, newTestDiskBlockCacheGetter(t, nil),
 		newTestSyncedTlfGetterSetter(), testInitModeGetter{InitDefault}}
-	pre := newBlockPrefetcher(nil, brc)
-	config.mockBops.EXPECT().Prefetcher().AnyTimes().Return(pre)
-	// Ignore BlockRetriever calls
 	brq := newBlockRetrievalQueue(0, 0, brc)
 	config.mockBops.EXPECT().BlockRetriever().AnyTimes().Return(brq)
-
-	// Ignore key bundle ID creation calls for now
-	config.mockCrypto.EXPECT().MakeTLFWriterKeyBundleID(gomock.Any()).
-		AnyTimes().Return(TLFWriterKeyBundleID{}, nil)
-	config.mockCrypto.EXPECT().MakeTLFReaderKeyBundleID(gomock.Any()).
-		AnyTimes().Return(TLFReaderKeyBundleID{}, nil)
+	// Ignore Prefetcher calls
+	pre := newBlockPrefetcher(brq, brc, nil)
+	config.mockBops.EXPECT().Prefetcher().AnyTimes().Return(pre)
 
 	// Ignore favorites
 	config.mockKbpki.EXPECT().FavoriteList(gomock.Any()).AnyTimes().
@@ -1266,6 +1260,40 @@ func TestCreateDirFailDirTooBig(t *testing.T) {
 
 func TestCreateLinkFailDirTooBig(t *testing.T) {
 	testCreateEntryFailDirTooBig(t, false)
+}
+
+func TestRenameEntryFailDirTooBig(t *testing.T) {
+	mockCtrl, config, ctx, cancel := kbfsOpsInit(t)
+	defer kbfsTestShutdown(mockCtrl, config, ctx, cancel)
+
+	u, id, rmd := injectNewRMD(t, config)
+
+	rootID := kbfsblock.FakeID(42)
+	rootBlock := NewDirBlock().(*DirBlock)
+	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
+	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
+	ops := getOps(config, id)
+	n := nodeFromPath(t, ops, p)
+	rmd.data.Dir.Size = 10
+	aID := kbfsblock.FakeID(43)
+	rootBlock.Children["a"] = DirEntry{
+		BlockInfo: makeBIFromID(aID, u),
+		EntryInfo: EntryInfo{
+			Type: File,
+		},
+	}
+
+	config.maxDirBytes = 12
+	name := "aaaa"
+
+	testPutBlockInCache(t, config, node.BlockPointer, id, rootBlock)
+
+	err := config.KBFSOps().Rename(ctx, n, "a", n, name)
+	if err == nil {
+		t.Errorf("Got no expected error on rename")
+	} else if _, ok := err.(DirTooBigError); !ok {
+		t.Errorf("Got unexpected error on rename: %+v", err)
+	}
 }
 
 func testCreateEntryFailKBFSPrefix(t *testing.T, et EntryType) {

@@ -258,8 +258,9 @@ func (r *runner) initRepoIfNeeded(ctx context.Context, forCmd string) (
 	}
 
 	// Only allow lazy creates for public and multi-user TLFs.
-	if r.h.Type() == tlf.Public ||
-		len(r.h.ResolvedWriters())+len(r.h.UnresolvedWriters()) > 1 {
+	numUsers := len(r.h.ResolvedWriters()) + len(r.h.UnresolvedWriters()) +
+		len(r.h.ResolvedReaders()) + len(r.h.UnresolvedReaders())
+	if r.h.Type() == tlf.Public || numUsers > 1 {
 		fs, _, err = libgit.GetOrCreateRepoAndID(
 			ctx, r.config, r.h, r.repo, r.uniqID)
 	} else {
@@ -490,6 +491,13 @@ func (r *runner) printJournalStatus(
 }
 
 func (r *runner) waitForJournal(ctx context.Context) error {
+	// See if there are any deleted repos to clean up before we flush
+	// the journal.
+	err := libgit.CleanOldDeletedReposTimeLimited(ctx, r.config, r.h)
+	if err != nil {
+		return err
+	}
+
 	rootNode, _, err := r.config.KBFSOps().GetOrCreateRootNode(
 		ctx, r.h, libkbfs.MasterBranch)
 	if err != nil {
@@ -1165,15 +1173,7 @@ func (r *runner) canPushAll(
 	if err != nil {
 		return false, false, err
 	}
-	// The worktree is not used for listing refs, but is required to
-	// be non-nil to open a non-bare repo.
-	fakeWorktree := osfs.New("/dev/null")
-	localRepo, err := gogit.Open(localStorer, fakeWorktree)
-	if err != nil {
-		return false, false, err
-	}
-
-	localRefs, err := localRepo.References()
+	localRefs, err := localStorer.IterReferences()
 	if err != nil {
 		return false, false, err
 	}

@@ -102,6 +102,22 @@ func (b *blockServerRemoteClientHandler) initNewConnection() {
 	b.client = keybase1.BlockClient{Cli: b.conn.GetClient()}
 }
 
+func (b *blockServerRemoteClientHandler) reconnect() error {
+	b.connMu.Lock()
+	defer b.connMu.Unlock()
+
+	if b.conn != nil {
+		ctx, cancel := context.WithTimeout(
+			context.Background(), reconnectTimeout)
+		defer cancel()
+		return b.conn.ForceReconnect(ctx)
+	}
+
+	b.initNewConnection()
+	return nil
+
+}
+
 func (b *blockServerRemoteClientHandler) shutdown() {
 	if b.authToken != nil {
 		b.authToken.Shutdown()
@@ -269,7 +285,9 @@ func (b *blockServerRemoteClientHandler) pingOnce(ctx context.Context) {
 	if err == context.DeadlineExceeded {
 		b.log.CDebugf(
 			ctx, "%s: Ping timeout -- reinitializing connection", b.name)
-		b.initNewConnection()
+		if err = b.reconnect(); err != nil {
+			b.log.CDebugf(ctx, "reconnect error: %v", err)
+		}
 	} else if err != nil {
 		b.log.CDebugf(ctx, "%s: ping error %s", b.name, err)
 	}
@@ -407,7 +425,10 @@ func (b *BlockServerRemote) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 				id, tlfID, context, size)
 			dbc := b.config.DiskBlockCache()
 			if dbc != nil {
-				go dbc.Put(ctx, tlfID, id, buf, serverHalf)
+				// This used to be called in a goroutine to prevent blocking
+				// the `Get`. But we need this cached synchronously so prefetch
+				// operations can work correctly.
+				dbc.Put(ctx, tlfID, id, buf, serverHalf)
 			}
 		}
 	}()
@@ -437,7 +458,7 @@ func (b *BlockServerRemote) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 	ctx = rpc.WithFireNow(ctx)
 	dbc := b.config.DiskBlockCache()
 	if dbc != nil {
-		go dbc.Put(ctx, tlfID, id, buf, serverHalf)
+		dbc.Put(ctx, tlfID, id, buf, serverHalf)
 	}
 	size := len(buf)
 	b.log.LazyTrace(ctx, "BServer: Put %s", id)
@@ -473,7 +494,7 @@ func (b *BlockServerRemote) PutAgain(ctx context.Context, tlfID tlf.ID, id kbfsb
 	ctx = rpc.WithFireNow(ctx)
 	dbc := b.config.DiskBlockCache()
 	if dbc != nil {
-		go dbc.Put(ctx, tlfID, id, buf, serverHalf)
+		dbc.Put(ctx, tlfID, id, buf, serverHalf)
 	}
 	size := len(buf)
 	b.log.LazyTrace(ctx, "BServer: Put %s", id)

@@ -846,48 +846,6 @@ func (o OutboxRecord) DeepCopy() OutboxRecord {
 	}
 }
 
-type Inbox struct {
-	Version         InboxVers           `codec:"version" json:"version"`
-	ConvsUnverified []Conversation      `codec:"convsUnverified" json:"convsUnverified"`
-	Convs           []ConversationLocal `codec:"convs" json:"convs"`
-	Pagination      *Pagination         `codec:"pagination,omitempty" json:"pagination,omitempty"`
-}
-
-func (o Inbox) DeepCopy() Inbox {
-	return Inbox{
-		Version: o.Version.DeepCopy(),
-		ConvsUnverified: (func(x []Conversation) []Conversation {
-			if x == nil {
-				return nil
-			}
-			var ret []Conversation
-			for _, v := range x {
-				vCopy := v.DeepCopy()
-				ret = append(ret, vCopy)
-			}
-			return ret
-		})(o.ConvsUnverified),
-		Convs: (func(x []ConversationLocal) []ConversationLocal {
-			if x == nil {
-				return nil
-			}
-			var ret []ConversationLocal
-			for _, v := range x {
-				vCopy := v.DeepCopy()
-				ret = append(ret, vCopy)
-			}
-			return ret
-		})(o.Convs),
-		Pagination: (func(x *Pagination) *Pagination {
-			if x == nil {
-				return nil
-			}
-			tmp := (*x).DeepCopy()
-			return &tmp
-		})(o.Pagination),
-	}
-}
-
 type HeaderPlaintextVersion int
 
 const (
@@ -2045,26 +2003,29 @@ type ConversationInfoLocal struct {
 	Visibility   keybase1.TLFVisibility    `codec:"visibility" json:"visibility"`
 	Status       ConversationStatus        `codec:"status" json:"status"`
 	MembersType  ConversationMembersType   `codec:"membersType" json:"membersType"`
+	MemberStatus ConversationMemberStatus  `codec:"memberStatus" json:"memberStatus"`
 	TeamType     TeamType                  `codec:"teamType" json:"teamType"`
 	Existence    ConversationExistence     `codec:"existence" json:"existence"`
 	Version      ConversationVers          `codec:"version" json:"version"`
 	WriterNames  []string                  `codec:"writerNames" json:"writerNames"`
 	ReaderNames  []string                  `codec:"readerNames" json:"readerNames"`
 	FinalizeInfo *ConversationFinalizeInfo `codec:"finalizeInfo,omitempty" json:"finalizeInfo,omitempty"`
+	ResetNames   []string                  `codec:"resetNames" json:"resetNames"`
 }
 
 func (o ConversationInfoLocal) DeepCopy() ConversationInfoLocal {
 	return ConversationInfoLocal{
-		Id:          o.Id.DeepCopy(),
-		Triple:      o.Triple.DeepCopy(),
-		TlfName:     o.TlfName,
-		TopicName:   o.TopicName,
-		Visibility:  o.Visibility.DeepCopy(),
-		Status:      o.Status.DeepCopy(),
-		MembersType: o.MembersType.DeepCopy(),
-		TeamType:    o.TeamType.DeepCopy(),
-		Existence:   o.Existence.DeepCopy(),
-		Version:     o.Version.DeepCopy(),
+		Id:           o.Id.DeepCopy(),
+		Triple:       o.Triple.DeepCopy(),
+		TlfName:      o.TlfName,
+		TopicName:    o.TopicName,
+		Visibility:   o.Visibility.DeepCopy(),
+		Status:       o.Status.DeepCopy(),
+		MembersType:  o.MembersType.DeepCopy(),
+		MemberStatus: o.MemberStatus.DeepCopy(),
+		TeamType:     o.TeamType.DeepCopy(),
+		Existence:    o.Existence.DeepCopy(),
+		Version:      o.Version.DeepCopy(),
 		WriterNames: (func(x []string) []string {
 			if x == nil {
 				return nil
@@ -2094,6 +2055,17 @@ func (o ConversationInfoLocal) DeepCopy() ConversationInfoLocal {
 			tmp := (*x).DeepCopy()
 			return &tmp
 		})(o.FinalizeInfo),
+		ResetNames: (func(x []string) []string {
+			if x == nil {
+				return nil
+			}
+			var ret []string
+			for _, v := range x {
+				vCopy := v
+				ret = append(ret, vCopy)
+			}
+			return ret
+		})(o.ResetNames),
 	}
 }
 
@@ -3355,6 +3327,7 @@ func (o GetInboxAndUnboxLocalArg) DeepCopy() GetInboxAndUnboxLocalArg {
 type GetInboxNonblockLocalArg struct {
 	SessionID        int                          `codec:"sessionID" json:"sessionID"`
 	MaxUnbox         *int                         `codec:"maxUnbox,omitempty" json:"maxUnbox,omitempty"`
+	SkipUnverified   bool                         `codec:"skipUnverified" json:"skipUnverified"`
 	Query            *GetInboxLocalQuery          `codec:"query,omitempty" json:"query,omitempty"`
 	Pagination       *Pagination                  `codec:"pagination,omitempty" json:"pagination,omitempty"`
 	IdentifyBehavior keybase1.TLFIdentifyBehavior `codec:"identifyBehavior" json:"identifyBehavior"`
@@ -3370,6 +3343,7 @@ func (o GetInboxNonblockLocalArg) DeepCopy() GetInboxNonblockLocalArg {
 			tmp := (*x)
 			return &tmp
 		})(o.MaxUnbox),
+		SkipUnverified: o.SkipUnverified,
 		Query: (func(x *GetInboxLocalQuery) *GetInboxLocalQuery {
 			if x == nil {
 				return nil

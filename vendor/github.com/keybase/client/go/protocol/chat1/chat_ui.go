@@ -27,26 +27,67 @@ func (o UIPagination) DeepCopy() UIPagination {
 	}
 }
 
+type UnverifiedInboxUIItemMetadata struct {
+	ChannelName       string   `codec:"channelName" json:"channelName"`
+	Headline          string   `codec:"headline" json:"headline"`
+	Snippet           string   `codec:"snippet" json:"snippet"`
+	WriterNames       []string `codec:"writerNames" json:"writerNames"`
+	ResetParticipants []string `codec:"resetParticipants" json:"resetParticipants"`
+}
+
+func (o UnverifiedInboxUIItemMetadata) DeepCopy() UnverifiedInboxUIItemMetadata {
+	return UnverifiedInboxUIItemMetadata{
+		ChannelName: o.ChannelName,
+		Headline:    o.Headline,
+		Snippet:     o.Snippet,
+		WriterNames: (func(x []string) []string {
+			if x == nil {
+				return nil
+			}
+			var ret []string
+			for _, v := range x {
+				vCopy := v
+				ret = append(ret, vCopy)
+			}
+			return ret
+		})(o.WriterNames),
+		ResetParticipants: (func(x []string) []string {
+			if x == nil {
+				return nil
+			}
+			var ret []string
+			for _, v := range x {
+				vCopy := v
+				ret = append(ret, vCopy)
+			}
+			return ret
+		})(o.ResetParticipants),
+	}
+}
+
 type UnverifiedInboxUIItem struct {
-	ConvID        string                        `codec:"convID" json:"convID"`
-	Name          string                        `codec:"name" json:"name"`
-	Visibility    keybase1.TLFVisibility        `codec:"visibility" json:"visibility"`
-	Status        ConversationStatus            `codec:"status" json:"status"`
-	MembersType   ConversationMembersType       `codec:"membersType" json:"membersType"`
-	TeamType      TeamType                      `codec:"teamType" json:"teamType"`
-	Notifications *ConversationNotificationInfo `codec:"notifications,omitempty" json:"notifications,omitempty"`
-	Time          gregor1.Time                  `codec:"time" json:"time"`
-	Version       ConversationVers              `codec:"version" json:"version"`
+	ConvID        string                         `codec:"convID" json:"convID"`
+	Name          string                         `codec:"name" json:"name"`
+	Visibility    keybase1.TLFVisibility         `codec:"visibility" json:"visibility"`
+	Status        ConversationStatus             `codec:"status" json:"status"`
+	MembersType   ConversationMembersType        `codec:"membersType" json:"membersType"`
+	MemberStatus  ConversationMemberStatus       `codec:"memberStatus" json:"memberStatus"`
+	TeamType      TeamType                       `codec:"teamType" json:"teamType"`
+	Notifications *ConversationNotificationInfo  `codec:"notifications,omitempty" json:"notifications,omitempty"`
+	Time          gregor1.Time                   `codec:"time" json:"time"`
+	Version       ConversationVers               `codec:"version" json:"version"`
+	LocalMetadata *UnverifiedInboxUIItemMetadata `codec:"localMetadata,omitempty" json:"localMetadata,omitempty"`
 }
 
 func (o UnverifiedInboxUIItem) DeepCopy() UnverifiedInboxUIItem {
 	return UnverifiedInboxUIItem{
-		ConvID:      o.ConvID,
-		Name:        o.Name,
-		Visibility:  o.Visibility.DeepCopy(),
-		Status:      o.Status.DeepCopy(),
-		MembersType: o.MembersType.DeepCopy(),
-		TeamType:    o.TeamType.DeepCopy(),
+		ConvID:       o.ConvID,
+		Name:         o.Name,
+		Visibility:   o.Visibility.DeepCopy(),
+		Status:       o.Status.DeepCopy(),
+		MembersType:  o.MembersType.DeepCopy(),
+		MemberStatus: o.MemberStatus.DeepCopy(),
+		TeamType:     o.TeamType.DeepCopy(),
 		Notifications: (func(x *ConversationNotificationInfo) *ConversationNotificationInfo {
 			if x == nil {
 				return nil
@@ -56,6 +97,13 @@ func (o UnverifiedInboxUIItem) DeepCopy() UnverifiedInboxUIItem {
 		})(o.Notifications),
 		Time:    o.Time.DeepCopy(),
 		Version: o.Version.DeepCopy(),
+		LocalMetadata: (func(x *UnverifiedInboxUIItemMetadata) *UnverifiedInboxUIItemMetadata {
+			if x == nil {
+				return nil
+			}
+			tmp := (*x).DeepCopy()
+			return &tmp
+		})(o.LocalMetadata),
 	}
 }
 
@@ -90,24 +138,26 @@ func (o UnverifiedInboxUIItems) DeepCopy() UnverifiedInboxUIItems {
 }
 
 type InboxUIItem struct {
-	ConvID        string                        `codec:"convID" json:"convID"`
-	IsEmpty       bool                          `codec:"isEmpty" json:"isEmpty"`
-	Name          string                        `codec:"name" json:"name"`
-	Snippet       string                        `codec:"snippet" json:"snippet"`
-	Channel       string                        `codec:"channel" json:"channel"`
-	Headline      string                        `codec:"headline" json:"headline"`
-	Visibility    keybase1.TLFVisibility        `codec:"visibility" json:"visibility"`
-	Participants  []string                      `codec:"participants" json:"participants"`
-	Status        ConversationStatus            `codec:"status" json:"status"`
-	MembersType   ConversationMembersType       `codec:"membersType" json:"membersType"`
-	TeamType      TeamType                      `codec:"teamType" json:"teamType"`
-	Time          gregor1.Time                  `codec:"time" json:"time"`
-	Notifications *ConversationNotificationInfo `codec:"notifications,omitempty" json:"notifications,omitempty"`
-	CreatorInfo   *ConversationCreatorInfoLocal `codec:"creatorInfo,omitempty" json:"creatorInfo,omitempty"`
-	Version       ConversationVers              `codec:"version" json:"version"`
-	FinalizeInfo  *ConversationFinalizeInfo     `codec:"finalizeInfo,omitempty" json:"finalizeInfo,omitempty"`
-	Supersedes    []ConversationMetadata        `codec:"supersedes" json:"supersedes"`
-	SupersededBy  []ConversationMetadata        `codec:"supersededBy" json:"supersededBy"`
+	ConvID            string                        `codec:"convID" json:"convID"`
+	IsEmpty           bool                          `codec:"isEmpty" json:"isEmpty"`
+	Name              string                        `codec:"name" json:"name"`
+	Snippet           string                        `codec:"snippet" json:"snippet"`
+	Channel           string                        `codec:"channel" json:"channel"`
+	Headline          string                        `codec:"headline" json:"headline"`
+	Visibility        keybase1.TLFVisibility        `codec:"visibility" json:"visibility"`
+	Participants      []string                      `codec:"participants" json:"participants"`
+	ResetParticipants []string                      `codec:"resetParticipants" json:"resetParticipants"`
+	Status            ConversationStatus            `codec:"status" json:"status"`
+	MembersType       ConversationMembersType       `codec:"membersType" json:"membersType"`
+	MemberStatus      ConversationMemberStatus      `codec:"memberStatus" json:"memberStatus"`
+	TeamType          TeamType                      `codec:"teamType" json:"teamType"`
+	Time              gregor1.Time                  `codec:"time" json:"time"`
+	Notifications     *ConversationNotificationInfo `codec:"notifications,omitempty" json:"notifications,omitempty"`
+	CreatorInfo       *ConversationCreatorInfoLocal `codec:"creatorInfo,omitempty" json:"creatorInfo,omitempty"`
+	Version           ConversationVers              `codec:"version" json:"version"`
+	FinalizeInfo      *ConversationFinalizeInfo     `codec:"finalizeInfo,omitempty" json:"finalizeInfo,omitempty"`
+	Supersedes        []ConversationMetadata        `codec:"supersedes" json:"supersedes"`
+	SupersededBy      []ConversationMetadata        `codec:"supersededBy" json:"supersededBy"`
 }
 
 func (o InboxUIItem) DeepCopy() InboxUIItem {
@@ -130,10 +180,22 @@ func (o InboxUIItem) DeepCopy() InboxUIItem {
 			}
 			return ret
 		})(o.Participants),
-		Status:      o.Status.DeepCopy(),
-		MembersType: o.MembersType.DeepCopy(),
-		TeamType:    o.TeamType.DeepCopy(),
-		Time:        o.Time.DeepCopy(),
+		ResetParticipants: (func(x []string) []string {
+			if x == nil {
+				return nil
+			}
+			var ret []string
+			for _, v := range x {
+				vCopy := v
+				ret = append(ret, vCopy)
+			}
+			return ret
+		})(o.ResetParticipants),
+		Status:       o.Status.DeepCopy(),
+		MembersType:  o.MembersType.DeepCopy(),
+		MemberStatus: o.MemberStatus.DeepCopy(),
+		TeamType:     o.TeamType.DeepCopy(),
+		Time:         o.Time.DeepCopy(),
 		Notifications: (func(x *ConversationNotificationInfo) *ConversationNotificationInfo {
 			if x == nil {
 				return nil
