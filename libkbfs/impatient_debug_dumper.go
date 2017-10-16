@@ -208,6 +208,6 @@ func (d *ImpatientDebugDumper) Begin(ctx context.Context) (done func()) {
 }
 
 // IShutdown shuts down d idempotently.
-func (d *ImpatientDebugDumper) IShutdown() {
+func (d *ImpatientDebugDumper) Shutdown() {
 	d.shutdownFunc()
 }
