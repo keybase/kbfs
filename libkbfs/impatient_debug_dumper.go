@@ -11,9 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/time/rate"
-
 	"github.com/keybase/client/go/logger"
+	"golang.org/x/time/rate"
 )
 
 type ctxTimeTracker struct {
@@ -21,6 +20,18 @@ type ctxTimeTracker struct {
 	expiresAt time.Time
 
 	done int32
+}
+
+func (c *ctxTimeTracker) markDone() {
+	atomic.StoreInt32(&c.done, 1)
+}
+
+func (c *ctxTimeTracker) isDone() bool {
+	return atomic.LoadInt32(&c.done) == 1
+}
+
+func (c *ctxTimeTracker) isExpired(clock Clock) bool {
+	return clock.Now().After(c.expiresAt)
 }
 
 type ctxTimeTrackerListNode struct {
@@ -66,30 +77,41 @@ func (c *ctxTimeTrackerList) append(t *ctxTimeTracker) {
 	}
 }
 
+// ImpatientDebugDumper dumps all running goroutines if an operation takes
+// longer than a preset value. User of this type should call Begin() with a
+// context associated with an operation, and call the returned function when
+// the operation is done. If the operation finishes within the preset duration,
+// nothing is dumped into log. Despite being impatient, it tries not to pollute
+// the log too much by rate limit goroutine dumping based on
+// impatientDebugDumperDumpMinInterval (at most 1 per minute).
 type ImpatientDebugDumper struct {
 	config Config
-	logger logger.Logger
+	log    logger.Logger
 	dumpIn time.Duration
 
-	ticker  *time.Ticker
-	limiter *rate.Limiter
+	ticker   *time.Ticker
+	limiter  *rate.Limiter
+	shutdown chan struct{}
 
-	lock          sync.Mutex
-	chronological *ctxTimeTrackerList
+	lock                         sync.Mutex
+	chronologicalTimeTrackerList *ctxTimeTrackerList
 }
 
 const impatientDebugDumperCheckInterval = time.Second
-const impatientDebugDumperDumpMinInterval = time.Second // 1 dump per sec max
+const impatientDebugDumperDumpMinInterval = time.Minute // 1 dump per min max
 
+// NewImpatientDebugDumper creates a new *ImpatientDebugDumper, which logs with
+// a logger made by config.MakeLogger("IGD"), and dumps goroutines if an
+// operation takes longer than dumpIn.
 func NewImpatientDebugDumper(config Config, dumpIn time.Duration) *ImpatientDebugDumper {
 	d := &ImpatientDebugDumper{
 		config: config,
-		logger: config.MakeLogger("IGD"),
+		log:    config.MakeLogger("IGD"),
 		dumpIn: dumpIn,
 		ticker: time.NewTicker(impatientDebugDumperCheckInterval),
 		limiter: rate.NewLimiter(
 			rate.Every(impatientDebugDumperDumpMinInterval), 1),
-		chronological: &ctxTimeTrackerList{},
+		chronologicalTimeTrackerList: &ctxTimeTrackerList{},
 	}
 	go d.dumpLoop()
 	return d
@@ -112,28 +134,42 @@ func (d *ImpatientDebugDumper) dump(tracker *ctxTimeTracker) {
 	}
 	gzipper.Close()
 	base64er.Close()
-	d.logger.CDebugf(tracker.ctx,
-		"operation expired. dump>gzip>base64: %q", buf.String())
+	d.log.CDebugf(tracker.ctx,
+		"Operation exceeded max wait time. dump>gzip>base64: %q "+
+			"Pipe the quoted content into ` | base64 -d | gzip -d ` "+
+			"to read as a Homosapien.", buf.String())
 }
 
 func (d *ImpatientDebugDumper) dumpTick() {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 	for {
-		t := d.chronological.peekFront()
+		// In each iteration we deal with the front of list:
+		//  1) If list is empty, we just return and wait for the next tick;
+		//  2) If front is done, pop front from the list, and continue into
+		//     next iteration to check next one;
+		//  3) If front is not done but expired, dump routines (if rate limiter
+		//     permits), pop front from the list, and continue into next
+		//     iteration to check next one;
+		//  4) If front is not done yet nor expired, just return and wait for
+		//     next tick when we check again.
+		//
+		// Since we either move on or return, there's no risk of infinite
+		// looping here.
+		t := d.chronologicalTimeTrackerList.peekFront()
 		if t == nil {
 			return
 		}
-		if atomic.LoadInt32(&t.done) == 1 {
+		if t.isDone() {
 			// This operation is done, so just move on.
-			d.chronological.popFront()
+			d.chronologicalTimeTrackerList.popFront()
 			continue
 		}
-		if d.config.Clock().Now().After(t.expiresAt) {
+		if t.isExpired(d.config.Clock()) {
 			// This operation isn't done, and it has expired. So dump debug
 			// information and move on.
 			d.dump(t)
-			d.chronological.popFront()
+			d.chronologicalTimeTrackerList.popFront()
 			continue
 		}
 		// This operation isn't done yet, but it also hasn't expired. So
@@ -143,11 +179,21 @@ func (d *ImpatientDebugDumper) dumpTick() {
 }
 
 func (d *ImpatientDebugDumper) dumpLoop() {
-	for range d.ticker.C {
-		d.dumpTick()
+	for {
+		select {
+		case <-d.ticker.C:
+			d.dumpTick()
+		case <-d.shutdown:
+			d.ticker.Stop()
+			d.log.Debug("shutdown")
+			return
+		}
 	}
 }
 
+// Begin causes d to start tracking time for ctx. The returned function should
+// be called once the associated operation is done, likely in a defer
+// statement.
 func (d *ImpatientDebugDumper) Begin(ctx context.Context) (done func()) {
 	tracker := &ctxTimeTracker{
 		ctx:       ctx,
@@ -155,8 +201,11 @@ func (d *ImpatientDebugDumper) Begin(ctx context.Context) (done func()) {
 	}
 	d.lock.Lock()
 	defer d.lock.Unlock()
-	d.chronological.append(tracker)
-	return func() {
-		atomic.StoreInt32(&tracker.done, 1)
-	}
+	d.chronologicalTimeTrackerList.append(tracker)
+	return tracker.markDone
+}
+
+// Shutdown shuts down d.
+func (d *ImpatientDebugDumper) Shutdown() {
+	close(d.shutdown)
 }

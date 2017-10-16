@@ -111,6 +111,7 @@ func (fs *KBFSOpsStandard) markForReIdentifyIfNeeded(
 // Shutdown safely shuts down any background goroutines that may have
 // been launched by KBFSOpsStandard.
 func (fs *KBFSOpsStandard) Shutdown(ctx context.Context) error {
+	defer fs.longOperationDebugDumper.Shutdown() // shut it down last
 	timeTrackerDone := fs.longOperationDebugDumper.Begin(ctx)
 	defer timeTrackerDone()
 
