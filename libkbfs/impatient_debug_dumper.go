@@ -89,9 +89,9 @@ type ImpatientDebugDumper struct {
 	log    logger.Logger
 	dumpIn time.Duration
 
-	ticker   *time.Ticker
-	limiter  *rate.Limiter
-	shutdown chan struct{}
+	ticker                 *time.Ticker
+	limiter                *rate.Limiter
+	idempotentShutdownFunc func()
 
 	lock                         sync.Mutex
 	chronologicalTimeTrackerList *ctxTimeTrackerList
@@ -104,6 +104,7 @@ const impatientDebugDumperDumpMinInterval = time.Minute // 1 dump per min max
 // a logger made by config.MakeLogger("IGD"), and dumps goroutines if an
 // operation takes longer than dumpIn.
 func NewImpatientDebugDumper(config Config, dumpIn time.Duration) *ImpatientDebugDumper {
+	ctx, cancel := context.WithCancel(context.Background())
 	d := &ImpatientDebugDumper{
 		config: config,
 		log:    config.MakeLogger("IGD"),
@@ -111,10 +112,10 @@ func NewImpatientDebugDumper(config Config, dumpIn time.Duration) *ImpatientDebu
 		ticker: time.NewTicker(impatientDebugDumperCheckInterval),
 		limiter: rate.NewLimiter(
 			rate.Every(impatientDebugDumperDumpMinInterval), 1),
-		shutdown:                     make(chan struct{}),
+		idempotentShutdown:           cancel,
 		chronologicalTimeTrackerList: &ctxTimeTrackerList{},
 	}
-	go d.dumpLoop()
+	go d.dumpLoop(ctx.Done())
 	return d
 }
 
@@ -179,12 +180,12 @@ func (d *ImpatientDebugDumper) dumpTick() {
 	}
 }
 
-func (d *ImpatientDebugDumper) dumpLoop() {
+func (d *ImpatientDebugDumper) dumpLoop(shutdownCh <-chan struct{}) {
 	for {
 		select {
 		case <-d.ticker.C:
 			d.dumpTick()
-		case <-d.shutdown:
+		case <-shutdownCh:
 			d.ticker.Stop()
 			d.log.Debug("shutdown")
 			return
@@ -206,7 +207,7 @@ func (d *ImpatientDebugDumper) Begin(ctx context.Context) (done func()) {
 	return tracker.markDone
 }
 
-// Shutdown shuts down d.
-func (d *ImpatientDebugDumper) Shutdown() {
-	close(d.shutdown)
+// IShutdown shuts down d idempotently.
+func (d *ImpatientDebugDumper) IShutdown() {
+	d.idempotentShutdownFunc()
 }
