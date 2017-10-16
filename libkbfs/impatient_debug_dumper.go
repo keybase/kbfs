@@ -89,9 +89,9 @@ type ImpatientDebugDumper struct {
 	log    logger.Logger
 	dumpIn time.Duration
 
-	ticker                 *time.Ticker
-	limiter                *rate.Limiter
-	idempotentShutdownFunc func()
+	ticker       *time.Ticker
+	limiter      *rate.Limiter
+	shutdownFunc func()
 
 	lock                         sync.Mutex
 	chronologicalTimeTrackerList *ctxTimeTrackerList
@@ -112,7 +112,7 @@ func NewImpatientDebugDumper(config Config, dumpIn time.Duration) *ImpatientDebu
 		ticker: time.NewTicker(impatientDebugDumperCheckInterval),
 		limiter: rate.NewLimiter(
 			rate.Every(impatientDebugDumperDumpMinInterval), 1),
-		idempotentShutdownFunc:       cancel,
+		shutdownFunc:                 cancel,
 		chronologicalTimeTrackerList: &ctxTimeTrackerList{},
 	}
 	go d.dumpLoop(ctx.Done())
@@ -209,5 +209,5 @@ func (d *ImpatientDebugDumper) Begin(ctx context.Context) (done func()) {
 
 // IShutdown shuts down d idempotently.
 func (d *ImpatientDebugDumper) IShutdown() {
-	d.idempotentShutdownFunc()
+	d.shutdownFunc()
 }
