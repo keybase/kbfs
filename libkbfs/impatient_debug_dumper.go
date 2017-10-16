@@ -112,7 +112,7 @@ func NewImpatientDebugDumper(config Config, dumpIn time.Duration) *ImpatientDebu
 		ticker: time.NewTicker(impatientDebugDumperCheckInterval),
 		limiter: rate.NewLimiter(
 			rate.Every(impatientDebugDumperDumpMinInterval), 1),
-		idempotentShutdown:           cancel,
+		idempotentShutdownFunc:       cancel,
 		chronologicalTimeTrackerList: &ctxTimeTrackerList{},
 	}
 	go d.dumpLoop(ctx.Done())
