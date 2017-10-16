@@ -207,7 +207,7 @@ func (d *ImpatientDebugDumper) Begin(ctx context.Context) (done func()) {
 	return tracker.markDone
 }
 
-// IShutdown shuts down d idempotently.
+// Shutdown shuts down d idempotently.
 func (d *ImpatientDebugDumper) Shutdown() {
 	d.shutdownFunc()
 }
