@@ -14,6 +14,7 @@ import (
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/go-framed-msgpack-rpc/rpc"
 	"github.com/keybase/kbfs/env"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfsmd"
@@ -59,7 +60,7 @@ func newConfigForTest(mode InitMode,
 // arguments and environment variables.
 func MakeTestBlockServerOrBust(t logger.TestLogBackend,
 	config blockServerRemoteConfig,
-	rpcLogFactory *libkb.RPCLogFactory) BlockServer {
+	rpcLogFactory rpc.LogFactory) BlockServer {
 	// see if a local remote server is specified
 	bserverAddr := os.Getenv(EnvTestBServerAddr)
 	switch {

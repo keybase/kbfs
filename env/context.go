@@ -27,7 +27,7 @@ type Context interface {
 	ConfigureSocketInfo() (err error)
 	GetGlobalContext() *libkb.GlobalContext
 	GetSocket(clearError bool) (net.Conn, rpc.Transporter, bool, error)
-	NewRPCLogFactory() *libkb.RPCLogFactory
+	NewRPCLogFactory() rpc.LogFactory
 	GetKBFSSocket(clearError bool) (net.Conn, rpc.Transporter, bool, error)
 	BindToKBFSSocket() (net.Listener, error)
 }
@@ -111,7 +111,7 @@ func (c *KBFSContext) ConfigureSocketInfo() error {
 }
 
 // NewRPCLogFactory constructs an RPC logger
-func (c *KBFSContext) NewRPCLogFactory() *libkb.RPCLogFactory {
+func (c *KBFSContext) NewRPCLogFactory() rpc.LogFactory {
 	return &libkb.RPCLogFactory{Contextified: libkb.NewContextified(c.g)}
 }
 
