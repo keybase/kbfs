@@ -6405,7 +6405,7 @@ func (fbo *folderBranchOps) ForceFastForward(ctx context.Context) {
 
 // KickoffAllOutstandingRekeys (does not) implement the KBFSOps interface for
 // KBFSOpsStandard.
-func (fs *folderBranchOps) KickoffAllOutstandingRekeys() error {
+func (fbo *folderBranchOps) KickoffAllOutstandingRekeys() error {
 	return errors.New(
 		"KickoffAllOutstandingRekeys is not supported on *folderBranchOps")
 }
