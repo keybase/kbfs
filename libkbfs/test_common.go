@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"sync"
@@ -15,7 +16,6 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc/rpc"
-	"github.com/keybase/kbfs/env"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/tlf"
@@ -80,6 +80,32 @@ func MakeTestBlockServerOrBust(t logger.TestLogBackend,
 	}
 }
 
+// TODO: Put the below code (also duplicated in kbfs-server) somewhere
+// in rpc and use that instead.
+
+type testLogger interface {
+	Logf(format string, args ...interface{})
+}
+
+type testLogOutput struct {
+	t testLogger
+}
+
+func (t testLogOutput) log(ch string, fmts string, args []interface{}) {
+	fmts = fmt.Sprintf("[%s] %s", ch, fmts)
+	t.t.Logf(fmts, args...)
+}
+
+func (t testLogOutput) Info(fmt string, args ...interface{})    { t.log("I", fmt, args) }
+func (t testLogOutput) Error(fmt string, args ...interface{})   { t.log("E", fmt, args) }
+func (t testLogOutput) Debug(fmt string, args ...interface{})   { t.log("D", fmt, args) }
+func (t testLogOutput) Warning(fmt string, args ...interface{}) { t.log("W", fmt, args) }
+func (t testLogOutput) Profile(fmt string, args ...interface{}) { t.log("P", fmt, args) }
+
+func newTestRPCLogFactory(t testLogger) rpc.LogFactory {
+	return rpc.NewSimpleLogFactory(testLogOutput{t}, nil)
+}
+
 // MakeTestConfigOrBustLoggedInWithMode creates and returns a config
 // suitable for unit-testing with the given mode and list of
 // users. loggedInIndex specifies the index (in the list) of the user
@@ -115,7 +141,7 @@ func MakeTestConfigOrBustLoggedInWithMode(
 	config.SetCrypto(crypto)
 
 	blockServer := MakeTestBlockServerOrBust(
-		t, config, env.NewContext().NewRPCLogFactory())
+		t, config, newTestRPCLogFactory(t))
 	config.SetBlockServer(blockServer)
 
 	// see if a local remote server is specified
@@ -138,7 +164,7 @@ func MakeTestConfigOrBustLoggedInWithMode(
 
 	case len(mdServerAddr) != 0:
 		// connect to server
-		mdServer = NewMDServerRemote(config, mdServerAddr, env.NewContext().NewRPCLogFactory())
+		mdServer = NewMDServerRemote(config, mdServerAddr, newTestRPCLogFactory(t))
 		// for now the MD server acts as the key server in production
 		keyServer = mdServer.(*MDServerRemote)
 
@@ -228,7 +254,7 @@ func configAsUserWithMode(config *ConfigLocal,
 
 	if s, ok := config.BlockServer().(*BlockServerRemote); ok {
 		blockServer := NewBlockServerRemote(c, s.RemoteAddress(),
-			env.NewContext().NewRPCLogFactory())
+			newTestRPCLogFactory(t))
 		c.SetBlockServer(blockServer)
 	} else {
 		c.SetBlockServer(config.BlockServer())
@@ -244,7 +270,7 @@ func configAsUserWithMode(config *ConfigLocal,
 	var keyServer KeyServer
 	if s, ok := config.MDServer().(*MDServerRemote); ok {
 		// connect to server
-		mdServer = NewMDServerRemote(c, s.RemoteAddress(), env.NewContext().NewRPCLogFactory())
+		mdServer = NewMDServerRemote(c, s.RemoteAddress(), newTestRPCLogFactory(t))
 		// for now the MD server also acts as the key server.
 		keyServer = mdServer.(*MDServerRemote)
 	} else {
