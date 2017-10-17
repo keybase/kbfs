@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"golang.org/x/net/context"
 )
@@ -33,6 +34,21 @@ var adminFeatureList = map[keybase1.UID]bool{
 	"ee71dbc8e4e3e671e29a94caef5e1b19": true, // Michał Zochniak, "zapu"
 	"0cfef3bacae68424de9bec5b7ff58600": true, // Andrey Petrov, "shazow"
 	"b848bce3d54a76e4da323aad2957e819": true, // Surya, "modalduality"
+}
+
+// EnableAdminFeature returns true if admin features should be enabled
+// for the currently-logged-in user.
+func EnableAdminFeature(ctx context.Context, runMode libkb.RunMode, config Config) bool {
+	if runMode == libkb.DevelRunMode {
+		// All users in devel mode are admins.
+		return true
+	}
+	const sessionID = 0
+	session, err := config.KeybaseService().CurrentSession(ctx, sessionID)
+	if err != nil {
+		return false
+	}
+	return adminFeatureList[session.UID]
 }
 
 // serviceLoggedIn should be called when a new user logs in. It
