@@ -367,6 +367,9 @@ func (k *KeybaseServiceBase) PaperKeyCached(ctx context.Context,
 	if k.getCachedCurrentSession().UID == arg.Uid {
 		err := k.config.KBFSOps().KickoffAllOutstandingRekeys()
 		if err != nil {
+			// Ignore and log errors here. For now the only way it could error
+			// is when the method is called on a folderBranchOps which is a
+			// developer mistake and not recoverable from code.
 			k.log.CDebugf(ctx,
 				"Calling KickoffAllOutstandingRekeys error: %s", err)
 		}
