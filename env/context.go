@@ -67,16 +67,18 @@ func getLibkbG() *libkb.GlobalContext {
 	return libkbG
 }
 
-// NewContextFromGlobalContext constructs a context
-func NewContextFromGlobalContext(g *libkb.GlobalContext) *KBFSContext {
+// NewContext constructs a context. This should only be called once in
+// main functions.
+func NewContext() *KBFSContext {
+	g := libkb.NewGlobalContextInit()
+	g.ConfigureConfig()
+	g.ConfigureLogging()
+	g.ConfigureCaches()
+	g.ConfigureMerkleClient()
+
 	c := &KBFSContext{g: g}
 	c.initKBFSSocket()
 	return c
-}
-
-// NewContext constructs a context
-func NewContext() *KBFSContext {
-	return NewContextFromGlobalContext(getLibkbG())
 }
 
 // GetLogDir returns log dir
