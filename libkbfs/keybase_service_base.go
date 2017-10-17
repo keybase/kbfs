@@ -365,6 +365,11 @@ func (k *KeybaseServiceBase) PaperKeyCached(ctx context.Context,
 	k.log.CDebugf(ctx, "Paper key for %s cached", arg.Uid)
 
 	if k.getCachedCurrentSession().UID == arg.Uid {
+		err := k.config.KBFSOps().KickoffAllOutstandingRekeys()
+		if err != nil {
+			k.log.CDebugf(ctx,
+				"Calling KickoffAllOutstandingRekeys error: %s", err)
+		}
 		// Ignore any errors for now, we don't want to block this
 		// notification and it's not worth spawning a goroutine for.
 		k.config.MDServer().CheckForRekeys(context.Background())
