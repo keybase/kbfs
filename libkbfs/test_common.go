@@ -254,7 +254,7 @@ func configAsUserWithMode(config *ConfigLocal,
 
 	if s, ok := config.BlockServer().(*BlockServerRemote); ok {
 		blockServer := NewBlockServerRemote(c, s.RemoteAddress(),
-			newTestRPCLogFactory(t))
+			s.putConn.rpcLogFactory)
 		c.SetBlockServer(blockServer)
 	} else {
 		c.SetBlockServer(config.BlockServer())
@@ -270,7 +270,7 @@ func configAsUserWithMode(config *ConfigLocal,
 	var keyServer KeyServer
 	if s, ok := config.MDServer().(*MDServerRemote); ok {
 		// connect to server
-		mdServer = NewMDServerRemote(c, s.RemoteAddress(), newTestRPCLogFactory(t))
+		mdServer = NewMDServerRemote(c, s.RemoteAddress(), s.rpcLogFactory)
 		// for now the MD server also acts as the key server.
 		keyServer = mdServer.(*MDServerRemote)
 	} else {
