@@ -52,21 +52,6 @@ func (c *KBFSContext) initKBFSSocket() {
 	c.kbfsSocket = libkb.NewSocketWithFiles(log, bindFile, dialFiles)
 }
 
-var libkbG *libkb.GlobalContext
-var libkbGOnce sync.Once
-
-func getLibkbG() *libkb.GlobalContext {
-	libkbGOnce.Do(func() {
-		g := libkb.NewGlobalContextInit()
-		g.ConfigureConfig()
-		g.ConfigureLogging()
-		g.ConfigureCaches()
-		g.ConfigureMerkleClient()
-		libkbG = g
-	})
-	return libkbG
-}
-
 // NewContextFromGlobalContext constructs a context
 func NewContextFromGlobalContext(g *libkb.GlobalContext) *KBFSContext {
 	c := &KBFSContext{g: g}
