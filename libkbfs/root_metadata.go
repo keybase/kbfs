@@ -1082,12 +1082,6 @@ func (rmds *RootMetadataSigned) GetWriterMetadataSigInfo() kbfscrypto.SignatureI
 	return rmds.WriterSigInfo
 }
 
-// MerkleHash computes a hash of this RootMetadataSigned object for inclusion
-// into the KBFS Merkle tree.
-func (rmds *RootMetadataSigned) MerkleHash(crypto cryptoPure) (MerkleHash, error) {
-	return crypto.MakeMerkleHash(rmds)
-}
-
 // Version returns the metadata version of this MD block, depending on
 // which features it uses.
 func (rmds *RootMetadataSigned) Version() MetadataVer {
