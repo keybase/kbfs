@@ -262,11 +262,11 @@ type tlfJournal struct {
 
 	// Serializes all flushes, and protects `lastServerMDCheck` and
 	// `singleOpMode`.
-	flushLock           sync.Mutex
-	lastServerMDCheck   time.Time
-	singleOpMode        singleOpMode
-	finishSingleOpCh    chan flushContext
-	singleOpLockContext *keybase1.LockContext
+	flushLock            sync.Mutex
+	lastServerMDCheck    time.Time
+	singleOpMode         singleOpMode
+	finishSingleOpCh     chan flushContext
+	singleOpFlushContext flushContext
 
 	// Tracks background work.
 	wg kbfssync.RepeatedWaitGroup
@@ -431,6 +431,7 @@ func makeTLFJournal(
 		needBranchCheckCh:    make(chan struct{}, 1),
 		backgroundShutdownCh: make(chan struct{}),
 		finishSingleOpCh:     make(chan flushContext, 1),
+		singleOpFlushContext: defaultFlushContext(),
 		blockJournal:         blockJournal,
 		mdJournal:            mdJournal,
 		flushingBlocks:       make(map[kbfsblock.ID]bool),
@@ -839,9 +840,8 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 			return nil
 		}
 
-		flushCtx := defaultFlushContext()
 		select {
-		case flushCtx = <-j.finishSingleOpCh:
+		case j.singleOpFlushContext = <-j.finishSingleOpCh:
 			err := j.checkAndFinishSingleOpFlushLocked(ctx)
 			if err != nil {
 				return err
@@ -869,6 +869,7 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 			if j.singleOpMode == singleOpFinished {
 				j.log.CDebugf(ctx, "Resetting single op mode")
 				j.singleOpMode = singleOpRunning
+				j.singleOpFlushContext = defaultFlushContext()
 			}
 			break
 		}
@@ -907,7 +908,8 @@ func (j *tlfJournal) flush(ctx context.Context) (err error) {
 
 		flushedOneMD := false
 		for {
-			flushed, err := j.flushOneMDOp(ctx, maxMDRevToFlush, flushCtx)
+			flushed, err := j.flushOneMDOp(ctx,
+				maxMDRevToFlush, j.singleOpFlushContext)
 			if err != nil {
 				return err
 			}
