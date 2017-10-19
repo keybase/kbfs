@@ -269,20 +269,12 @@ func EncodeRootMetadataSigned(
 func DecodeRootMetadataSigned(
 	codec kbfscodec.Codec, tlf tlf.ID, ver, max MetadataVer, buf []byte) (
 	*RootMetadataSigned, error) {
-	if ver < FirstValidMetadataVer {
-		return nil, InvalidMetadataVersionError{TlfID: tlf, MetadataVer: ver}
-	} else if ver > max {
-		return nil, NewMetadataVersionError{tlf, ver}
+	rmd, err := makeMutableRootMetadataForDecode(codec, tlf, ver, max, buf)
+	if err != nil {
+		return nil, err
 	}
-	if ver > SegregatedKeyBundlesVer {
-		// Shouldn't be possible at the moment.
-		panic("Invalid metadata version")
-	}
-	var rmds RootMetadataSigned
-	if ver < SegregatedKeyBundlesVer {
-		rmds.MD = &RootMetadataV2{}
-	} else {
-		rmds.MD = &RootMetadataV3{}
+	rmds := RootMetadataSigned{
+		MD: rmd,
 	}
 	if err := codec.Decode(buf, &rmds); err != nil {
 		return nil, err

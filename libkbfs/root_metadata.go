@@ -1026,34 +1026,6 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(
 	return makeRootMetadataSigned(rmdsCopy, now), nil
 }
 
-// DecodeRootMetadata deserializes a metadata block into the specified
-// versioned structure.
-func DecodeRootMetadata(codec kbfscodec.Codec, tlf tlf.ID,
-	ver, max MetadataVer, buf []byte) (
-	MutableBareRootMetadata, error) {
-	if ver < FirstValidMetadataVer {
-		return nil, kbfsmd.InvalidMetadataVersionError{TlfID: tlf, MetadataVer: ver}
-	} else if ver > max {
-		return nil, kbfsmd.NewMetadataVersionError{tlf, ver}
-	}
-	if ver > SegregatedKeyBundlesVer {
-		// Shouldn't be possible at the moment.
-		panic("Invalid metadata version")
-	}
-	if ver < SegregatedKeyBundlesVer {
-		var brmd kbfsmd.RootMetadataV2
-		if err := codec.Decode(buf, &brmd); err != nil {
-			return nil, err
-		}
-		return &brmd, nil
-	}
-	var brmd kbfsmd.RootMetadataV3
-	if err := codec.Decode(buf, &brmd); err != nil {
-		return nil, err
-	}
-	return &brmd, nil
-}
-
 // DecodeRootMetadataSigned deserializes a metadata block into the
 // specified versioned structure.
 func DecodeRootMetadataSigned(
