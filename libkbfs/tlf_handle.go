@@ -407,29 +407,6 @@ func getSortedUnresolved(unresolved map[keybase1.SocialAssertion]bool) []keybase
 	return assertions
 }
 
-// splitTLFName splits a TLF name into components.
-func splitTLFName(name string) (writerNames, readerNames []string,
-	extensionSuffix string, err error) {
-	names := strings.SplitN(name, tlf.HandleExtensionSep, 2)
-	if len(names) > 2 {
-		return nil, nil, "", BadTLFNameError{name}
-	}
-	if len(names) > 1 {
-		extensionSuffix = names[1]
-	}
-
-	splitNames := strings.SplitN(names[0], ReaderSep, 3)
-	if len(splitNames) > 2 {
-		return nil, nil, "", BadTLFNameError{name}
-	}
-	writerNames = strings.Split(splitNames[0], ",")
-	if len(splitNames) > 1 {
-		readerNames = strings.Split(splitNames[1], ",")
-	}
-
-	return writerNames, readerNames, extensionSuffix, nil
-}
-
 // splitAndNormalizeTLFName takes a tlf name as a string
 // and tries to normalize it offline. In addition to other
 // checks it returns TlfNameNotCanonical if it does not
@@ -439,7 +416,7 @@ func splitTLFName(name string) (writerNames, readerNames []string,
 func splitAndNormalizeTLFName(name string, t tlf.Type) (
 	writerNames, readerNames []string,
 	extensionSuffix string, err error) {
-	writerNames, readerNames, extensionSuffix, err = splitTLFName(name)
+	writerNames, readerNames, extensionSuffix, err = tlf.SplitName(name)
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -546,7 +523,7 @@ func normalizeNamesInTLF(writerNames, readerNames []string,
 		}
 		changesMade = changesMade || rchanges
 		sort.Strings(readerNames)
-		normalizedName += ReaderSep + strings.Join(readerNames, ",")
+		normalizedName += tlf.ReaderSep + strings.Join(readerNames, ",")
 	}
 	if len(extensionSuffix) != 0 {
 		// This *should* be normalized already but make sure.  I can see not
@@ -606,7 +583,7 @@ func FavoriteNameToPreferredTLFNameFormatAs(username libkb.NormalizedUsername,
 	if len(username) == 0 {
 		return PreferredTlfName(tlfname), nil
 	}
-	ws, rs, ext, err := splitTLFName(tlfname)
+	ws, rs, ext, err := tlf.SplitName(tlfname)
 	if err != nil {
 		return "", err
 	}
@@ -621,7 +598,7 @@ func FavoriteNameToPreferredTLFNameFormatAs(username libkb.NormalizedUsername,
 				ws[0] = w
 				tlfname = strings.Join(ws, ",")
 				if len(rs) > 0 {
-					tlfname += ReaderSep + strings.Join(rs, ",")
+					tlfname += tlf.ReaderSep + strings.Join(rs, ",")
 				}
 				if len(ext) > 0 {
 					tlfname += tlf.HandleExtensionSep + ext
