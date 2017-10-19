@@ -5,7 +5,10 @@
 package tlf
 
 import (
+	"fmt"
 	"strings"
+
+	"github.com/keybase/client/go/libkb"
 )
 
 const (
@@ -35,4 +38,46 @@ func SplitName(name string) (writerNames, readerNames []string,
 	}
 
 	return writerNames, readerNames, extensionSuffix, nil
+}
+
+// CanonicalName is a string containing the canonical name of a TLF.
+type CanonicalName string
+
+// PreferredName is a preferred TLF name.
+type PreferredName string
+
+// FavoriteNameToPreferredTLFNameFormatAs formats a favorite names for display with the
+// username given.
+// An empty username is allowed here and results in tlfname being returned unmodified.
+func FavoriteNameToPreferredTLFNameFormatAs(username libkb.NormalizedUsername,
+	canon CanonicalName) (PreferredName, error) {
+	tlfname := string(canon)
+	if len(username) == 0 {
+		return PreferredName(tlfname), nil
+	}
+	ws, rs, ext, err := SplitName(tlfname)
+	if err != nil {
+		return "", err
+	}
+	if len(ws) == 0 {
+		return "", fmt.Errorf("TLF name %q with no writers", tlfname)
+	}
+	uname := username.String()
+	for i, w := range ws {
+		if w == uname {
+			if i != 0 {
+				copy(ws[1:i+1], ws[0:i])
+				ws[0] = w
+				tlfname = strings.Join(ws, ",")
+				if len(rs) > 0 {
+					tlfname += ReaderSep + strings.Join(rs, ",")
+				}
+				if len(ext) > 0 {
+					tlfname += HandleExtensionSep + ext
+				}
+			}
+			break
+		}
+	}
+	return PreferredName(tlfname), nil
 }

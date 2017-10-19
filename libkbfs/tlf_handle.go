@@ -21,8 +21,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-// CanonicalTlfName is a string containing the canonical name of a TLF.
-type CanonicalTlfName string
+// CanonicalTlfName is a temporary alias.
+type CanonicalTlfName = tlf.CanonicalName
 
 // TlfHandle contains all the info in a tlf.Handle as well as
 // additional info. This doesn't embed tlf.Handle to avoid having to
@@ -556,56 +556,20 @@ func (h TlfHandle) IsConflict() bool {
 	return h.conflictInfo != nil
 }
 
-// PreferredTlfName is a preferred Tlf name.
-type PreferredTlfName string
+// PreferredTlfName is a temporary alias.
+type PreferredTlfName = tlf.PreferredName
 
 // GetPreferredFormat returns a TLF name formatted with the username given
 // as the parameter first.
-// This calls FavoriteNameToPreferredTLFNameFormatAs with the canonical
+// This calls tlf.FavoriteNameToPreferredTLFNameFormatAs with the canonical
 // tlf name which will be reordered into the preferred format.
 // An empty username is allowed here and results in the canonical ordering.
 func (h TlfHandle) GetPreferredFormat(
 	username libkb.NormalizedUsername) PreferredTlfName {
-	s, err := FavoriteNameToPreferredTLFNameFormatAs(
+	s, err := tlf.FavoriteNameToPreferredTLFNameFormatAs(
 		username, h.GetCanonicalName())
 	if err != nil {
 		panic("TlfHandle.GetPreferredFormat: Parsing canonical username failed!")
 	}
 	return s
-}
-
-// FavoriteNameToPreferredTLFNameFormatAs formats a favorite names for display with the
-// username given.
-// An empty username is allowed here and results in tlfname being returned unmodified.
-func FavoriteNameToPreferredTLFNameFormatAs(username libkb.NormalizedUsername,
-	canon CanonicalTlfName) (PreferredTlfName, error) {
-	tlfname := string(canon)
-	if len(username) == 0 {
-		return PreferredTlfName(tlfname), nil
-	}
-	ws, rs, ext, err := tlf.SplitName(tlfname)
-	if err != nil {
-		return "", err
-	}
-	if len(ws) == 0 {
-		return "", fmt.Errorf("TLF name %q with no writers", tlfname)
-	}
-	uname := username.String()
-	for i, w := range ws {
-		if w == uname {
-			if i != 0 {
-				copy(ws[1:i+1], ws[0:i])
-				ws[0] = w
-				tlfname = strings.Join(ws, ",")
-				if len(rs) > 0 {
-					tlfname += tlf.ReaderSep + strings.Join(rs, ",")
-				}
-				if len(ext) > 0 {
-					tlfname += tlf.HandleExtensionSep + ext
-				}
-			}
-			break
-		}
-	}
-	return PreferredTlfName(tlfname), nil
 }
