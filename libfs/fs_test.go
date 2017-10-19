@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/libkbfs"
@@ -623,7 +624,8 @@ func TestFileLocking(t *testing.T) {
 	require.NotEqual(t, kbfsmd.RevisionUninitialized, status.RevisionStart)
 
 	// Now manually flush again so the journal is clean.
-	err = jServer.FinishSingleOp(fs.ctx, fs.root.GetFolderBranch().Tlf, nil)
+	err = jServer.FinishSingleOp(fs.ctx,
+		fs.root.GetFolderBranch().Tlf, nil, keybase1.MDPriorityNormal)
 	require.NoError(t, err)
 }
 
