@@ -304,6 +304,10 @@ func (dw *deltaSelector) walk(
 			if err := dw.tryToDeltify(indexMap, base, target); err != nil {
 				return err
 			}
+
+			if target.IsDelta() {
+				break
+			}
 		}
 		sendUpdate()
 	}
@@ -357,6 +361,8 @@ func (dw *deltaSelector) tryToDeltify(indexMap map[plumbing.Hash]*deltaIndex, ba
 	// if delta better than target
 	if delta.Size() < msz {
 		target.SetDelta(base, delta)
+	} else if deltaMO, ok := delta.(*plumbing.MemoryObject); ok {
+		memObjPool.Put(deltaMO)
 	}
 
 	return nil

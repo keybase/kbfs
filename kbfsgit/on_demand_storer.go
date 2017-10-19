@@ -23,7 +23,7 @@ var _ storage.Storer = (*onDemandStorer)(nil)
 func newOnDemandStorer(s storage.Storer) (*onDemandStorer, error) {
 	// Track a small number of recent in-memory objects, to improve
 	// performance without impacting memory too much.
-	recentCache, err := lru.New(10)
+	recentCache, err := lru.New(25)
 	if err != nil {
 		return nil, err
 	}

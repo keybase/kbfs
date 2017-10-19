@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"runtime/pprof"
 	"strconv"
 	"strings"
@@ -216,6 +217,13 @@ func (r *runner) getElapsedStr(
 			runtime.GC()
 			pprof.WriteHeapProfile(f)
 			f.Close()
+
+			var mem runtime.MemStats
+			runtime.ReadMemStats(&mem)
+			statsName := profName + ".memstats"
+			s, _ := os.Create(statsName)
+			fmt.Fprintf(s, "%+v\n", mem)
+			s.Close()
 		}
 		elapsedStr += " [memprof " + profName + "]"
 	}
@@ -293,6 +301,7 @@ func (r *runner) initRepoIfNeeded(ctx context.Context, forCmd string) (
 		}
 	}
 
+	/**
 	config, err := storage.Config()
 	if err != nil {
 		return nil, nil, err
@@ -315,6 +324,7 @@ func (r *runner) initRepoIfNeeded(ctx context.Context, forCmd string) (
 			return nil, nil, err
 		}
 	}
+	*/
 
 	// TODO: This needs to take a server lock when initializing a
 	// repo.
@@ -649,6 +659,10 @@ var gogitStagesToStatus = map[plumbing.StatusStage]string{
 }
 
 func humanizeObjects(n int, d int) string {
+	if n%1000 == 0 {
+		debug.FreeOSMemory()
+	}
+
 	const k = 1000
 	const m = k * 1000
 	// Special case the counting of objects, when there's no denominator.

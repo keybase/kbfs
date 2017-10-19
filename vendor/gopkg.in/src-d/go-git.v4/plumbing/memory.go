@@ -14,6 +14,16 @@ type MemoryObject struct {
 	sz   int64
 }
 
+func (o *MemoryObject) Reset() {
+	if o.cont == nil {
+		return
+	}
+	o.t = 0
+	o.h = Hash{}
+	o.cont = o.cont[:0]
+	o.sz = 0
+}
+
 // Hash return the object Hash, the hash is calculated on-the-fly the first
 // time is called, the subsequent calls the same Hash is returned even if the
 // type or the content has changed. The Hash is only generated if the size of

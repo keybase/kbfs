@@ -64,3 +64,9 @@ var bufPool = sync.Pool{
 		return bytes.NewBuffer(nil)
 	},
 }
+
+var memObjPool = sync.Pool{
+	New: func() interface{} {
+		return &plumbing.MemoryObject{}
+	},
+}
