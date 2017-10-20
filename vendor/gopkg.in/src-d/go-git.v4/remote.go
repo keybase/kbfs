@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -160,6 +161,7 @@ func (r *Remote) PushContext(ctx context.Context, o *PushOptions) error {
 
 	rs, err := pushHashes(ctx, s, r.s, req, hashesToPush, o.StatusChan)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error in pushHashes: %+v\n", err)
 		return err
 	}
 

@@ -2,6 +2,8 @@ package packfile
 
 import (
 	"bytes"
+	"fmt"
+	"os"
 
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/cache"
@@ -292,6 +294,7 @@ func (d *Decoder) decodeIfSpecificType(h *ObjectHeader) (plumbing.EncodedObject,
 func (d *Decoder) ofsDeltaType(offset int64) (plumbing.ObjectType, error) {
 	t, ok := d.offsetToType[offset]
 	if !ok {
+		fmt.Fprintf(os.Stderr, "OBJ NOT FOUND 1\n")
 		return plumbing.InvalidObject, plumbing.ErrObjectNotFound
 	}
 
@@ -301,6 +304,7 @@ func (d *Decoder) ofsDeltaType(offset int64) (plumbing.ObjectType, error) {
 func (d *Decoder) refDeltaType(ref plumbing.Hash) (plumbing.ObjectType, error) {
 	e, ok := d.idx.LookupHash(ref)
 	if !ok {
+		fmt.Fprintf(os.Stderr, "OBJ NOT FOUND 2\n")
 		return plumbing.InvalidObject, plumbing.ErrObjectNotFound
 	}
 
@@ -454,6 +458,7 @@ func (d *Decoder) recallByOffset(o int64) (plumbing.EncodedObject, error) {
 		return d.recallByHashNonSeekable(e.Hash)
 	}
 
+	fmt.Fprintf(os.Stderr, "OBJ NOT FOUND 3\n")
 	return nil, plumbing.ErrObjectNotFound
 }
 
@@ -480,6 +485,7 @@ func (d *Decoder) recallByHashNonSeekable(h plumbing.Hash) (obj plumbing.Encoded
 		return obj, err
 	}
 
+	fmt.Fprintf(os.Stderr, "OBJ NOT FOUND 4\n")
 	return nil, plumbing.ErrObjectNotFound
 }
 

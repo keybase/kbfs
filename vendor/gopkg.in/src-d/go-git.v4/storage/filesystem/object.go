@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -146,6 +147,7 @@ func (s *ObjectStorage) HasEncodedObject(h plumbing.Hash) (err error) {
 	}
 	_, _, offset := s.findObjectInPackfile(h)
 	if offset == -1 {
+		fmt.Fprintf(os.Stderr, "OBJ NOT FOUND 5: %v\n", h)
 		return plumbing.ErrObjectNotFound
 	}
 	return nil
@@ -164,6 +166,7 @@ func (s *ObjectStorage) EncodedObject(t plumbing.ObjectType, h plumbing.Hash) (p
 	}
 
 	if plumbing.AnyObject != t && obj.Type() != t {
+		fmt.Fprintf(os.Stderr, "OBJ NOT FOUND 6\n")
 		return nil, plumbing.ErrObjectNotFound
 	}
 
@@ -184,6 +187,7 @@ func (s *ObjectStorage) DeltaObject(t plumbing.ObjectType,
 	}
 
 	if plumbing.AnyObject != t && obj.Type() != t {
+		fmt.Fprintf(os.Stderr, "OBJ NOT FOUND 7\n")
 		return nil, plumbing.ErrObjectNotFound
 	}
 
@@ -194,6 +198,7 @@ func (s *ObjectStorage) getFromUnpacked(h plumbing.Hash) (obj plumbing.EncodedOb
 	f, err := s.dir.Object(h)
 	if err != nil {
 		if os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "OBJ NOT FOUND 8\n")
 			return nil, plumbing.ErrObjectNotFound
 		}
 
@@ -237,6 +242,7 @@ func (s *ObjectStorage) getFromPackfile(h plumbing.Hash, canBeDelta bool) (
 
 	pack, hash, offset := s.findObjectInPackfile(h)
 	if offset == -1 {
+		fmt.Fprintf(os.Stderr, "OBJ NOT FOUND 9\n")
 		return nil, plumbing.ErrObjectNotFound
 	}
 
@@ -305,6 +311,7 @@ func (s *ObjectStorage) decodeDeltaObjectAt(
 	case plumbing.OFSDeltaObject:
 		e, ok := idx.LookupOffset(uint64(header.OffsetReference))
 		if !ok {
+			fmt.Fprintf(os.Stderr, "OBJ NOT FOUND 10\n")
 			return nil, plumbing.ErrObjectNotFound
 		}
 

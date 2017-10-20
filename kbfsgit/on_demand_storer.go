@@ -6,7 +6,9 @@ package kbfsgit
 
 import (
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/pkg/errors"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/storer"
 	"gopkg.in/src-d/go-git.v4/storage"
 )
 
@@ -50,5 +52,31 @@ func (ods *onDemandStorer) EncodedObject(
 		return nil, err
 	}
 
+	return o, nil
+}
+
+func (ods *onDemandStorer) DeltaObject(
+	ot plumbing.ObjectType, hash plumbing.Hash) (
+	plumbing.EncodedObject, error) {
+	edos, ok := ods.Storer.(storer.DeltaObjectStorer)
+	if !ok {
+		return nil, errors.New("Not a delta storer")
+	}
+	o := &onDemandDeltaObject{
+		s:           edos,
+		hash:        hash,
+		objType:     ot,
+		size:        -1,
+		recentCache: ods.recentCache,
+	}
+	// Need to see if this is a delta object, which means reading all
+	// the data.
+	_, err := o.cache()
+	_, notDelta := err.(notDeltaError)
+	if notDelta {
+		return ods.EncodedObject(ot, hash)
+	} else if err != nil {
+		return nil, err
+	}
 	return o, nil
 }
