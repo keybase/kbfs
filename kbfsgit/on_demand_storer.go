@@ -5,6 +5,8 @@
 package kbfsgit
 
 import (
+	"sync"
+
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/pkg/errors"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -18,6 +20,7 @@ import (
 type onDemandStorer struct {
 	storage.Storer
 	recentCache *lru.Cache
+	memObjPool  *sync.Pool
 }
 
 var _ storage.Storer = (*onDemandStorer)(nil)
@@ -25,11 +28,27 @@ var _ storage.Storer = (*onDemandStorer)(nil)
 func newOnDemandStorer(s storage.Storer) (*onDemandStorer, error) {
 	// Track a small number of recent in-memory objects, to improve
 	// performance without impacting memory too much.
-	recentCache, err := lru.New(25)
+	memObjPool := &sync.Pool{
+		New: func() interface{} {
+			return &plumbing.MemoryObject{}
+		},
+	}
+	onEvict := func(_ interface{}, value interface{}) {
+		if mo, ok := value.(*plumbing.MemoryObject); ok {
+			memObjPool.Put(mo)
+		}
+	}
+	recentCache, err := lru.NewWithEvict(25, onEvict)
 	if err != nil {
 		return nil, err
 	}
-	return &onDemandStorer{s, recentCache}, nil
+	return &onDemandStorer{s, recentCache, memObjPool}, nil
+}
+
+func (ods *onDemandStorer) NewEncodedObject() plumbing.EncodedObject {
+	mo := ods.memObjPool.Get().(*plumbing.MemoryObject)
+	mo.Reset()
+	return mo
 }
 
 func (ods *onDemandStorer) EncodedObject(
