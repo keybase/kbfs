@@ -2,7 +2,9 @@ package packfile
 
 import (
 	"bytes"
+	"fmt"
 	_ "io/ioutil"
+	"os"
 
 	"gopkg.in/src-d/go-git.v4/plumbing"
 )
@@ -65,6 +67,8 @@ func getDelta(index *deltaIndex, base, target plumbing.EncodedObject) (plumbing.
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Fprintf(os.Stderr, "New mem object (2): %d bytes\n", delta.Size())
 
 	delta.SetSize(int64(len(db)))
 	delta.SetType(plumbing.OFSDeltaObject)

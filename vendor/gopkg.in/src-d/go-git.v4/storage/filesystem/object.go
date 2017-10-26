@@ -331,6 +331,8 @@ func (s *ObjectStorage) decodeDeltaObjectAt(
 		return nil, err
 	}
 
+	fmt.Fprintf(os.Stderr, "New mem object (1): %d bytes\n", obj.Size())
+
 	return newDeltaObject(obj, hash, base, header.Length), nil
 }
 
