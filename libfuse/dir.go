@@ -512,7 +512,7 @@ func (d *Dir) Lookup(ctx context.Context, req *fuse.LookupRequest, resp *fuse.Lo
 		if err != nil {
 			return nil, err
 		}
-		return &SpecialReadFile{fileInfo(nmd).read}, nil
+		return &SpecialReadFile{read: fileInfo(nmd).read}, nil
 	}
 
 	newNode, de, err := d.folder.fs.config.KBFSOps().Lookup(ctx, d.node, req.Name)
