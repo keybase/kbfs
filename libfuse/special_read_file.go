@@ -26,7 +26,7 @@ type SpecialReadFile struct {
 
 // Have a low non-zero value for Valid to avoid being swamped with requests,
 // while still keeping the size up to date.
-const specialReadFileValidDuration = time.Second
+const specialReadFileValidDuration = time.Second / 2
 
 var _ fs.Node = (*SpecialReadFile)(nil)
 
