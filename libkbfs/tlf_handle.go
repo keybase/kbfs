@@ -561,13 +561,12 @@ type PreferredTlfName = tlf.PreferredName
 
 // GetPreferredFormat returns a TLF name formatted with the username given
 // as the parameter first.
-// This calls tlf.FavoriteNameToPreferredTLFNameFormatAs with the canonical
+// This calls tlf.CanonicalToPreferredName with the canonical
 // tlf name which will be reordered into the preferred format.
 // An empty username is allowed here and results in the canonical ordering.
 func (h TlfHandle) GetPreferredFormat(
 	username libkb.NormalizedUsername) PreferredTlfName {
-	s, err := tlf.FavoriteNameToPreferredTLFNameFormatAs(
-		username, h.GetCanonicalName())
+	s, err := tlf.CanonicalToPreferredName(username, h.GetCanonicalName())
 	if err != nil {
 		panic("TlfHandle.GetPreferredFormat: Parsing canonical username failed!")
 	}
