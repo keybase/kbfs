@@ -495,16 +495,7 @@ func (b *BlockServerRemote) RemoveBlockReferences(ctx context.Context,
 		}
 	}()
 	doneRefs, err := b.batchDowngradeReferences(ctx, tlfID, contexts, false)
-	liveCounts = make(map[kbfsblock.ID]int)
-	for id, nonces := range doneRefs {
-		for _, count := range nonces {
-			if existing, ok := liveCounts[id]; !ok || existing > count {
-				liveCounts[id] = count
-			}
-		}
-	}
-	return liveCounts, err
-
+	return kbfsblock.GetLiveCounts(doneRefs), err
 }
 
 // ArchiveBlockReferences implements the BlockServer interface for

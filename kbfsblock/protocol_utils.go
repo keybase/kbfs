@@ -112,6 +112,18 @@ func GetNotDone(all ContextMap, doneRefs map[ID]map[RefNonce]int) (
 	return notDone
 }
 
+func GetLiveCounts(doneRefs map[ID]map[RefNonce]int) map[ID]int {
+	liveCounts := make(map[ID]int)
+	for id, nonces := range doneRefs {
+		for _, count := range nonces {
+			if existing, ok := liveCounts[id]; !ok || existing > count {
+				liveCounts[id] = count
+			}
+		}
+	}
+	return liveCounts
+}
+
 // BatchDowngradeReferences archives or deletes a batch of references
 func BatchDowngradeReferences(ctx context.Context, log logger.Logger,
 	tlfID tlf.ID, contexts ContextMap, downgradeType string,
