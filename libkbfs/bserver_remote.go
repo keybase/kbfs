@@ -248,14 +248,12 @@ func (b *blockServerRemoteClientHandler) OnDisconnected(ctx context.Context,
 
 // ShouldRetry implements the ConnectionHandler interface.
 func (b *blockServerRemoteClientHandler) ShouldRetry(rpcName string, err error) bool {
-	//do not let connection.go's DoCommand retry any batch rpcs automatically
-	//because i will manually retry them without successfully completed references
+	// Do not let connection.go's DoCommand retry any batch rpcs
+	// since batchDowngradeReferences already handles retries.
 	switch rpcName {
 	case "keybase.1.block.delReferenceWithCount":
 		return false
 	case "keybase.1.block.archiveReferenceWithCount":
-		return false
-	case "keybase.1.block.archiveReference":
 		return false
 	}
 	if _, ok := err.(kbfsblock.BServerErrorThrottle); ok {
