@@ -82,3 +82,10 @@ func MakePutBlockAgainArg(tlfID tlf.ID, id ID,
 		Buf:      buf,
 	}
 }
+
+func MakeAddReferenceArg(tlfID tlf.ID, id ID, context Context) keybase1.AddReferenceArg {
+	return keybase1.AddReferenceArg{
+		Ref:    MakeReference(id, context),
+		Folder: tlfID.String(),
+	}
+}

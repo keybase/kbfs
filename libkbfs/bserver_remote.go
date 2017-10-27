@@ -483,11 +483,9 @@ func (b *BlockServerRemote) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 		}
 	}()
 
+	arg := kbfsblock.MakeAddReferenceArg(tlfID, id, context)
 	// Handle OverQuota errors at the caller
-	return b.putConn.getClient().AddReference(ctx, keybase1.AddReferenceArg{
-		Ref:    kbfsblock.MakeReference(id, context),
-		Folder: tlfID.String(),
-	})
+	return b.putConn.getClient().AddReference(ctx, arg)
 }
 
 // RemoveBlockReferences implements the BlockServer interface for
