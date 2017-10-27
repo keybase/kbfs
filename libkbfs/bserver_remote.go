@@ -5,7 +5,6 @@
 package libkbfs
 
 import (
-	"errors"
 	"sync"
 	"time"
 
@@ -545,84 +544,30 @@ func (b *BlockServerRemote) IsUnflushed(
 func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
 	tlfID tlf.ID, contexts kbfsblock.ContextMap, archive bool) (
 	doneRefs map[kbfsblock.ID]map[kbfsblock.RefNonce]int, finalError error) {
-	doneRefs = make(map[kbfsblock.ID]map[kbfsblock.RefNonce]int)
-	notDone := kbfsblock.GetNotDone(contexts, doneRefs)
-
-	throttleErr := backoff.Retry(func() error {
-		var res keybase1.DowngradeReferenceRes
-		var err error
-		if archive {
-			res, err = b.putConn.getClient().ArchiveReferenceWithCount(ctx,
+	var downgradeType string
+	var downgradeFn func([]keybase1.BlockReference) (keybase1.DowngradeReferenceRes, error)
+	if archive {
+		downgradeType = "archive"
+		downgradeFn = func(notDone []keybase1.BlockReference) (keybase1.DowngradeReferenceRes, error) {
+			return b.putConn.getClient().ArchiveReferenceWithCount(ctx,
 				keybase1.ArchiveReferenceWithCountArg{
 					Refs:   notDone,
 					Folder: tlfID.String(),
 				})
-		} else {
-			res, err = b.putConn.getClient().DelReferenceWithCount(ctx,
+		}
+	} else {
+		downgradeType = "remove"
+		downgradeFn = func(notDone []keybase1.BlockReference) (keybase1.DowngradeReferenceRes, error) {
+			return b.putConn.getClient().DelReferenceWithCount(ctx,
 				keybase1.DelReferenceWithCountArg{
 					Refs:   notDone,
 					Folder: tlfID.String(),
 				})
-		}
 
-		// log errors
-		if err != nil {
-			b.log.CWarningf(ctx, "batchDowngradeReferences archive %t sent=%v done=%v failedRef=%v err=%v",
-				archive, notDone, res.Completed, res.Failed, err)
-		} else {
-			b.log.CDebugf(ctx, "batchDowngradeReferences archive %t notdone=%v all succeeded",
-				archive, notDone)
-		}
-
-		// update the set of completed reference
-		for _, ref := range res.Completed {
-			bid, err := kbfsblock.IDFromString(ref.Ref.Bid.BlockHash)
-			if err != nil {
-				continue
-			}
-			nonces, ok := doneRefs[bid]
-			if !ok {
-				nonces = make(map[kbfsblock.RefNonce]int)
-				doneRefs[bid] = nonces
-			}
-			nonces[kbfsblock.RefNonce(ref.Ref.Nonce)] = ref.LiveCount
-		}
-		// update the list of references to downgrade
-		notDone = kbfsblock.GetNotDone(contexts, doneRefs)
-
-		//if context is cancelled, return immediately
-		select {
-		case <-ctx.Done():
-			finalError = ctx.Err()
-			return nil
-		default:
-		}
-
-		// check whether to backoff and retry
-		if err != nil {
-			// if error is of type throttle, retry
-			if _, ok := err.(kbfsblock.BServerErrorThrottle); ok {
-				return err
-			}
-			// non-throttle error, do not retry here
-			finalError = err
-		}
-		return nil
-	}, backoff.NewExponentialBackOff())
-
-	// if backoff has given up retrying, return error
-	if throttleErr != nil {
-		return doneRefs, throttleErr
-	}
-
-	if finalError == nil {
-		if len(notDone) != 0 {
-			b.log.CErrorf(ctx, "batchDowngradeReferences finished successfully with outstanding refs? all=%v done=%v notDone=%v\n", contexts, doneRefs, notDone)
-			return doneRefs,
-				errors.New("batchDowngradeReferences inconsistent result")
 		}
 	}
-	return doneRefs, finalError
+	return kbfsblock.BatchDowngradeReferences(
+		ctx, b.log, tlfID, contexts, downgradeType, downgradeFn)
 }
 
 // GetUserQuotaInfo implements the BlockServer interface for BlockServerRemote
