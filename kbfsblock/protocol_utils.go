@@ -11,6 +11,7 @@ import (
 	"github.com/keybase/backoff"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
 )
@@ -93,6 +94,14 @@ func MakeAddReferenceArg(tlfID tlf.ID, id ID, context Context) keybase1.AddRefer
 		Ref:    MakeReference(id, context),
 		Folder: tlfID.String(),
 	}
+}
+
+func ParseGetQuotaInfoRes(codec kbfscodec.Codec, res []byte, resErr error) (
+	info *QuotaInfo, err error) {
+	if resErr != nil {
+		return nil, resErr
+	}
+	return QuotaInfoDecode(res, codec)
 }
 
 // GetNotDone returns the set of block references in "all" that do not yet appear in "results"

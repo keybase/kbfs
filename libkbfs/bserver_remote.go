@@ -531,10 +531,7 @@ func (b *BlockServerRemote) GetUserQuotaInfo(ctx context.Context) (info *kbfsblo
 		b.log.LazyTrace(ctx, "BServer: GetUserQuotaInfo done (err=%v)", err)
 	}()
 	res, err := b.getConn.getClient().GetUserQuotaInfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return kbfsblock.QuotaInfoDecode(res, b.config.Codec())
+	return kbfsblock.ParseGetQuotaInfoRes(b.config.Codec(), res, err)
 }
 
 // GetTeamQuotaInfo implements the BlockServer interface for BlockServerRemote
@@ -547,10 +544,7 @@ func (b *BlockServerRemote) GetTeamQuotaInfo(
 		b.log.LazyTrace(ctx, "BServer: GetTeamQuotaInfo done (err=%v)", err)
 	}()
 	res, err := b.getConn.getClient().GetTeamQuotaInfo(ctx, tid)
-	if err != nil {
-		return nil, err
-	}
-	return kbfsblock.QuotaInfoDecode(res, b.config.Codec())
+	return kbfsblock.ParseGetQuotaInfoRes(b.config.Codec(), res, err)
 }
 
 // Shutdown implements the BlockServer interface for BlockServerRemote.
