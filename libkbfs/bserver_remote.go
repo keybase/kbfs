@@ -377,31 +377,6 @@ func (b *BlockServerRemote) RefreshAuthToken(ctx context.Context) {
 	b.getConn.RefreshAuthToken(ctx)
 }
 
-func makeBlockIDCombo(id kbfsblock.ID, context kbfsblock.Context) keybase1.BlockIdCombo {
-	// ChargedTo is somewhat confusing when this BlockIdCombo is
-	// used in a BlockReference -- it just refers to the original
-	// creator of the block, i.e. the original user charged for
-	// the block.
-	//
-	// This may all change once we implement groups.
-	return keybase1.BlockIdCombo{
-		BlockHash: id.String(),
-		ChargedTo: context.GetCreator(),
-		BlockType: context.GetBlockType(),
-	}
-}
-
-func makeBlockReference(id kbfsblock.ID, context kbfsblock.Context) keybase1.BlockReference {
-	// Block references to MD blocks are allowed, because they can be
-	// deleted in the case of an MD put failing.
-	return keybase1.BlockReference{
-		Bid: makeBlockIDCombo(id, context),
-		// The actual writer to modify quota for.
-		ChargedTo: context.GetWriter(),
-		Nonce:     keybase1.BlockRefNonce(context.GetRefNonce()),
-	}
-}
-
 // Get implements the BlockServer interface for BlockServerRemote.
 func (b *BlockServerRemote) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.ID,
 	context kbfsblock.Context) (
@@ -430,7 +405,7 @@ func (b *BlockServerRemote) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 	}()
 
 	arg := keybase1.GetBlockArg{
-		Bid:    makeBlockIDCombo(id, context),
+		Bid:    kbfsblock.MakeIDCombo(id, context),
 		Folder: tlfID.String(),
 	}
 
@@ -472,7 +447,7 @@ func (b *BlockServerRemote) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 	}()
 
 	arg := keybase1.PutBlockArg{
-		Bid: makeBlockIDCombo(id, bContext),
+		Bid: kbfsblock.MakeIDCombo(id, bContext),
 		// BlockKey is misnamed -- it contains just the server
 		// half.
 		BlockKey: serverHalf.String(),
@@ -511,7 +486,7 @@ func (b *BlockServerRemote) PutAgain(ctx context.Context, tlfID tlf.ID, id kbfsb
 		BlockKey: serverHalf.String(),
 		Folder:   tlfID.String(),
 		Buf:      buf,
-		Ref:      makeBlockReference(id, bContext),
+		Ref:      kbfsblock.MakeReference(id, bContext),
 	}
 
 	// Handle OverQuota errors at the caller
@@ -538,7 +513,7 @@ func (b *BlockServerRemote) AddBlockReference(ctx context.Context, tlfID tlf.ID,
 
 	// Handle OverQuota errors at the caller
 	return b.putConn.getClient().AddReference(ctx, keybase1.AddReferenceArg{
-		Ref:    makeBlockReference(id, context),
+		Ref:    kbfsblock.MakeReference(id, context),
 		Folder: tlfID.String(),
 	})
 }
@@ -690,7 +665,7 @@ func (b *BlockServerRemote) getNotDone(all kbfsblock.ContextMap, doneRefs map[kb
 					continue
 				}
 			}
-			ref := makeBlockReference(id, context)
+			ref := kbfsblock.MakeReference(id, context)
 			notDone = append(notDone, ref)
 		}
 	}
