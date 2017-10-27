@@ -403,11 +403,7 @@ func (b *BlockServerRemote) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 		}
 	}()
 
-	arg := keybase1.GetBlockArg{
-		Bid:    kbfsblock.MakeIDCombo(id, context),
-		Folder: tlfID.String(),
-	}
-
+	arg := kbfsblock.MakeGetBlockArg(tlfID, id, context)
 	res, err := b.getConn.getClient().GetBlock(ctx, arg)
 	return kbfsblock.ParseGetBlockRes(res, err)
 }
