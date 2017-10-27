@@ -494,7 +494,7 @@ func (b *BlockServerRemote) RemoveBlockReferences(ctx context.Context,
 			b.deferLog.CDebugf(ctx, "RemoveBlockReferences batch size=%d", len(contexts))
 		}
 	}()
-	doneRefs, err := b.batchDowngradeReferences(ctx, tlfID, contexts, false)
+	doneRefs, err := kbfsblock.BatchDowngradeReferences(ctx, b.log, tlfID, contexts, false, b.putConn.getClient())
 	return kbfsblock.GetLiveCounts(doneRefs), err
 }
 
@@ -512,7 +512,7 @@ func (b *BlockServerRemote) ArchiveBlockReferences(ctx context.Context,
 			b.deferLog.CDebugf(ctx, "ArchiveBlockReferences batch size=%d", len(contexts))
 		}
 	}()
-	_, err = b.batchDowngradeReferences(ctx, tlfID, contexts, true)
+	_, err = kbfsblock.BatchDowngradeReferences(ctx, b.log, tlfID, contexts, true, b.putConn.getClient())
 	return err
 }
 
@@ -521,36 +521,6 @@ func (b *BlockServerRemote) IsUnflushed(
 	_ context.Context, _ tlf.ID, _ kbfsblock.ID) (
 	bool, error) {
 	return false, nil
-}
-
-// batchDowngradeReferences archives or deletes a batch of references
-func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
-	tlfID tlf.ID, contexts kbfsblock.ContextMap, archive bool) (
-	doneRefs map[kbfsblock.ID]map[kbfsblock.RefNonce]int, finalError error) {
-	var downgradeType string
-	var downgradeFn func([]keybase1.BlockReference) (keybase1.DowngradeReferenceRes, error)
-	if archive {
-		downgradeType = "archive"
-		downgradeFn = func(notDone []keybase1.BlockReference) (keybase1.DowngradeReferenceRes, error) {
-			return b.putConn.getClient().ArchiveReferenceWithCount(ctx,
-				keybase1.ArchiveReferenceWithCountArg{
-					Refs:   notDone,
-					Folder: tlfID.String(),
-				})
-		}
-	} else {
-		downgradeType = "remove"
-		downgradeFn = func(notDone []keybase1.BlockReference) (keybase1.DowngradeReferenceRes, error) {
-			return b.putConn.getClient().DelReferenceWithCount(ctx,
-				keybase1.DelReferenceWithCountArg{
-					Refs:   notDone,
-					Folder: tlfID.String(),
-				})
-
-		}
-	}
-	return kbfsblock.BatchDowngradeReferences(
-		ctx, b.log, tlfID, contexts, downgradeType, downgradeFn)
 }
 
 // GetUserQuotaInfo implements the BlockServer interface for BlockServerRemote

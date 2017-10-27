@@ -126,21 +126,36 @@ func GetLiveCounts(doneRefs map[ID]map[RefNonce]int) map[ID]int {
 
 // BatchDowngradeReferences archives or deletes a batch of references
 func BatchDowngradeReferences(ctx context.Context, log logger.Logger,
-	tlfID tlf.ID, contexts ContextMap, downgradeType string,
-	downgradeFn func([]keybase1.BlockReference) (keybase1.DowngradeReferenceRes, error)) (
+	tlfID tlf.ID, contexts ContextMap, archive bool,
+	server keybase1.BlockInterface) (
 	doneRefs map[ID]map[RefNonce]int, finalError error) {
 	doneRefs = make(map[ID]map[RefNonce]int)
 	notDone := GetNotDone(contexts, doneRefs)
 
 	throttleErr := backoff.Retry(func() error {
-		res, err := downgradeFn(notDone)
+		var res keybase1.DowngradeReferenceRes
+		var err error
+		if archive {
+			res, err = server.ArchiveReferenceWithCount(ctx,
+				keybase1.ArchiveReferenceWithCountArg{
+					Refs:   notDone,
+					Folder: tlfID.String(),
+				})
+		} else {
+			res, err = server.DelReferenceWithCount(ctx,
+				keybase1.DelReferenceWithCountArg{
+					Refs:   notDone,
+					Folder: tlfID.String(),
+				})
+		}
+
 		// log errors
 		if err != nil {
-			log.CWarningf(ctx, "batchDowngradeReferences %s sent=%v done=%v failedRef=%v err=%v",
-				downgradeType, notDone, res.Completed, res.Failed, err)
+			log.CWarningf(ctx, "batchDowngradeReferences archive=%t sent=%v done=%v failedRef=%v err=%v",
+				archive, notDone, res.Completed, res.Failed, err)
 		} else {
-			log.CDebugf(ctx, "batchDowngradeReferences %s notdone=%v all succeeded",
-				downgradeType, notDone)
+			log.CDebugf(ctx, "batchDowngradeReferences archive=%t notdone=%v all succeeded",
+				archive, notDone)
 		}
 
 		// update the set of completed reference
