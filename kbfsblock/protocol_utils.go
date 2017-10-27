@@ -16,9 +16,7 @@ import (
 	"github.com/keybase/kbfs/tlf"
 )
 
-// MakeIDCombo builds a keybase1.BlockIdCombo from the given id and
-// context.
-func MakeIDCombo(id ID, context Context) keybase1.BlockIdCombo {
+func makeIDCombo(id ID, context Context) keybase1.BlockIdCombo {
 	// ChargedTo is somewhat confusing when this BlockIdCombo is
 	// used in a BlockReference -- it just refers to the original
 	// creator of the block, i.e. the original user charged for
@@ -32,13 +30,11 @@ func MakeIDCombo(id ID, context Context) keybase1.BlockIdCombo {
 	}
 }
 
-// MakeReference builds a keybase1.BlockReference from the given id
-// and context.
-func MakeReference(id ID, context Context) keybase1.BlockReference {
+func makeReference(id ID, context Context) keybase1.BlockReference {
 	// Block references to MD blocks are allowed, because they can be
 	// deleted in the case of an MD put failing.
 	return keybase1.BlockReference{
-		Bid: MakeIDCombo(id, context),
+		Bid: makeIDCombo(id, context),
 		// The actual writer to modify quota for.
 		ChargedTo: context.GetWriter(),
 		Nonce:     keybase1.BlockRefNonce(context.GetRefNonce()),
@@ -47,7 +43,7 @@ func MakeReference(id ID, context Context) keybase1.BlockReference {
 
 func MakeGetBlockArg(tlfID tlf.ID, id ID, context Context) keybase1.GetBlockArg {
 	return keybase1.GetBlockArg{
-		Bid:    MakeIDCombo(id, context),
+		Bid:    makeIDCombo(id, context),
 		Folder: tlfID.String(),
 	}
 }
@@ -68,7 +64,7 @@ func MakePutBlockArg(tlfID tlf.ID, id ID,
 	bContext Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) keybase1.PutBlockArg {
 	return keybase1.PutBlockArg{
-		Bid: MakeIDCombo(id, bContext),
+		Bid: makeIDCombo(id, bContext),
 		// BlockKey is misnamed -- it contains just the server
 		// half.
 		BlockKey: serverHalf.String(),
@@ -80,7 +76,7 @@ func MakePutBlockArg(tlfID tlf.ID, id ID,
 func MakePutBlockAgainArg(tlfID tlf.ID, id ID,
 	bContext Context, buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) keybase1.PutBlockAgainArg {
 	return keybase1.PutBlockAgainArg{
-		Ref: MakeReference(id, bContext),
+		Ref: makeReference(id, bContext),
 		// BlockKey is misnamed -- it contains just the server
 		// half.
 		BlockKey: serverHalf.String(),
@@ -91,7 +87,7 @@ func MakePutBlockAgainArg(tlfID tlf.ID, id ID,
 
 func MakeAddReferenceArg(tlfID tlf.ID, id ID, context Context) keybase1.AddReferenceArg {
 	return keybase1.AddReferenceArg{
-		Ref:    MakeReference(id, context),
+		Ref:    makeReference(id, context),
 		Folder: tlfID.String(),
 	}
 }
@@ -114,7 +110,7 @@ func GetNotDone(all ContextMap, doneRefs map[ID]map[RefNonce]int) (
 					continue
 				}
 			}
-			ref := MakeReference(id, context)
+			ref := makeReference(id, context)
 			notDone = append(notDone, ref)
 		}
 	}
