@@ -351,20 +351,6 @@ func (h TlfHandle) deepCopy() *TlfHandle {
 	return &hCopy
 }
 
-func getSortedNames(
-	idToName map[keybase1.UserOrTeamID]libkb.NormalizedUsername,
-	unresolved []keybase1.SocialAssertion) []string {
-	var names []string
-	for _, name := range idToName {
-		names = append(names, name.String())
-	}
-	for _, sa := range unresolved {
-		names = append(names, sa.String())
-	}
-	sort.Sort(sort.StringSlice(names))
-	return names
-}
-
 // GetCanonicalName returns the canonical name of this TLF.
 func (h *TlfHandle) GetCanonicalName() CanonicalTlfName {
 	if h.name == "" {
