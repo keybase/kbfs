@@ -57,3 +57,16 @@ func ParseGetBlockRes(res keybase1.GetBlockRes, resErr error) (
 	}
 	return res.Buf, serverHalf, nil
 }
+
+func MakePutBlockArg(tlfID tlf.ID, id ID,
+	bContext Context, buf []byte,
+	serverHalf kbfscrypto.BlockCryptKeyServerHalf) keybase1.PutBlockArg {
+	return keybase1.PutBlockArg{
+		Bid: MakeIDCombo(id, bContext),
+		// BlockKey is misnamed -- it contains just the server
+		// half.
+		BlockKey: serverHalf.String(),
+		Folder:   tlfID.String(),
+		Buf:      buf,
+	}
+}

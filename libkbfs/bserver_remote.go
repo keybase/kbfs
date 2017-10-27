@@ -432,15 +432,7 @@ func (b *BlockServerRemote) Put(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 		}
 	}()
 
-	arg := keybase1.PutBlockArg{
-		Bid: kbfsblock.MakeIDCombo(id, bContext),
-		// BlockKey is misnamed -- it contains just the server
-		// half.
-		BlockKey: serverHalf.String(),
-		Folder:   tlfID.String(),
-		Buf:      buf,
-	}
-
+	arg := kbfsblock.MakePutBlockArg(tlfID, id, bContext, buf, serverHalf)
 	// Handle OverQuota errors at the caller
 	return b.putConn.getClient().PutBlock(ctx, arg)
 }
