@@ -3,7 +3,7 @@ package packfile
 import (
 	"bytes"
 	"fmt"
-	_ "io/ioutil"
+	"io/ioutil"
 	"os"
 
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -59,11 +59,20 @@ func getDelta(index *deltaIndex, base, target plumbing.EncodedObject) (plumbing.
 	}
 
 	db := diffDelta(index, bb.Bytes(), tb.Bytes())
-	delta := memObjPool.Get().(*plumbing.MemoryObject)
-	delta.Reset()
+	t, err := ioutil.TempFile("/tmp/diffs", "diff")
+	if err != nil {
+		return nil, err
+	}
+	delta := plumbing.NewFileObject(t.Name())
+	t.Close()
 	// The caller must put it back into the pool when done.
 
-	_, err = delta.Write(db)
+	w, err := delta.Writer()
+	if err != nil {
+		return nil, err
+	}
+	defer w.Close()
+	_, err = w.Write(db)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package filesystem
 import (
 	"fmt"
 	"io"
+	sys_ioutil "io/ioutil"
 	"os"
 
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -320,12 +321,19 @@ func (s *ObjectStorage) decodeDeltaObjectAt(
 		return s.decodeObjectAt(f, idx, offset)
 	}
 
-	obj := &plumbing.MemoryObject{}
+	t, err := sys_ioutil.TempFile("/tmp/objs", "obj")
+	if err != nil {
+		return nil, err
+	}
+	obj := plumbing.NewFileObject(t.Name())
+	t.Close()
+
 	obj.SetType(header.Type)
 	w, err := obj.Writer()
 	if err != nil {
 		return nil, err
 	}
+	defer w.Close()
 
 	if _, _, err := p.NextObject(w); err != nil {
 		return nil, err
