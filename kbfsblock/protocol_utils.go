@@ -70,3 +70,15 @@ func MakePutBlockArg(tlfID tlf.ID, id ID,
 		Buf:      buf,
 	}
 }
+
+func MakePutBlockAgainArg(tlfID tlf.ID, id ID,
+	bContext Context, buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) keybase1.PutBlockAgainArg {
+	return keybase1.PutBlockAgainArg{
+		Ref: MakeReference(id, bContext),
+		// BlockKey is misnamed -- it contains just the server
+		// half.
+		BlockKey: serverHalf.String(),
+		Folder:   tlfID.String(),
+		Buf:      buf,
+	}
+}

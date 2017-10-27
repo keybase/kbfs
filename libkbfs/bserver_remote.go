@@ -460,13 +460,7 @@ func (b *BlockServerRemote) PutAgain(ctx context.Context, tlfID tlf.ID, id kbfsb
 		}
 	}()
 
-	arg := keybase1.PutBlockAgainArg{
-		BlockKey: serverHalf.String(),
-		Folder:   tlfID.String(),
-		Buf:      buf,
-		Ref:      kbfsblock.MakeReference(id, bContext),
-	}
-
+	arg := kbfsblock.MakePutBlockAgainArg(tlfID, id, bContext, buf, serverHalf)
 	// Handle OverQuota errors at the caller
 	return b.putConn.getClient().PutBlockAgain(ctx, arg)
 }
