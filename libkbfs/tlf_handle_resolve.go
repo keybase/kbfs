@@ -138,7 +138,7 @@ func makeTlfHandleHelper(
 	}
 
 	canonicalName := tlf.MakeCanonicalName(
-		t, getNames(usedWNames), unresolvedWriters,
+		getNames(usedWNames), unresolvedWriters,
 		getNames(usedRNames), unresolvedReaders, extensions)
 
 	extensionList := tlf.HandleExtensionList(extensions)

@@ -60,14 +60,14 @@ func getSortedNames(
 }
 
 // MakeCanonicalName makes a CanonicalName from components.
-func MakeCanonicalName(t Type, resolvedWriters []libkb.NormalizedUsername,
+func MakeCanonicalName(resolvedWriters []libkb.NormalizedUsername,
 	unresolvedWriters []keybase1.SocialAssertion,
 	resolvedReaders []libkb.NormalizedUsername,
 	unresolvedReaders []keybase1.SocialAssertion,
 	extensions []HandleExtension) CanonicalName {
 	writerNames := getSortedNames(resolvedWriters, unresolvedWriters)
 	canonicalName := strings.Join(writerNames, ",")
-	if t == Private && len(resolvedReaders)+len(unresolvedReaders) > 0 {
+	if len(resolvedReaders)+len(unresolvedReaders) > 0 {
 		readerNames := getSortedNames(resolvedReaders, unresolvedReaders)
 		canonicalName += ReaderSep + strings.Join(readerNames, ",")
 	}
