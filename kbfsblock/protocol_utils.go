@@ -158,7 +158,7 @@ func BatchDowngradeReferences(ctx context.Context, log logger.Logger,
 		// check whether to backoff and retry
 		if err != nil {
 			// if error is of type throttle, retry
-			if _, ok := err.(BServerErrorThrottle); ok {
+			if IsThrottleError(err) {
 				return err
 			}
 			// non-throttle error, do not retry here

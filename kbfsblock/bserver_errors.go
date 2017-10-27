@@ -361,3 +361,13 @@ func (eu BServerErrorUnwrapper) UnwrapError(arg interface{}) (appError error, di
 
 	return appError, nil
 }
+
+func IsThrottleError(err error) bool {
+	if _, ok := err.(BServerErrorThrottle); ok {
+		return true
+	}
+	if quotaErr, ok := err.(BServerErrorOverQuota); ok && quotaErr.Throttled {
+		return true
+	}
+	return false
+}
