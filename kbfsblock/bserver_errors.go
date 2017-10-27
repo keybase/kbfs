@@ -362,6 +362,8 @@ func (eu BServerErrorUnwrapper) UnwrapError(arg interface{}) (appError error, di
 	return appError, nil
 }
 
+// IsThrottleError returns whether or not the given error signals
+// throttling.
 func IsThrottleError(err error) bool {
 	if _, ok := err.(BServerErrorThrottle); ok {
 		return true
