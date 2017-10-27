@@ -382,18 +382,17 @@ func (b *BlockServerRemote) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 	context kbfsblock.Context) (
 	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
 	ctx = rpc.WithFireNow(ctx)
-	size := -1
 	b.log.LazyTrace(ctx, "BServer: Get %s", id)
 	defer func() {
 		b.log.LazyTrace(ctx, "BServer: Get %s done (err=%v)", id, err)
 		if err != nil {
 			b.deferLog.CWarningf(
 				ctx, "Get id=%s tlf=%s context=%s sz=%d err=%v",
-				id, tlfID, context, size, err)
+				id, tlfID, context, len(buf), err)
 		} else {
 			b.deferLog.CDebugf(
 				ctx, "Get id=%s tlf=%s context=%s sz=%d",
-				id, tlfID, context, size)
+				id, tlfID, context, len(buf))
 			dbc := b.config.DiskBlockCache()
 			if dbc != nil {
 				// This used to be called in a goroutine to prevent blocking
@@ -410,16 +409,7 @@ func (b *BlockServerRemote) Get(ctx context.Context, tlfID tlf.ID, id kbfsblock.
 	}
 
 	res, err := b.getConn.getClient().GetBlock(ctx, arg)
-	if err != nil {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
-	}
-
-	size = len(res.Buf)
-	serverHalf, err = kbfscrypto.ParseBlockCryptKeyServerHalf(res.BlockKey)
-	if err != nil {
-		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
-	}
-	return res.Buf, serverHalf, nil
+	return kbfsblock.ParseGetBlockRes(res, err)
 }
 
 // Put implements the BlockServer interface for BlockServerRemote.

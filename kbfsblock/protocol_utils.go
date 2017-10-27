@@ -6,6 +6,8 @@ package kbfsblock
 
 import (
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/keybase/kbfs/tlf"
 )
 
 // MakeIDCombo builds a keybase1.BlockIdCombo from the given id and
@@ -35,4 +37,23 @@ func MakeReference(id ID, context Context) keybase1.BlockReference {
 		ChargedTo: context.GetWriter(),
 		Nonce:     keybase1.BlockRefNonce(context.GetRefNonce()),
 	}
+}
+
+func MakeGetBlockArg(tlfID tlf.ID, id ID, context Context) keybase1.GetBlockArg {
+	return keybase1.GetBlockArg{
+		Bid:    MakeIDCombo(id, context),
+		Folder: tlfID.String(),
+	}
+}
+
+func ParseGetBlockRes(res keybase1.GetBlockRes, resErr error) (
+	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
+	if resErr != nil {
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, resErr
+	}
+	serverHalf, err = kbfscrypto.ParseBlockCryptKeyServerHalf(res.BlockKey)
+	if err != nil {
+		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, err
+	}
+	return res.Buf, serverHalf, nil
 }
