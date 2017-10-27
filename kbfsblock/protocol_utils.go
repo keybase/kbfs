@@ -41,6 +41,7 @@ func makeReference(id ID, context Context) keybase1.BlockReference {
 	}
 }
 
+// MakeGetBlockArg builds a keybase1.GetBlockArg from the given params.
 func MakeGetBlockArg(tlfID tlf.ID, id ID, context Context) keybase1.GetBlockArg {
 	return keybase1.GetBlockArg{
 		Bid:    makeIDCombo(id, context),
@@ -48,6 +49,8 @@ func MakeGetBlockArg(tlfID tlf.ID, id ID, context Context) keybase1.GetBlockArg 
 	}
 }
 
+// ParseGetBlockRes parses the given keybase1.GetBlockRes into its
+// components.
 func ParseGetBlockRes(res keybase1.GetBlockRes, resErr error) (
 	buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf, err error) {
 	if resErr != nil {
@@ -60,6 +63,7 @@ func ParseGetBlockRes(res keybase1.GetBlockRes, resErr error) (
 	return res.Buf, serverHalf, nil
 }
 
+// MakePutBlockArg builds a keybase1.PutBlockArg from the given params.
 func MakePutBlockArg(tlfID tlf.ID, id ID,
 	bContext Context, buf []byte,
 	serverHalf kbfscrypto.BlockCryptKeyServerHalf) keybase1.PutBlockArg {
@@ -73,6 +77,8 @@ func MakePutBlockArg(tlfID tlf.ID, id ID,
 	}
 }
 
+// MakePutBlockAgainArg builds a keybase1.PutBlockAgainArg from the
+// given params.
 func MakePutBlockAgainArg(tlfID tlf.ID, id ID,
 	bContext Context, buf []byte, serverHalf kbfscrypto.BlockCryptKeyServerHalf) keybase1.PutBlockAgainArg {
 	return keybase1.PutBlockAgainArg{
@@ -85,6 +91,8 @@ func MakePutBlockAgainArg(tlfID tlf.ID, id ID,
 	}
 }
 
+// MakeAddReferenceArg builds a keybase1.AddReferenceArg from the
+// given params.
 func MakeAddReferenceArg(tlfID tlf.ID, id ID, context Context) keybase1.AddReferenceArg {
 	return keybase1.AddReferenceArg{
 		Ref:    makeReference(id, context),
@@ -92,16 +100,9 @@ func MakeAddReferenceArg(tlfID tlf.ID, id ID, context Context) keybase1.AddRefer
 	}
 }
 
-func ParseGetQuotaInfoRes(codec kbfscodec.Codec, res []byte, resErr error) (
-	info *QuotaInfo, err error) {
-	if resErr != nil {
-		return nil, resErr
-	}
-	return QuotaInfoDecode(res, codec)
-}
-
-// GetNotDone returns the set of block references in "all" that do not yet appear in "results"
-func GetNotDone(all ContextMap, doneRefs map[ID]map[RefNonce]int) (
+// getNotDone returns the set of block references in "all" that do not
+// yet appear in "results"
+func getNotDone(all ContextMap, doneRefs map[ID]map[RefNonce]int) (
 	notDone []keybase1.BlockReference) {
 	for id, idContexts := range all {
 		for _, context := range idContexts {
@@ -117,25 +118,14 @@ func GetNotDone(all ContextMap, doneRefs map[ID]map[RefNonce]int) (
 	return notDone
 }
 
-func GetLiveCounts(doneRefs map[ID]map[RefNonce]int) map[ID]int {
-	liveCounts := make(map[ID]int)
-	for id, nonces := range doneRefs {
-		for _, count := range nonces {
-			if existing, ok := liveCounts[id]; !ok || existing > count {
-				liveCounts[id] = count
-			}
-		}
-	}
-	return liveCounts
-}
-
-// BatchDowngradeReferences archives or deletes a batch of references
+// BatchDowngradeReferences archives or deletes a batch of references,
+// handling all batching and throttles.
 func BatchDowngradeReferences(ctx context.Context, log logger.Logger,
 	tlfID tlf.ID, contexts ContextMap, archive bool,
 	server keybase1.BlockInterface) (
 	doneRefs map[ID]map[RefNonce]int, finalError error) {
 	doneRefs = make(map[ID]map[RefNonce]int)
-	notDone := GetNotDone(contexts, doneRefs)
+	notDone := getNotDone(contexts, doneRefs)
 
 	throttleErr := backoff.Retry(func() error {
 		var res keybase1.DowngradeReferenceRes
@@ -177,7 +167,7 @@ func BatchDowngradeReferences(ctx context.Context, log logger.Logger,
 			nonces[RefNonce(ref.Ref.Nonce)] = ref.LiveCount
 		}
 		// update the list of references to downgrade
-		notDone = GetNotDone(contexts, doneRefs)
+		notDone = getNotDone(contexts, doneRefs)
 
 		//if context is cancelled, return immediately
 		select {
@@ -212,4 +202,28 @@ func BatchDowngradeReferences(ctx context.Context, log logger.Logger,
 		}
 	}
 	return doneRefs, finalError
+}
+
+// GetLiveCounts computes the maximum live count for each ID over its
+// RefNonces.
+func GetLiveCounts(doneRefs map[ID]map[RefNonce]int) map[ID]int {
+	liveCounts := make(map[ID]int)
+	for id, nonces := range doneRefs {
+		for _, count := range nonces {
+			if existing, ok := liveCounts[id]; !ok || existing > count {
+				liveCounts[id] = count
+			}
+		}
+	}
+	return liveCounts
+}
+
+// ParseGetQuotaInfoRes parses the given quota result into a
+// *QuotaInfo.
+func ParseGetQuotaInfoRes(codec kbfscodec.Codec, res []byte, resErr error) (
+	info *QuotaInfo, err error) {
+	if resErr != nil {
+		return nil, resErr
+	}
+	return QuotaInfoDecode(res, codec)
 }
