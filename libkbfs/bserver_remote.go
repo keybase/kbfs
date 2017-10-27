@@ -546,7 +546,7 @@ func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
 	tlfID tlf.ID, contexts kbfsblock.ContextMap, archive bool) (
 	doneRefs map[kbfsblock.ID]map[kbfsblock.RefNonce]int, finalError error) {
 	doneRefs = make(map[kbfsblock.ID]map[kbfsblock.RefNonce]int)
-	notDone := b.getNotDone(contexts, doneRefs)
+	notDone := kbfsblock.GetNotDone(contexts, doneRefs)
 
 	throttleErr := backoff.Retry(func() error {
 		var res keybase1.DowngradeReferenceRes
@@ -588,7 +588,7 @@ func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
 			nonces[kbfsblock.RefNonce(ref.Ref.Nonce)] = ref.LiveCount
 		}
 		// update the list of references to downgrade
-		notDone = b.getNotDone(contexts, doneRefs)
+		notDone = kbfsblock.GetNotDone(contexts, doneRefs)
 
 		//if context is cancelled, return immediately
 		select {
@@ -623,23 +623,6 @@ func (b *BlockServerRemote) batchDowngradeReferences(ctx context.Context,
 		}
 	}
 	return doneRefs, finalError
-}
-
-// getNotDone returns the set of block references in "all" that do not yet appear in "results"
-func (b *BlockServerRemote) getNotDone(all kbfsblock.ContextMap, doneRefs map[kbfsblock.ID]map[kbfsblock.RefNonce]int) (
-	notDone []keybase1.BlockReference) {
-	for id, idContexts := range all {
-		for _, context := range idContexts {
-			if _, ok := doneRefs[id]; ok {
-				if _, ok1 := doneRefs[id][context.GetRefNonce()]; ok1 {
-					continue
-				}
-			}
-			ref := kbfsblock.MakeReference(id, context)
-			notDone = append(notDone, ref)
-		}
-	}
-	return notDone
 }
 
 // GetUserQuotaInfo implements the BlockServer interface for BlockServerRemote

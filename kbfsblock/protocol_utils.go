@@ -5,6 +5,11 @@
 package kbfsblock
 
 import (
+	"context"
+	"errors"
+
+	"github.com/keybase/backoff"
+	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/tlf"
@@ -88,4 +93,91 @@ func MakeAddReferenceArg(tlfID tlf.ID, id ID, context Context) keybase1.AddRefer
 		Ref:    MakeReference(id, context),
 		Folder: tlfID.String(),
 	}
+}
+
+// GetNotDone returns the set of block references in "all" that do not yet appear in "results"
+func GetNotDone(all ContextMap, doneRefs map[ID]map[RefNonce]int) (
+	notDone []keybase1.BlockReference) {
+	for id, idContexts := range all {
+		for _, context := range idContexts {
+			if _, ok := doneRefs[id]; ok {
+				if _, ok1 := doneRefs[id][context.GetRefNonce()]; ok1 {
+					continue
+				}
+			}
+			ref := MakeReference(id, context)
+			notDone = append(notDone, ref)
+		}
+	}
+	return notDone
+}
+
+// BatchDowngradeReferences archives or deletes a batch of references
+func BatchDowngradeReferences(ctx context.Context, log logger.Logger,
+	tlfID tlf.ID, contexts ContextMap, downgradeType string,
+	downgradeFn func([]keybase1.BlockReference) (keybase1.DowngradeReferenceRes, error)) (
+	doneRefs map[ID]map[RefNonce]int, finalError error) {
+	doneRefs = make(map[ID]map[RefNonce]int)
+	notDone := GetNotDone(contexts, doneRefs)
+
+	throttleErr := backoff.Retry(func() error {
+		res, err := downgradeFn(notDone)
+		// log errors
+		if err != nil {
+			log.CWarningf(ctx, "batchDowngradeReferences %s sent=%v done=%v failedRef=%v err=%v",
+				downgradeType, notDone, res.Completed, res.Failed, err)
+		} else {
+			log.CDebugf(ctx, "batchDowngradeReferences %s notdone=%v all succeeded",
+				downgradeType, notDone)
+		}
+
+		// update the set of completed reference
+		for _, ref := range res.Completed {
+			bid, err := IDFromString(ref.Ref.Bid.BlockHash)
+			if err != nil {
+				continue
+			}
+			nonces, ok := doneRefs[bid]
+			if !ok {
+				nonces = make(map[RefNonce]int)
+				doneRefs[bid] = nonces
+			}
+			nonces[RefNonce(ref.Ref.Nonce)] = ref.LiveCount
+		}
+		// update the list of references to downgrade
+		notDone = GetNotDone(contexts, doneRefs)
+
+		//if context is cancelled, return immediately
+		select {
+		case <-ctx.Done():
+			finalError = ctx.Err()
+			return nil
+		default:
+		}
+
+		// check whether to backoff and retry
+		if err != nil {
+			// if error is of type throttle, retry
+			if _, ok := err.(BServerErrorThrottle); ok {
+				return err
+			}
+			// non-throttle error, do not retry here
+			finalError = err
+		}
+		return nil
+	}, backoff.NewExponentialBackOff())
+
+	// if backoff has given up retrying, return error
+	if throttleErr != nil {
+		return doneRefs, throttleErr
+	}
+
+	if finalError == nil {
+		if len(notDone) != 0 {
+			log.CErrorf(ctx, "batchDowngradeReferences finished successfully with outstanding refs? all=%v done=%v notDone=%v\n", contexts, doneRefs, notDone)
+			return doneRefs,
+				errors.New("batchDowngradeReferences inconsistent result")
+		}
+	}
+	return doneRefs, finalError
 }
