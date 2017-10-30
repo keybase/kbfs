@@ -20,11 +20,13 @@ func ApplyDelta(target, base plumbing.EncodedObject, delta []byte) error {
 	if err != nil {
 		return err
 	}
+	defer r.Close()
 
 	w, err := target.Writer()
 	if err != nil {
 		return err
 	}
+	defer w.Close()
 
 	src, err := ioutil.ReadAll(r)
 	if err != nil {

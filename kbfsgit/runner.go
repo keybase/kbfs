@@ -658,9 +658,25 @@ var gogitStagesToStatus = map[plumbing.StatusStage]string{
 	plumbing.StatusIndexOffset: "Indexing offsets: ",
 }
 
-func humanizeObjects(n int, d int) string {
+func humanizeObjects(n int, d int, s string) string {
 	if n%1000 == 0 {
 		debug.FreeOSMemory()
+		profName := filepath.Join(os.TempDir(), fmt.Sprintf("%d.%s", n, s))
+		f, err := os.Create(profName)
+		if err != nil {
+			panic(err)
+		} else {
+			runtime.GC()
+			pprof.WriteHeapProfile(f)
+			f.Close()
+
+			var mem runtime.MemStats
+			runtime.ReadMemStats(&mem)
+			statsName := profName + ".memstats"
+			s, _ := os.Create(statsName)
+			fmt.Fprintf(s, "%+v\n", mem)
+			s.Close()
+		}
 	}
 
 	const k = 1000
@@ -756,13 +772,13 @@ func (r *runner) processGogitStatus(ctx context.Context,
 				return
 			case plumbing.StatusCount:
 				newStr = fmt.Sprintf(
-					"%s objects... ", humanizeObjects(update.ObjectsTotal, 1))
+					"%s objects... ", humanizeObjects(update.ObjectsTotal, 1, r.stageMemProfName))
 			case plumbing.StatusSort:
 			default:
 				newStr = fmt.Sprintf(
 					"(%.2f%%) %s objects... ",
 					percent(int64(update.ObjectsDone), int64(update.ObjectsTotal)),
-					humanizeObjects(update.ObjectsDone, update.ObjectsTotal))
+					humanizeObjects(update.ObjectsDone, update.ObjectsTotal, r.stageMemProfName))
 			}
 
 			lastByteCount = len(newStr)

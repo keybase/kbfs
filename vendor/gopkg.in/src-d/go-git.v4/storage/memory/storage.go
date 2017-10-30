@@ -3,6 +3,8 @@ package memory
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	"gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -91,7 +93,14 @@ type ObjectStorage struct {
 }
 
 func (o *ObjectStorage) NewEncodedObject() plumbing.EncodedObject {
-	return &plumbing.MemoryObject{}
+	t, err := ioutil.TempFile("/tmp/mem", "mem")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error making file object: %+v\n", err)
+		return nil
+	}
+	obj := plumbing.NewFileObject(t.Name())
+	t.Close()
+	return obj
 }
 
 func (o *ObjectStorage) SetEncodedObject(obj plumbing.EncodedObject) (plumbing.Hash, error) {

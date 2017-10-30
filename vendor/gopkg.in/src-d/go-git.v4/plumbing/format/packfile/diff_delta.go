@@ -35,10 +35,12 @@ func getDelta(index *deltaIndex, base, target plumbing.EncodedObject) (plumbing.
 	if err != nil {
 		return nil, err
 	}
+	defer br.Close()
 	tr, err := target.Reader()
 	if err != nil {
 		return nil, err
 	}
+	defer tr.Close()
 
 	bb := bufPool.Get().(*bytes.Buffer)
 	bb.Reset()

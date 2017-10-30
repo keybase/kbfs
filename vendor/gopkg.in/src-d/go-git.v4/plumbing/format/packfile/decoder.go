@@ -377,6 +377,7 @@ func (d *Decoder) fillRegularObjectContent(obj plumbing.EncodedObject) (uint32, 
 	if err != nil {
 		return 0, err
 	}
+	defer w.Close()
 
 	_, crc, err := d.s.NextObject(w)
 	return crc, err
