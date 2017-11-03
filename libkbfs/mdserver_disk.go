@@ -231,7 +231,7 @@ func (md *MDServerDisk) GetForHandle(ctx context.Context, handle tlf.Handle,
 		return id, nil, nil
 	}
 
-	rmds, err := md.GetForTLF(ctx, id, NullBranchID, mStatus, nil)
+	rmds, err := md.GetForTLF(ctx, id, kbfsmd.NullBranchID, mStatus, nil)
 	if err != nil {
 		return tlf.NullID, nil, err
 	}
@@ -260,27 +260,27 @@ func (md *MDServerDisk) getBranchKey(ctx context.Context, id tlf.ID) ([]byte, er
 func (md *MDServerDisk) getBranchID(ctx context.Context, id tlf.ID) (BranchID, error) {
 	branchKey, err := md.getBranchKey(ctx, id)
 	if err != nil {
-		return NullBranchID, kbfsmd.ServerError{Err: err}
+		return kbfsmd.NullBranchID, kbfsmd.ServerError{Err: err}
 	}
 
 	md.lock.RLock()
 	defer md.lock.RUnlock()
 	err = md.checkShutdownLocked()
 	if err != nil {
-		return NullBranchID, err
+		return kbfsmd.NullBranchID, err
 	}
 
 	buf, err := md.branchDb.Get(branchKey, nil)
 	if err == leveldb.ErrNotFound {
-		return NullBranchID, nil
+		return kbfsmd.NullBranchID, nil
 	}
 	if err != nil {
-		return NullBranchID, kbfsmd.ServerErrorBadRequest{Reason: "Invalid branch ID"}
+		return kbfsmd.NullBranchID, kbfsmd.ServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 	var bid BranchID
 	err = md.config.Codec().Decode(buf, &bid)
 	if err != nil {
-		return NullBranchID, kbfsmd.ServerErrorBadRequest{Reason: "Invalid branch ID"}
+		return kbfsmd.NullBranchID, kbfsmd.ServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 	return bid, nil
 }
@@ -338,13 +338,13 @@ func (md *MDServerDisk) GetForTLF(ctx context.Context, id tlf.ID,
 	}
 
 	// Lookup the branch ID if not supplied
-	if mStatus == Unmerged && bid == NullBranchID {
+	if mStatus == Unmerged && bid == kbfsmd.NullBranchID {
 		var err error
 		bid, err = md.getBranchID(ctx, id)
 		if err != nil {
 			return nil, err
 		}
-		if bid == NullBranchID {
+		if bid == kbfsmd.NullBranchID {
 			return nil, nil
 		}
 	}
@@ -373,13 +373,13 @@ func (md *MDServerDisk) GetRange(ctx context.Context, id tlf.ID,
 	md.log.CDebugf(ctx, "GetRange %d %d (%s)", start, stop, mStatus)
 
 	// Lookup the branch ID if not supplied
-	if mStatus == Unmerged && bid == NullBranchID {
+	if mStatus == Unmerged && bid == kbfsmd.NullBranchID {
 		var err error
 		bid, err = md.getBranchID(ctx, id)
 		if err != nil {
 			return nil, err
 		}
-		if bid == NullBranchID {
+		if bid == kbfsmd.NullBranchID {
 			return nil, nil
 		}
 	}
@@ -457,7 +457,7 @@ func (md *MDServerDisk) PruneBranch(ctx context.Context, id tlf.ID, bid BranchID
 		return err
 	}
 
-	if bid == NullBranchID {
+	if bid == kbfsmd.NullBranchID {
 		return kbfsmd.ServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
@@ -465,7 +465,7 @@ func (md *MDServerDisk) PruneBranch(ctx context.Context, id tlf.ID, bid BranchID
 	if err != nil {
 		return err
 	}
-	if currBID == NullBranchID || bid != currBID {
+	if currBID == kbfsmd.NullBranchID || bid != currBID {
 		return kbfsmd.ServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
@@ -477,7 +477,7 @@ func (md *MDServerDisk) PruneBranch(ctx context.Context, id tlf.ID, bid BranchID
 
 func (md *MDServerDisk) getCurrentMergedHeadRevision(
 	ctx context.Context, id tlf.ID) (rev kbfsmd.Revision, err error) {
-	head, err := md.GetForTLF(ctx, id, NullBranchID, Merged, nil)
+	head, err := md.GetForTLF(ctx, id, kbfsmd.NullBranchID, Merged, nil)
 	if err != nil {
 		return 0, err
 	}

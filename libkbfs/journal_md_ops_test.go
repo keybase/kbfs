@@ -253,12 +253,12 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	require.NoError(t, err)
 
 	// (8) verify head is pruned
-	head, err = mdOps.GetUnmergedForTLF(ctx, id, NullBranchID)
+	head, err = mdOps.GetUnmergedForTLF(ctx, id, kbfsmd.NullBranchID)
 	require.NoError(t, err)
 	require.Equal(t, ImmutableRootMetadata{}, head)
 
 	// (9) verify revision history is pruned
-	rmdses, err = mdOps.GetUnmergedRange(ctx, id, NullBranchID, 1, 100)
+	rmdses, err = mdOps.GetUnmergedRange(ctx, id, kbfsmd.NullBranchID, 1, 100)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(rmdses))
 
@@ -339,7 +339,7 @@ func TestJournalMDOpsPutUnmergedError(t *testing.T) {
 	rmd := makeMDForJournalMDOpsTest(t, config, id, h, kbfsmd.Revision(1))
 
 	_, err = mdOps.PutUnmerged(ctx, rmd, session.VerifyingKey)
-	require.Error(t, err, "Unmerged put with rmd.BID() == j.branchID == NullBranchID")
+	require.Error(t, err, "Unmerged put with rmd.BID() == j.branchID == kbfsmd.NullBranchID")
 }
 
 func TestJournalMDOpsLocalSquashBranch(t *testing.T) {

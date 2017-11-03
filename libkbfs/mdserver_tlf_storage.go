@@ -235,7 +235,7 @@ func (s *mdServerTlfStorage) getHeadForTLFReadLocked(bid BranchID) (
 
 func (s *mdServerTlfStorage) checkGetParamsReadLocked(
 	ctx context.Context, currentUID keybase1.UID, bid BranchID) error {
-	mergedMasterHead, err := s.getHeadForTLFReadLocked(NullBranchID)
+	mergedMasterHead, err := s.getHeadForTLFReadLocked(kbfsmd.NullBranchID)
 	if err != nil {
 		return kbfsmd.ServerError{Err: err}
 	}
@@ -421,7 +421,7 @@ func (s *mdServerTlfStorage) put(ctx context.Context,
 
 	// Check permissions
 
-	mergedMasterHead, err := s.getHeadForTLFReadLocked(NullBranchID)
+	mergedMasterHead, err := s.getHeadForTLFReadLocked(kbfsmd.NullBranchID)
 	if err != nil {
 		return false, kbfsmd.ServerError{Err: err}
 	}
@@ -457,7 +457,7 @@ func (s *mdServerTlfStorage) put(ctx context.Context,
 		// currHead for unmerged history might be on the main branch
 		prevRev := rmds.MD.RevisionNumber() - 1
 		rmdses, err := s.getRangeReadLocked(
-			ctx, currentUID, NullBranchID, prevRev, prevRev)
+			ctx, currentUID, kbfsmd.NullBranchID, prevRev, prevRev)
 		if err != nil {
 			return false, kbfsmd.ServerError{Err: err}
 		}

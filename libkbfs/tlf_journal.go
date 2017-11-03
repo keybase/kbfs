@@ -985,7 +985,7 @@ func (j *tlfJournal) checkServerForConflicts(ctx context.Context,
 	// returns the latest revision number, so we don't have to fetch
 	// the entire MD?
 	currHead, err := j.config.MDServer().GetForTLF(
-		ctx, j.tlfID, NullBranchID, Merged, needLock)
+		ctx, j.tlfID, kbfsmd.NullBranchID, Merged, needLock)
 	if err != nil {
 		return err
 	}
@@ -1218,7 +1218,7 @@ func (j *tlfJournal) convertMDsToBranchIfOverThreshold(ctx context.Context,
 		return false, err
 	}
 
-	if j.mdJournal.getBranchID() != NullBranchID {
+	if j.mdJournal.getBranchID() != kbfsmd.NullBranchID {
 		// Already on a conflict branch, so nothing to do.
 		return false, nil
 	}
@@ -1539,7 +1539,7 @@ func (j *tlfJournal) isOnConflictBranch() (bool, error) {
 		return false, err
 	}
 
-	return j.mdJournal.getBranchID() != NullBranchID, nil
+	return j.mdJournal.getBranchID() != kbfsmd.NullBranchID, nil
 }
 
 func (j *tlfJournal) getJournalStatusLocked() (TLFJournalStatus, error) {
@@ -1988,7 +1988,7 @@ func (j *tlfJournal) putBlockData(
 			storedBytesBefore, storedBytesAfter))
 	}
 
-	if putData && j.mdJournal.branchID == NullBranchID {
+	if putData && j.mdJournal.branchID == kbfsmd.NullBranchID {
 		j.unsquashedBytes += uint64(bufLen)
 	}
 
@@ -2105,7 +2105,7 @@ func (j *tlfJournal) getBranchID() (BranchID, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	if err := j.checkEnabledLocked(); err != nil {
-		return NullBranchID, err
+		return kbfsmd.NullBranchID, err
 	}
 
 	return j.mdJournal.branchID, nil
@@ -2259,7 +2259,7 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata,
 
 func (j *tlfJournal) clearMDs(ctx context.Context, bid BranchID) error {
 	if j.onBranchChange != nil {
-		j.onBranchChange.onTLFBranchChange(j.tlfID, NullBranchID)
+		j.onBranchChange.onTLFBranchChange(j.tlfID, kbfsmd.NullBranchID)
 	}
 
 	j.journalLock.Lock()

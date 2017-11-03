@@ -613,13 +613,13 @@ func (fbo *folderBranchOps) getHead(lState *lockState) (
 func (fbo *folderBranchOps) isMasterBranch(lState *lockState) bool {
 	fbo.mdWriterLock.Lock(lState)
 	defer fbo.mdWriterLock.Unlock(lState)
-	return fbo.bid == NullBranchID
+	return fbo.bid == kbfsmd.NullBranchID
 }
 
 func (fbo *folderBranchOps) isMasterBranchLocked(lState *lockState) bool {
 	fbo.mdWriterLock.AssertLocked(lState)
 
-	return fbo.bid == NullBranchID
+	return fbo.bid == kbfsmd.NullBranchID
 }
 
 func (fbo *folderBranchOps) setBranchIDLocked(lState *lockState, bid BranchID) {
@@ -630,7 +630,7 @@ func (fbo *folderBranchOps) setBranchIDLocked(lState *lockState, bid BranchID) {
 	}
 
 	fbo.bid = bid
-	if bid == NullBranchID {
+	if bid == kbfsmd.NullBranchID {
 		fbo.status.setCRSummary(nil, nil)
 	}
 }
@@ -662,7 +662,7 @@ func (fbo *folderBranchOps) getJournalPredecessorRevision(ctx context.Context) (
 		return kbfsmd.RevisionUninitialized, nil
 	}
 
-	if jStatus.BranchID != NullBranchID.String() {
+	if jStatus.BranchID != kbfsmd.NullBranchID.String() {
 		return kbfsmd.RevisionUninitialized, errNoMergedRevWhileStaged
 	}
 
@@ -1065,7 +1065,7 @@ func (fbo *folderBranchOps) getMDForWriteOrRekeyLocked(
 	mdops := fbo.config.MDOps()
 
 	// get the head of the unmerged branch for this device (if any)
-	md, err = mdops.GetUnmergedForTLF(ctx, fbo.id(), NullBranchID)
+	md, err = mdops.GetUnmergedForTLF(ctx, fbo.id(), kbfsmd.NullBranchID)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
@@ -1158,7 +1158,7 @@ func (fbo *folderBranchOps) getMostRecentFullyMergedMD(ctx context.Context) (
 	}
 
 	// Otherwise, use the specified revision.
-	rmd, err := getSingleMD(ctx, fbo.config, fbo.id(), NullBranchID,
+	rmd, err := getSingleMD(ctx, fbo.config, fbo.id(), kbfsmd.NullBranchID,
 		mergedRev, Merged, nil)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
@@ -2230,7 +2230,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 		fbo.setBranchIDLocked(lState, bid)
 		doResolve = true
 	} else {
-		fbo.setBranchIDLocked(lState, NullBranchID)
+		fbo.setBranchIDLocked(lState, kbfsmd.NullBranchID)
 
 		if md.IsRekeySet() && !md.IsWriterMetadataCopiedSet() {
 			// Queue this folder for rekey if the bit was set and it's not a copy.
@@ -2365,7 +2365,7 @@ func (fbo *folderBranchOps) finalizeMDRekeyWriteLocked(ctx context.Context,
 		return RekeyConflictError{err}
 	}
 
-	fbo.setBranchIDLocked(lState, NullBranchID)
+	fbo.setBranchIDLocked(lState, kbfsmd.NullBranchID)
 
 	rebased := (oldPrevRoot != md.PrevRoot())
 	if rebased {
@@ -2438,7 +2438,7 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *GCOp) (
 		return err
 	}
 
-	fbo.setBranchIDLocked(lState, NullBranchID)
+	fbo.setBranchIDLocked(lState, kbfsmd.NullBranchID)
 	md.loadCachedBlockChanges(ctx, bps, fbo.log)
 
 	rebased := (oldPrevRoot != md.PrevRoot())
@@ -5002,9 +5002,9 @@ func (fbo *folderBranchOps) undoUnmergedMDUpdatesLocked(
 	// being currHead-1, so that future calls to
 	// applyMDUpdates will fetch this along with the rest of
 	// the updates.
-	fbo.setBranchIDLocked(lState, NullBranchID)
+	fbo.setBranchIDLocked(lState, kbfsmd.NullBranchID)
 
-	rmd, err := getSingleMD(ctx, fbo.config, fbo.id(), NullBranchID,
+	rmd, err := getSingleMD(ctx, fbo.config, fbo.id(), kbfsmd.NullBranchID,
 		currHead, Merged, nil)
 	if err != nil {
 		return nil, err
@@ -5973,7 +5973,7 @@ func (fbo *folderBranchOps) finalizeResolutionLocked(ctx context.Context,
 			"successful put: %v", err)
 		return err
 	}
-	fbo.setBranchIDLocked(lState, NullBranchID)
+	fbo.setBranchIDLocked(lState, kbfsmd.NullBranchID)
 
 	// Archive the old, unref'd blocks if journaling is off.
 	if !TLFJournalEnabled(fbo.config, fbo.id()) {
@@ -6106,7 +6106,7 @@ func (fbo *folderBranchOps) onTLFBranchChange(newBID BranchID) {
 
 		// This only happens on a `PruneBranch` call, in which case we
 		// would have already updated fbo's local view of the branch/head.
-		if newBID == NullBranchID {
+		if newBID == kbfsmd.NullBranchID {
 			fbo.log.CDebugf(ctx, "Ignoring branch change back to master")
 			return
 		}
@@ -6127,7 +6127,7 @@ func (fbo *folderBranchOps) handleMDFlush(ctx context.Context, bid BranchID,
 	}()
 
 	// Get that revision.
-	rmd, err := getSingleMD(ctx, fbo.config, fbo.id(), NullBranchID,
+	rmd, err := getSingleMD(ctx, fbo.config, fbo.id(), kbfsmd.NullBranchID,
 		rev, Merged, nil)
 	if err != nil {
 		fbo.log.CWarningf(ctx, "Couldn't get revision %d for archiving: %v",
@@ -6152,7 +6152,7 @@ func (fbo *folderBranchOps) onMDFlush(bid BranchID, rev kbfsmd.Revision) {
 		ctx, cancelFunc := fbo.newCtxWithFBOID()
 		defer cancelFunc()
 
-		if bid != NullBranchID {
+		if bid != kbfsmd.NullBranchID {
 			fbo.log.CDebugf(ctx, "Ignoring MD flush on branch %v for "+
 				"revision %d", bid, rev)
 			return

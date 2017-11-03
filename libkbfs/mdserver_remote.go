@@ -541,11 +541,11 @@ func (md *MDServerRemote) GetForHandle(ctx context.Context,
 		return tlf.ID{}, nil, err
 	}
 	// BranchID needs to be present when Unmerged is true;
-	// NullBranchID signals that the folder's current branch ID
+	// kbfsmd.NullBranchID signals that the folder's current branch ID
 	// should be looked up.
 	arg := keybase1.GetMetadataArg{
 		FolderHandle:  encodedHandle,
-		BranchID:      NullBranchID.String(),
+		BranchID:      kbfsmd.NullBranchID.String(),
 		Unmerged:      mStatus == Unmerged,
 		LockBeforeGet: lockBeforeGet,
 	}

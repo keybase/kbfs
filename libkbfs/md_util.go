@@ -201,7 +201,7 @@ func getMergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
 	start := startRev
 	for {
 		end := start + maxMDsAtATime - 1 // range is inclusive
-		rmds, err := getMDRange(ctx, config, id, NullBranchID, start, end,
+		rmds, err := getMDRange(ctx, config, id, kbfsmd.NullBranchID, start, end,
 			Merged, lockBeforeGet)
 		if err != nil {
 			return nil, err
@@ -274,7 +274,7 @@ func getMergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
 // and unmerged branch, between the merge point for that branch and
 // startRev (inclusive).  The returned MDs are the same instances that
 // are stored in the MD cache, so they should be modified with care.
-// If bid is NullBranchID, it returns an empty MD list.
+// If bid is kbfsmd.NullBranchID, it returns an empty MD list.
 //
 // TODO: Accept a parameter to express that we want copies of the MDs
 // instead of the cached versions.
@@ -282,7 +282,7 @@ func getUnmergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
 	bid BranchID, startRev kbfsmd.Revision) (
 	currHead kbfsmd.Revision, unmergedRmds []ImmutableRootMetadata,
 	err error) {
-	if bid == NullBranchID {
+	if bid == kbfsmd.NullBranchID {
 		// We're not really unmerged, so there's nothing to do.
 		// TODO: require the caller to avoid making this call if the
 		// bid isn't set (and change the mdserver behavior in that

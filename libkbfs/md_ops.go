@@ -390,7 +390,7 @@ func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
 		}
 	}
 	// Make sure the signed-over branch ID matches
-	if bid != NullBranchID && bid != rmds.MD.BID() {
+	if bid != kbfsmd.NullBranchID && bid != rmds.MD.BID() {
 		return ImmutableRootMetadata{}, MDMismatchError{
 			rmds.MD.RevisionNumber(), id.String(), rmds.MD.TlfID(),
 			fmt.Errorf("MD contained unexpected branch id %s, expected %s, "+
@@ -436,7 +436,7 @@ func (md *MDOpsStandard) getForTLF(ctx context.Context, id tlf.ID,
 func (md *MDOpsStandard) GetForTLF(
 	ctx context.Context, id tlf.ID, lockBeforeGet *keybase1.LockID) (
 	ImmutableRootMetadata, error) {
-	return md.getForTLF(ctx, id, NullBranchID, Merged, lockBeforeGet)
+	return md.getForTLF(ctx, id, kbfsmd.NullBranchID, Merged, lockBeforeGet)
 }
 
 // GetUnmergedForTLF implements the MDOps interface for MDOpsStandard.
@@ -576,7 +576,7 @@ func (md *MDOpsStandard) GetRange(ctx context.Context, id tlf.ID,
 	start, stop kbfsmd.Revision, lockBeforeGet *keybase1.LockID) (
 	[]ImmutableRootMetadata, error) {
 	return md.getRange(
-		ctx, id, NullBranchID, Merged, start, stop, lockBeforeGet)
+		ctx, id, kbfsmd.NullBranchID, Merged, start, stop, lockBeforeGet)
 }
 
 // GetUnmergedRange implements the MDOps interface for MDOpsStandard.
@@ -654,7 +654,7 @@ func (md *MDOpsStandard) PutUnmerged(
 	ctx context.Context, rmd *RootMetadata,
 	verifyingKey kbfscrypto.VerifyingKey) (ImmutableRootMetadata, error) {
 	rmd.SetUnmerged()
-	if rmd.BID() == NullBranchID {
+	if rmd.BID() == kbfsmd.NullBranchID {
 		// new branch ID
 		bid, err := md.config.Crypto().MakeRandomBranchID()
 		if err != nil {

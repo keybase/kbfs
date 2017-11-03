@@ -954,7 +954,7 @@ func testTLFJournalFlushMDBasic(t *testing.T, ver MetadataVer) {
 	rmdses := mdserver.rmdses
 	require.Equal(t, mdCount, len(rmdses))
 	config.checkRange(
-		rmdses, firstRevision, firstPrevRoot, Merged, NullBranchID)
+		rmdses, firstRevision, firstPrevRoot, Merged, kbfsmd.NullBranchID)
 }
 
 func testTLFJournalFlushMDConflict(t *testing.T, ver MetadataVer) {
@@ -1258,7 +1258,7 @@ func testTLFJournalFlushOrderingAfterSquashAndCR(
 	// Let it squash (avoiding a branch this time since there's only one MD).
 	err = tlfJournal.flush(ctx)
 	require.NoError(t, err)
-	require.Equal(t, NullBranchID, tlfJournal.mdJournal.getBranchID())
+	require.Equal(t, kbfsmd.NullBranchID, tlfJournal.mdJournal.getBranchID())
 	requireJournalEntryCounts(t, tlfJournal, blockEnd+4, 2)
 
 	// Simulate an MD conflict and try to flush again.  This will
@@ -1278,7 +1278,7 @@ func testTLFJournalFlushOrderingAfterSquashAndCR(
 	require.NoError(t, err)
 	branchID := tlfJournal.mdJournal.getBranchID()
 	require.NotEqual(t, kbfsmd.PendingLocalSquashBranchID, branchID)
-	require.NotEqual(t, NullBranchID, branchID)
+	require.NotEqual(t, kbfsmd.NullBranchID, branchID)
 	// Blocks: All the unflushed blocks, plus two unflushed rev markers.
 	requireJournalEntryCounts(
 		t, tlfJournal, blockEnd-maxJournalBlockFlushBatchSize+2, 2)
@@ -1547,7 +1547,7 @@ func testTLFJournalSquashWhileFlushing(t *testing.T, ver MetadataVer) {
 	// Since flush() never saw the branch in conflict, it will finish
 	// flushing everything.
 	testTLFJournalGCd(t, tlfJournal)
-	require.Equal(t, NullBranchID, tlfJournal.mdJournal.getBranchID())
+	require.Equal(t, kbfsmd.NullBranchID, tlfJournal.mdJournal.getBranchID())
 }
 
 type testImmediateBackOff struct {
@@ -1757,7 +1757,7 @@ func testTLFJournalFirstRevNoSquash(t *testing.T, ver MetadataVer) {
 		t, kbfsmd.PendingLocalSquashBranchID, tlfJournal.mdJournal.getBranchID())
 	requireJournalEntryCounts(t, tlfJournal, 5, 4)
 	unsquashedRange, err := tlfJournal.getMDRange(
-		ctx, NullBranchID, firstRevision, firstRevision+3)
+		ctx, kbfsmd.NullBranchID, firstRevision, firstRevision+3)
 	require.NoError(t, err)
 	require.Len(t, unsquashedRange, 1)
 	require.Equal(t, firstRevision, unsquashedRange[0].RevisionNumber())

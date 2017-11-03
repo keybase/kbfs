@@ -462,7 +462,7 @@ func testMDOpsGetSuccess(t *testing.T, ver MetadataVer) {
 	// Do this before setting tlfHandle to nil.
 	verifyMDForPrivate(config, rmds)
 
-	config.mockMdserv.EXPECT().GetForTLF(ctx, rmds.MD.TlfID(), NullBranchID,
+	config.mockMdserv.EXPECT().GetForTLF(ctx, rmds.MD.TlfID(), kbfsmd.NullBranchID,
 		Merged, nil).Return(rmds, nil)
 	expectGetKeyBundles(ctx, config, extra)
 
@@ -482,7 +482,7 @@ func testMDOpsGetBlankSigFailure(t *testing.T, ver MetadataVer) {
 	rmds.SigInfo = kbfscrypto.SignatureInfo{}
 
 	// only the get happens, no verify needed with a blank sig
-	config.mockMdserv.EXPECT().GetForTLF(ctx, rmds.MD.TlfID(), NullBranchID,
+	config.mockMdserv.EXPECT().GetForTLF(ctx, rmds.MD.TlfID(), kbfsmd.NullBranchID,
 		Merged, nil).Return(rmds, nil)
 	expectGetKeyBundles(ctx, config, extra)
 
@@ -499,7 +499,7 @@ func testMDOpsGetFailGet(t *testing.T, ver MetadataVer) {
 	err := errors.New("Fake fail")
 
 	// only the get happens, no verify needed with a blank sig
-	config.mockMdserv.EXPECT().GetForTLF(ctx, id, NullBranchID,
+	config.mockMdserv.EXPECT().GetForTLF(ctx, id, kbfsmd.NullBranchID,
 		Merged, nil).Return(nil, err)
 
 	if _, err2 := config.MDOps().GetForTLF(ctx, id, nil); err2 != err {
@@ -516,7 +516,7 @@ func testMDOpsGetFailIDCheck(t *testing.T, ver MetadataVer) {
 
 	id2 := tlf.FakeID(2, tlf.Public)
 
-	config.mockMdserv.EXPECT().GetForTLF(ctx, id2, NullBranchID,
+	config.mockMdserv.EXPECT().GetForTLF(ctx, id2, kbfsmd.NullBranchID,
 		Merged, nil).Return(rmds, nil)
 	expectGetKeyBundles(ctx, config, extra)
 

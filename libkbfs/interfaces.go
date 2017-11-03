@@ -760,7 +760,7 @@ type Reporter interface {
 // MDCache gets and puts plaintext top-level metadata into the cache.
 type MDCache interface {
 	// Get gets the metadata object associated with the given TLF ID,
-	// revision number, and branch ID (NullBranchID for merged MD).
+	// revision number, and branch ID (kbfsmd.NullBranchID for merged MD).
 	Get(tlf tlf.ID, rev kbfsmd.Revision, bid BranchID) (ImmutableRootMetadata, error)
 	// Put stores the metadata object, only if an MD matching that TLF
 	// ID, revision number, and branch ID isn't already cached.  If
@@ -987,7 +987,7 @@ type cryptoPure interface {
 
 	// MakeRandomBranchID generates a per-device branch ID using a
 	// CSPRNG.  It will not return LocalSquashBranchID or
-	// NullBranchID.
+	// kbfsmd.NullBranchID.
 	MakeRandomBranchID() (BranchID, error)
 
 	// MakeTemporaryBlockID generates a temporary block ID using a

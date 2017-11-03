@@ -8,6 +8,3 @@ import "github.com/keybase/kbfs/kbfsmd"
 
 // BranchID is a temporary alias.
 type BranchID = kbfsmd.BranchID
-
-// NullBranchID is a temporary alias.
-var NullBranchID = kbfsmd.NullBranchID
