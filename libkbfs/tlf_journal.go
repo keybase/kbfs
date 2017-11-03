@@ -1169,7 +1169,7 @@ func (j *tlfJournal) getNextMDEntryToFlush(ctx context.Context,
 }
 
 func (j *tlfJournal) convertMDsToBranchLocked(
-	ctx context.Context, bid BranchID, doSignal bool) error {
+	ctx context.Context, bid kbfsmd.BranchID, doSignal bool) error {
 	err := j.mdJournal.convertToBranch(
 		ctx, bid, j.config.Crypto(), j.config.Codec(), j.tlfID,
 		j.config.MDCache())
@@ -2101,7 +2101,7 @@ func (j *tlfJournal) clearFlushingBlockIDs(entries blockEntriesToFlush) error {
 	return nil
 }
 
-func (j *tlfJournal) getBranchID() (BranchID, error) {
+func (j *tlfJournal) getBranchID() (kbfsmd.BranchID, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	if err := j.checkEnabledLocked(); err != nil {
@@ -2112,7 +2112,7 @@ func (j *tlfJournal) getBranchID() (BranchID, error) {
 }
 
 func (j *tlfJournal) getMDHead(
-	ctx context.Context, bid BranchID) (ImmutableBareRootMetadata, error) {
+	ctx context.Context, bid kbfsmd.BranchID) (ImmutableBareRootMetadata, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
 	if err := j.checkEnabledLocked(); err != nil {
@@ -2123,7 +2123,7 @@ func (j *tlfJournal) getMDHead(
 }
 
 func (j *tlfJournal) getMDRange(
-	ctx context.Context, bid BranchID, start, stop kbfsmd.Revision) (
+	ctx context.Context, bid kbfsmd.BranchID, start, stop kbfsmd.Revision) (
 	[]ImmutableBareRootMetadata, error) {
 	j.journalLock.RLock()
 	defer j.journalLock.RUnlock()
@@ -2257,7 +2257,7 @@ func (j *tlfJournal) putMD(ctx context.Context, rmd *RootMetadata,
 	return irmd, nil
 }
 
-func (j *tlfJournal) clearMDs(ctx context.Context, bid BranchID) error {
+func (j *tlfJournal) clearMDs(ctx context.Context, bid kbfsmd.BranchID) error {
 	if j.onBranchChange != nil {
 		j.onBranchChange.onTLFBranchChange(j.tlfID, kbfsmd.NullBranchID)
 	}
@@ -2278,7 +2278,7 @@ func (j *tlfJournal) clearMDs(ctx context.Context, bid BranchID) error {
 }
 
 func (j *tlfJournal) doResolveBranch(ctx context.Context,
-	bid BranchID, blocksToDelete []kbfsblock.ID, rmd *RootMetadata,
+	bid kbfsmd.BranchID, blocksToDelete []kbfsblock.ID, rmd *RootMetadata,
 	mdInfo unflushedPathMDInfo, perRevMap unflushedPathsPerRevMap,
 	verifyingKey kbfscrypto.VerifyingKey) (
 	irmd ImmutableRootMetadata, retry bool, err error) {
@@ -2347,7 +2347,7 @@ func (j *tlfJournal) doResolveBranch(ctx context.Context,
 }
 
 func (j *tlfJournal) resolveBranch(ctx context.Context,
-	bid BranchID, blocksToDelete []kbfsblock.ID, rmd *RootMetadata,
+	bid kbfsmd.BranchID, blocksToDelete []kbfsblock.ID, rmd *RootMetadata,
 	verifyingKey kbfscrypto.VerifyingKey) (
 	irmd ImmutableRootMetadata, err error) {
 	err = j.prepAndAddRMDWithRetry(ctx, rmd,

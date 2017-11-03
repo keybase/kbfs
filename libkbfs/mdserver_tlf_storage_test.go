@@ -18,7 +18,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func getMDStorageLength(t *testing.T, s *mdServerTlfStorage, bid BranchID) int {
+func getMDStorageLength(t *testing.T, s *mdServerTlfStorage, bid kbfsmd.BranchID) int {
 	len, err := s.journalLength(bid)
 	require.NoError(t, err)
 	return int(len)

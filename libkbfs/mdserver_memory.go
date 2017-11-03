@@ -24,7 +24,7 @@ type mdHandleKey string
 
 type mdBlockKey struct {
 	tlfID    tlf.ID
-	branchID BranchID
+	branchID kbfsmd.BranchID
 }
 
 type mdBranchKey struct {
@@ -83,7 +83,7 @@ type mdServerMemShared struct {
 	// Reader key bundle ID -> reader key bundles
 	readerKeyBundleDb map[mdExtraReaderKey]TLFReaderKeyBundleV3
 	// (TLF ID, crypt public key) -> branch ID
-	branchDb            map[mdBranchKey]BranchID
+	branchDb            map[mdBranchKey]kbfsmd.BranchID
 	truncateLockManager *mdServerLocalTruncateLockManager
 	// tracks expire time and holder
 	lockIDs map[mdLockMemKey]mdLockMemVal
@@ -107,7 +107,7 @@ func NewMDServerMemory(config mdServerLocalConfig) (*MDServerMemory, error) {
 	handleDb := make(map[mdHandleKey]tlf.ID)
 	latestHandleDb := make(map[tlf.ID]tlf.Handle)
 	mdDb := make(map[mdBlockKey]mdBlockMemList)
-	branchDb := make(map[mdBranchKey]BranchID)
+	branchDb := make(map[mdBranchKey]kbfsmd.BranchID)
 	writerKeyBundleDb := make(map[mdExtraWriterKey]TLFWriterKeyBundleV3)
 	readerKeyBundleDb := make(map[mdExtraReaderKey]TLFReaderKeyBundleV3)
 	log := config.MakeLogger("MDSM")
@@ -213,8 +213,8 @@ func (md *MDServerMemory) GetForHandle(ctx context.Context, handle tlf.Handle,
 }
 
 func (md *MDServerMemory) checkGetParamsRLocked(
-	ctx context.Context, id tlf.ID, bid BranchID, mStatus MergeStatus) (
-	newBid BranchID, err error) {
+	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus) (
+	newBid kbfsmd.BranchID, err error) {
 	if mStatus == Merged && bid != kbfsmd.NullBranchID {
 		return kbfsmd.NullBranchID, kbfsmd.ServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
@@ -259,7 +259,7 @@ func (md *MDServerMemory) checkGetParamsRLocked(
 
 // GetForTLF implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetForTLF(ctx context.Context, id tlf.ID,
-	bid BranchID, mStatus MergeStatus, _ *keybase1.LockID) (
+	bid kbfsmd.BranchID, mStatus MergeStatus, _ *keybase1.LockID) (
 	*RootMetadataSigned, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
@@ -284,7 +284,7 @@ func (md *MDServerMemory) GetForTLF(ctx context.Context, id tlf.ID,
 }
 
 func (md *MDServerMemory) getHeadForTLFRLocked(ctx context.Context, id tlf.ID,
-	bid BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
+	bid kbfsmd.BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
 	key, err := md.getMDKey(id, bid, mStatus)
 	if err != nil {
 		return nil, err
@@ -312,7 +312,7 @@ func (md *MDServerMemory) getHeadForTLFRLocked(ctx context.Context, id tlf.ID,
 }
 
 func (md *MDServerMemory) getMDKey(
-	id tlf.ID, bid BranchID, mStatus MergeStatus) (mdBlockKey, error) {
+	id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus) (mdBlockKey, error) {
 	if (mStatus == Merged) != (bid == kbfsmd.NullBranchID) {
 		return mdBlockKey{},
 			errors.Errorf("mstatus=%v is inconsistent with bid=%v",
@@ -342,7 +342,7 @@ func (md *MDServerMemory) getCurrentDeviceKey(ctx context.Context) (
 
 // GetRange implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) getRangeLocked(ctx context.Context, id tlf.ID,
-	bid BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
+	bid kbfsmd.BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
 	lockBeforeGet *keybase1.LockID) (
 	rmdses []*RootMetadataSigned, lockWaitCh <-chan struct{}, err error) {
 	md.log.CDebugf(ctx, "GetRange %d %d (%s)", start, stop, mStatus)
@@ -415,7 +415,7 @@ func (md *MDServerMemory) getRangeLocked(ctx context.Context, id tlf.ID,
 }
 
 func (md *MDServerMemory) doGetRange(ctx context.Context, id tlf.ID,
-	bid BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
+	bid kbfsmd.BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
 	lockBeforeGet *keybase1.LockID) (
 	[]*RootMetadataSigned, <-chan struct{}, error) {
 	md.lock.Lock()
@@ -425,7 +425,7 @@ func (md *MDServerMemory) doGetRange(ctx context.Context, id tlf.ID,
 
 // GetRange implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetRange(ctx context.Context, id tlf.ID,
-	bid BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
+	bid kbfsmd.BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
 	lockBeforeGet *keybase1.LockID) ([]*RootMetadataSigned, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
@@ -708,7 +708,7 @@ func (md *MDServerMemory) ReleaseLock(ctx context.Context,
 }
 
 // PruneBranch implements the MDServer interface for MDServerMemory.
-func (md *MDServerMemory) PruneBranch(ctx context.Context, id tlf.ID, bid BranchID) error {
+func (md *MDServerMemory) PruneBranch(ctx context.Context, id tlf.ID, bid kbfsmd.BranchID) error {
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
@@ -744,7 +744,7 @@ func (md *MDServerMemory) PruneBranch(ctx context.Context, id tlf.ID, bid Branch
 	return nil
 }
 
-func (md *MDServerMemory) getBranchIDRLocked(ctx context.Context, id tlf.ID) (BranchID, error) {
+func (md *MDServerMemory) getBranchIDRLocked(ctx context.Context, id tlf.ID) (kbfsmd.BranchID, error) {
 	branchKey, err := md.getBranchKey(ctx, id)
 	if err != nil {
 		return kbfsmd.NullBranchID, kbfsmd.ServerError{Err: err}

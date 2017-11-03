@@ -240,7 +240,7 @@ type cachedDirOp struct {
 type folderBranchOps struct {
 	config       Config
 	folderBranch FolderBranch
-	bid          BranchID // protected by mdWriterLock
+	bid          kbfsmd.BranchID // protected by mdWriterLock
 	bType        branchType
 	observers    *observerList
 
@@ -384,7 +384,7 @@ func newFolderBranchOps(ctx context.Context, config Config, fb FolderBranch,
 	fbo := &folderBranchOps{
 		config:       config,
 		folderBranch: fb,
-		bid:          BranchID{},
+		bid:          kbfsmd.BranchID{},
 		bType:        bType,
 		observers:    observers,
 		status:       newFolderBranchStatusKeeper(config, nodeCache),
@@ -622,7 +622,7 @@ func (fbo *folderBranchOps) isMasterBranchLocked(lState *lockState) bool {
 	return fbo.bid == kbfsmd.NullBranchID
 }
 
-func (fbo *folderBranchOps) setBranchIDLocked(lState *lockState, bid BranchID) {
+func (fbo *folderBranchOps) setBranchIDLocked(lState *lockState, bid kbfsmd.BranchID) {
 	fbo.mdWriterLock.AssertLocked(lState)
 
 	if fbo.bid != bid {
@@ -2768,7 +2768,7 @@ func (fbo *folderBranchOps) createEntryLocked(
 }
 
 func (fbo *folderBranchOps) maybeWaitForSquash(
-	ctx context.Context, bid BranchID) {
+	ctx context.Context, bid kbfsmd.BranchID) {
 	if bid != kbfsmd.PendingLocalSquashBranchID {
 		return
 	}
@@ -4915,7 +4915,7 @@ func (fbo *folderBranchOps) getAndApplyMDUpdates(ctx context.Context,
 func (fbo *folderBranchOps) getAndApplyNewestUnmergedHead(ctx context.Context,
 	lState *lockState) error {
 	fbo.log.CDebugf(ctx, "Fetching the newest unmerged head")
-	bid := func() BranchID {
+	bid := func() kbfsmd.BranchID {
 		fbo.mdWriterLock.Lock(lState)
 		defer fbo.mdWriterLock.Unlock(lState)
 		return fbo.bid
@@ -4962,7 +4962,7 @@ func (fbo *folderBranchOps) getUnmergedMDUpdates(
 	ctx context.Context, lState *lockState) (
 	kbfsmd.Revision, []ImmutableRootMetadata, error) {
 	// acquire mdWriterLock to read the current branch ID.
-	bid := func() BranchID {
+	bid := func() kbfsmd.BranchID {
 		fbo.mdWriterLock.Lock(lState)
 		defer fbo.mdWriterLock.Unlock(lState)
 		return fbo.bid
@@ -6045,7 +6045,7 @@ func (fbo *folderBranchOps) unstageAfterFailedResolution(ctx context.Context,
 }
 
 func (fbo *folderBranchOps) handleTLFBranchChange(ctx context.Context,
-	newBID BranchID) {
+	newBID kbfsmd.BranchID) {
 	lState := makeFBOLockState()
 	fbo.mdWriterLock.Lock(lState)
 	defer fbo.mdWriterLock.Unlock(lState)
@@ -6096,7 +6096,7 @@ func (fbo *folderBranchOps) handleTLFBranchChange(ctx context.Context,
 	}
 }
 
-func (fbo *folderBranchOps) onTLFBranchChange(newBID BranchID) {
+func (fbo *folderBranchOps) onTLFBranchChange(newBID kbfsmd.BranchID) {
 	fbo.branchChanges.Add(1)
 
 	go func() {
@@ -6115,7 +6115,7 @@ func (fbo *folderBranchOps) onTLFBranchChange(newBID BranchID) {
 	}()
 }
 
-func (fbo *folderBranchOps) handleMDFlush(ctx context.Context, bid BranchID,
+func (fbo *folderBranchOps) handleMDFlush(ctx context.Context, bid kbfsmd.BranchID,
 	rev kbfsmd.Revision) {
 	fbo.log.CDebugf(ctx, "Considering archiving references for flushed MD revision %d", rev)
 
@@ -6144,7 +6144,7 @@ func (fbo *folderBranchOps) handleMDFlush(ctx context.Context, bid BranchID,
 	fbo.fbm.archiveUnrefBlocks(rmd.ReadOnly())
 }
 
-func (fbo *folderBranchOps) onMDFlush(bid BranchID, rev kbfsmd.Revision) {
+func (fbo *folderBranchOps) onMDFlush(bid kbfsmd.BranchID, rev kbfsmd.Revision) {
 	fbo.mdFlushes.Add(1)
 
 	go func() {

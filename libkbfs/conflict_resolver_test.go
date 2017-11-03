@@ -78,7 +78,7 @@ func (fc failingCodec) Encode(interface{}) ([]byte, error) {
 	return nil, errors.New("Stopping resolution process early")
 }
 
-func crMakeFakeRMD(rev kbfsmd.Revision, bid BranchID) ImmutableRootMetadata {
+func crMakeFakeRMD(rev kbfsmd.Revision, bid kbfsmd.BranchID) ImmutableRootMetadata {
 	var writerFlags WriterFlags
 	if bid != kbfsmd.NullBranchID {
 		writerFlags = MetadataFlagUnmerged

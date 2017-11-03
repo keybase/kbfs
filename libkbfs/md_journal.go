@@ -140,7 +140,7 @@ type mdJournal struct {
 
 	j mdIDJournal
 
-	// branchID is the BranchID that every MD in the journal is set
+	// branchID is the kbfsmd.BranchID that every MD in the journal is set
 	// to, except for when it is kbfsmd.PendingLocalSquashBranchID, in which
 	// case the journal is a bunch of MDs with a null branchID
 	// followed by a bunch of MDs with bid =
@@ -149,7 +149,7 @@ type mdJournal struct {
 	// branchID doesn't need to be persisted, even if the journal
 	// becomes empty, since on a restart the branch ID is retrieved
 	// from the server (via GetUnmergedForTLF).
-	branchID BranchID
+	branchID kbfsmd.BranchID
 
 	// Set only when the journal becomes empty due to
 	// flushing. This doesn't need to be persisted for the same
@@ -610,7 +610,7 @@ func (j mdJournal) checkGetParams(ctx context.Context) (
 }
 
 func (j *mdJournal) convertToBranch(
-	ctx context.Context, bid BranchID, signer kbfscrypto.Signer,
+	ctx context.Context, bid kbfsmd.BranchID, signer kbfscrypto.Signer,
 	codec kbfscodec.Codec, tlfID tlf.ID, mdcache MDCache) (err error) {
 	if j.branchID != kbfsmd.NullBranchID {
 		return errors.Errorf(
@@ -908,7 +908,7 @@ func (j *mdJournal) removeFlushedEntry(
 }
 
 func getMdID(ctx context.Context, mdserver MDServer, codec kbfscodec.Codec,
-	tlfID tlf.ID, bid BranchID, mStatus MergeStatus,
+	tlfID tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus,
 	revision kbfsmd.Revision, lockBeforeGet *keybase1.LockID) (kbfsmd.ID, error) {
 	rmdses, err := mdserver.GetRange(
 		ctx, tlfID, bid, mStatus, revision, revision, lockBeforeGet)
@@ -936,7 +936,7 @@ func getMdID(ctx context.Context, mdserver MDServer, codec kbfscodec.Codec,
 // local squash, it preserves the MD updates corresponding to the
 // prefix of existing local squashes, so they can be re-used in the
 // newly-resolved journal.
-func (j *mdJournal) clearHelper(ctx context.Context, bid BranchID,
+func (j *mdJournal) clearHelper(ctx context.Context, bid kbfsmd.BranchID,
 	earliestBranchRevision kbfsmd.Revision) (err error) {
 	j.log.CDebugf(ctx, "Clearing journal for branch %s", bid)
 	defer func() {
@@ -1049,11 +1049,11 @@ func (j mdJournal) end() (kbfsmd.Revision, error) {
 	return j.j.end()
 }
 
-func (j mdJournal) getBranchID() BranchID {
+func (j mdJournal) getBranchID() kbfsmd.BranchID {
 	return j.branchID
 }
 
-func (j mdJournal) getHead(ctx context.Context, bid BranchID) (
+func (j mdJournal) getHead(ctx context.Context, bid kbfsmd.BranchID) (
 	ImmutableBareRootMetadata, error) {
 	head, err := j.checkGetParams(ctx)
 	if err != nil {
@@ -1103,7 +1103,7 @@ func (j mdJournal) getHead(ctx context.Context, bid BranchID) (
 }
 
 func (j mdJournal) getRange(
-	ctx context.Context, bid BranchID, start, stop kbfsmd.Revision) (
+	ctx context.Context, bid kbfsmd.BranchID, start, stop kbfsmd.Revision) (
 	[]ImmutableBareRootMetadata, error) {
 	head, err := j.checkGetParams(ctx)
 	if err != nil {
@@ -1394,7 +1394,7 @@ func (j *mdJournal) put(
 // it preserves the MD updates corresponding to the prefix of existing
 // local squashes, so they can be re-used in the newly-resolved
 // journal.
-func (j *mdJournal) clear(ctx context.Context, bid BranchID) error {
+func (j *mdJournal) clear(ctx context.Context, bid kbfsmd.BranchID) error {
 	earliestBranchRevision, err := j.j.readEarliestRevision()
 	if err != nil {
 		return err
@@ -1423,7 +1423,7 @@ func (j *mdJournal) clear(ctx context.Context, bid BranchID) error {
 
 func (j *mdJournal) resolveAndClear(
 	ctx context.Context, signer kbfscrypto.Signer, ekg encryptionKeyGetter,
-	bsplit BlockSplitter, mdcache MDCache, bid BranchID, rmd *RootMetadata) (
+	bsplit BlockSplitter, mdcache MDCache, bid kbfsmd.BranchID, rmd *RootMetadata) (
 	mdID kbfsmd.ID, err error) {
 	j.log.CDebugf(ctx, "Resolve and clear, branch %s, resolve rev %d",
 		bid, rmd.Revision())

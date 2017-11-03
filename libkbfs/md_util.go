@@ -77,7 +77,7 @@ func isReadableOrError(
 		session.UID, session.Name)
 }
 
-func getMDRange(ctx context.Context, config Config, id tlf.ID, bid BranchID,
+func getMDRange(ctx context.Context, config Config, id tlf.ID, bid kbfsmd.BranchID,
 	start kbfsmd.Revision, end kbfsmd.Revision, mStatus MergeStatus,
 	lockBeforeGet *keybase1.LockID) (rmds []ImmutableRootMetadata, err error) {
 	// The range is invalid.  Don't treat as an error though; it just
@@ -166,7 +166,7 @@ func getMDRange(ctx context.Context, config Config, id tlf.ID, bid BranchID,
 }
 
 // getSingleMD returns an MD that is required to exist.
-func getSingleMD(ctx context.Context, config Config, id tlf.ID, bid BranchID,
+func getSingleMD(ctx context.Context, config Config, id tlf.ID, bid kbfsmd.BranchID,
 	rev kbfsmd.Revision, mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (
 	ImmutableRootMetadata, error) {
 	rmds, err := getMDRange(
@@ -279,7 +279,7 @@ func getMergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
 // TODO: Accept a parameter to express that we want copies of the MDs
 // instead of the cached versions.
 func getUnmergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
-	bid BranchID, startRev kbfsmd.Revision) (
+	bid kbfsmd.BranchID, startRev kbfsmd.Revision) (
 	currHead kbfsmd.Revision, unmergedRmds []ImmutableRootMetadata,
 	err error) {
 	if bid == kbfsmd.NullBranchID {

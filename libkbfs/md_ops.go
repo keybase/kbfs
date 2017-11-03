@@ -379,7 +379,7 @@ func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *TlfHandle,
 }
 
 func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
-	id tlf.ID, bid BranchID, handle *TlfHandle, rmds *RootMetadataSigned,
+	id tlf.ID, bid kbfsmd.BranchID, handle *TlfHandle, rmds *RootMetadataSigned,
 	extra ExtraMetadata, getRangeLock *sync.Mutex) (ImmutableRootMetadata, error) {
 	// Make sure the signed-over ID matches
 	if id != rmds.MD.TlfID() {
@@ -402,7 +402,7 @@ func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
 }
 
 func (md *MDOpsStandard) getForTLF(ctx context.Context, id tlf.ID,
-	bid BranchID, mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (
+	bid kbfsmd.BranchID, mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (
 	ImmutableRootMetadata, error) {
 	rmds, err := md.config.MDServer().GetForTLF(
 		ctx, id, bid, mStatus, lockBeforeGet)
@@ -441,13 +441,13 @@ func (md *MDOpsStandard) GetForTLF(
 
 // GetUnmergedForTLF implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetUnmergedForTLF(
-	ctx context.Context, id tlf.ID, bid BranchID) (
+	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID) (
 	ImmutableRootMetadata, error) {
 	return md.getForTLF(ctx, id, bid, Unmerged, nil)
 }
 
 func (md *MDOpsStandard) processRange(ctx context.Context, id tlf.ID,
-	bid BranchID, rmdses []*RootMetadataSigned) (
+	bid kbfsmd.BranchID, rmdses []*RootMetadataSigned) (
 	[]ImmutableRootMetadata, error) {
 	if len(rmdses) == 0 {
 		return nil, nil
@@ -557,7 +557,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id tlf.ID,
 }
 
 func (md *MDOpsStandard) getRange(ctx context.Context, id tlf.ID,
-	bid BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
+	bid kbfsmd.BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
 	lockBeforeGet *keybase1.LockID) ([]ImmutableRootMetadata, error) {
 	rmds, err := md.config.MDServer().GetRange(
 		ctx, id, bid, mStatus, start, stop, lockBeforeGet)
@@ -581,7 +581,7 @@ func (md *MDOpsStandard) GetRange(ctx context.Context, id tlf.ID,
 
 // GetUnmergedRange implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetUnmergedRange(ctx context.Context, id tlf.ID,
-	bid BranchID, start, stop kbfsmd.Revision) (
+	bid kbfsmd.BranchID, start, stop kbfsmd.Revision) (
 	[]ImmutableRootMetadata, error) {
 	return md.getRange(ctx, id, bid, Unmerged, start, stop, nil)
 }
@@ -667,13 +667,13 @@ func (md *MDOpsStandard) PutUnmerged(
 
 // PruneBranch implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) PruneBranch(
-	ctx context.Context, id tlf.ID, bid BranchID) error {
+	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID) error {
 	return md.config.MDServer().PruneBranch(ctx, id, bid)
 }
 
 // ResolveBranch implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) ResolveBranch(
-	ctx context.Context, id tlf.ID, bid BranchID, _ []kbfsblock.ID,
+	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, _ []kbfsblock.ID,
 	rmd *RootMetadata, verifyingKey kbfscrypto.VerifyingKey) (
 	ImmutableRootMetadata, error) {
 	// Put the MD first.

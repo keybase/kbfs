@@ -156,7 +156,7 @@ func checkBRMD(t *testing.T, uid keybase1.UID, key kbfscrypto.VerifyingKey,
 	codec kbfscodec.Codec, brmd BareRootMetadata,
 	extra ExtraMetadata, expectedRevision kbfsmd.Revision,
 	expectedPrevRoot kbfsmd.ID, expectedMergeStatus MergeStatus,
-	expectedBranchID BranchID) {
+	expectedBranchID kbfsmd.BranchID) {
 	require.Equal(t, expectedRevision, brmd.RevisionNumber())
 	require.Equal(t, expectedPrevRoot, brmd.GetPrevRoot())
 	require.Equal(t, expectedMergeStatus, brmd.MergedStatus())
@@ -174,7 +174,7 @@ func checkBRMD(t *testing.T, uid keybase1.UID, key kbfscrypto.VerifyingKey,
 func checkIBRMDRange(t *testing.T, uid keybase1.UID,
 	key kbfscrypto.VerifyingKey, codec kbfscodec.Codec,
 	ibrmds []ImmutableBareRootMetadata, firstRevision kbfsmd.Revision,
-	firstPrevRoot kbfsmd.ID, mStatus MergeStatus, bid BranchID) {
+	firstPrevRoot kbfsmd.ID, mStatus MergeStatus, bid kbfsmd.BranchID) {
 	checkBRMD(t, uid, key, codec, ibrmds[0], ibrmds[0].extra,
 		firstRevision, firstPrevRoot, mStatus, bid)
 
@@ -667,7 +667,7 @@ func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
 	require.Error(t, err)
 }
 
-func testMDJournalResolveAndClear(t *testing.T, ver MetadataVer, bid BranchID) {
+func testMDJournalResolveAndClear(t *testing.T, ver MetadataVer, bid kbfsmd.BranchID) {
 	_, _, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
