@@ -370,7 +370,7 @@ func (j journalMDOps) getRange(
 	// well, once we're confident that all old server-based branches
 	// have been resolved.
 	if len(jirmds) == 0 {
-		if bid == PendingLocalSquashBranchID {
+		if bid == kbfsmd.PendingLocalSquashBranchID {
 			return jirmds, nil
 		}
 		return delegateFn(ctx, id, start, stop, lockBeforeGet)
@@ -381,7 +381,7 @@ func (j journalMDOps) getRange(
 	// server access), then just return the range from the journal.
 	// TODO: we should be able to avoid server access for regular
 	// conflict branches, as well.
-	if jirmds[0].Revision() == start || bid == PendingLocalSquashBranchID {
+	if jirmds[0].Revision() == start || bid == kbfsmd.PendingLocalSquashBranchID {
 		return jirmds, nil
 	}
 

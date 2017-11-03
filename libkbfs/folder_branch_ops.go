@@ -2769,7 +2769,7 @@ func (fbo *folderBranchOps) createEntryLocked(
 
 func (fbo *folderBranchOps) maybeWaitForSquash(
 	ctx context.Context, bid BranchID) {
-	if bid != PendingLocalSquashBranchID {
+	if bid != kbfsmd.PendingLocalSquashBranchID {
 		return
 	}
 

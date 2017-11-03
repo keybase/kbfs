@@ -11,6 +11,3 @@ type BranchID = kbfsmd.BranchID
 
 // NullBranchID is a temporary alias.
 var NullBranchID = kbfsmd.NullBranchID
-
-// PendingLocalSquashBranchID is a temporary alias.
-var PendingLocalSquashBranchID = kbfsmd.PendingLocalSquashBranchID

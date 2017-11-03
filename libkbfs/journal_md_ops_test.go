@@ -390,7 +390,7 @@ func TestJournalMDOpsLocalSquashBranch(t *testing.T) {
 
 	mdcache := NewMDCacheStandard(10)
 	err = j.convertToBranch(
-		ctx, PendingLocalSquashBranchID, config.Crypto(), config.Codec(),
+		ctx, kbfsmd.PendingLocalSquashBranchID, config.Crypto(), config.Codec(),
 		id, mdcache)
 	require.NoError(t, err)
 
@@ -403,10 +403,10 @@ func TestJournalMDOpsLocalSquashBranch(t *testing.T) {
 
 	// The unmerged head should be the last MD we put, converted to a
 	// branch.
-	irmd, err = mdOps.GetUnmergedForTLF(ctx, id, PendingLocalSquashBranchID)
+	irmd, err = mdOps.GetUnmergedForTLF(ctx, id, kbfsmd.PendingLocalSquashBranchID)
 	require.NoError(t, err)
 	require.Equal(t, rmd.Revision(), irmd.Revision())
-	require.Equal(t, PendingLocalSquashBranchID, irmd.BID())
+	require.Equal(t, kbfsmd.PendingLocalSquashBranchID, irmd.BID())
 
 	// The merged range should just be the initial MD.
 	stopRevision := firstRevision + kbfsmd.Revision(mdCount*2)
@@ -416,7 +416,7 @@ func TestJournalMDOpsLocalSquashBranch(t *testing.T) {
 	require.Equal(t, initialMdID, irmds[0].mdID)
 	require.Equal(t, firstRevision, irmds[0].Revision())
 
-	irmds, err = mdOps.GetUnmergedRange(ctx, id, PendingLocalSquashBranchID,
+	irmds, err = mdOps.GetUnmergedRange(ctx, id, kbfsmd.PendingLocalSquashBranchID,
 		firstRevision, stopRevision)
 	require.NoError(t, err)
 	require.Len(t, irmds, mdCount)

@@ -141,10 +141,10 @@ type mdJournal struct {
 	j mdIDJournal
 
 	// branchID is the BranchID that every MD in the journal is set
-	// to, except for when it is PendingLocalSquashBranchID, in which
+	// to, except for when it is kbfsmd.PendingLocalSquashBranchID, in which
 	// case the journal is a bunch of MDs with a null branchID
 	// followed by a bunch of MDs with bid =
-	// PendingLocalSquashBranchID.
+	// kbfsmd.PendingLocalSquashBranchID.
 	//
 	// branchID doesn't need to be persisted, even if the journal
 	// becomes empty, since on a restart the branch ID is retrieved
@@ -205,7 +205,7 @@ func makeMDJournalWithIDJournal(
 	if earliest != nil {
 		if earliest.BID() != latest.BID() &&
 			!(earliest.BID() == NullBranchID &&
-				latest.BID() == PendingLocalSquashBranchID) {
+				latest.BID() == kbfsmd.PendingLocalSquashBranchID) {
 			return nil, errors.Errorf(
 				"earliest.BID=%s != latest.BID=%s",
 				earliest.BID(), latest.BID())
@@ -481,7 +481,7 @@ func (j mdJournal) getMDAndExtra(ctx context.Context, entry mdIDJournalEntry,
 	}
 
 	if verifyBranchID && rmd.BID() != j.branchID &&
-		!(rmd.BID() == NullBranchID && j.branchID == PendingLocalSquashBranchID) {
+		!(rmd.BID() == NullBranchID && j.branchID == kbfsmd.PendingLocalSquashBranchID) {
 		return nil, nil, time.Time{}, errors.Errorf(
 			"Branch ID mismatch: expected %s, got %s",
 			j.branchID, rmd.BID())
@@ -682,7 +682,7 @@ func (j *mdJournal) convertToBranch(
 
 	var prevID kbfsmd.ID
 
-	isPendingLocalSquash := bid == PendingLocalSquashBranchID
+	isPendingLocalSquash := bid == kbfsmd.PendingLocalSquashBranchID
 	for _, entry := range allEntries {
 		brmd, _, ts, err := j.getMDAndExtra(ctx, entry, true)
 		if err != nil {
@@ -929,9 +929,9 @@ func getMdID(ctx context.Context, mdserver MDServer, codec kbfscodec.Codec,
 // earliestBranchRevision and deletes the corresponding MD
 // updates. All MDs from earliestBranchRevision onwards must have
 // branch equal to the given one, which must not be NullBranchID. This
-// means that, if bid != PendingLocalSquashBranchID,
+// means that, if bid != kbfsmd.PendingLocalSquashBranchID,
 // earliestBranchRevision must equal the earliest revision, and if bid
-// == PendingLocalSquashBranchID, earliestBranchRevision must equal
+// == kbfsmd.PendingLocalSquashBranchID, earliestBranchRevision must equal
 // one past the last local squash revision. If the branch is a pending
 // local squash, it preserves the MD updates corresponding to the
 // prefix of existing local squashes, so they can be re-used in the
@@ -1064,7 +1064,7 @@ func (j mdJournal) getHead(ctx context.Context, bid BranchID) (
 	}
 
 	getLocalSquashHead := bid == NullBranchID &&
-		j.branchID == PendingLocalSquashBranchID
+		j.branchID == kbfsmd.PendingLocalSquashBranchID
 	if !getLocalSquashHead {
 		if head.BID() != bid {
 			return ImmutableBareRootMetadata{}, nil
@@ -1115,7 +1115,7 @@ func (j mdJournal) getRange(
 	// If we are on a pending local squash branch, the caller can ask
 	// for "merged" entries that make up a prefix of the journal.
 	getLocalSquashPrefix := bid == NullBranchID &&
-		j.branchID == PendingLocalSquashBranchID
+		j.branchID == kbfsmd.PendingLocalSquashBranchID
 	if head.BID() != bid && !getLocalSquashPrefix {
 		return nil, nil
 	}
@@ -1129,7 +1129,7 @@ func (j mdJournal) getRange(
 		if getLocalSquashPrefix && !entry.IsLocalSquash {
 			// We only need the prefix up to the first non-local-squash.
 			break
-		} else if entry.IsLocalSquash && bid == PendingLocalSquashBranchID {
+		} else if entry.IsLocalSquash && bid == kbfsmd.PendingLocalSquashBranchID {
 			// Ignore the local squash prefix of this journal.
 			continue
 		}
@@ -1401,7 +1401,7 @@ func (j *mdJournal) clear(ctx context.Context, bid BranchID) error {
 	}
 
 	if earliestBranchRevision != kbfsmd.RevisionUninitialized &&
-		bid == PendingLocalSquashBranchID {
+		bid == kbfsmd.PendingLocalSquashBranchID {
 		latestRevision, err := j.j.readLatestRevision()
 		if err != nil {
 			return err
@@ -1494,7 +1494,7 @@ func (j *mdJournal) resolveAndClear(
 
 	// Put the local squashes back into the new journal, since they
 	// weren't part of the resolve.
-	if bid == PendingLocalSquashBranchID {
+	if bid == kbfsmd.PendingLocalSquashBranchID {
 		for ; earliestBranchRevision <= latestRevision; earliestBranchRevision++ {
 			entry, err := j.j.readJournalEntry(earliestBranchRevision)
 			if err != nil {

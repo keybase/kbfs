@@ -1293,7 +1293,7 @@ func (j *tlfJournal) convertMDsToBranchIfOverThreshold(ctx context.Context,
 		}
 	}
 
-	err = j.convertMDsToBranchLocked(ctx, PendingLocalSquashBranchID, doSignal)
+	err = j.convertMDsToBranchLocked(ctx, kbfsmd.PendingLocalSquashBranchID, doSignal)
 	if err != nil {
 		return false, err
 	}
@@ -2290,7 +2290,7 @@ func (j *tlfJournal) doResolveBranch(ctx context.Context,
 
 	// The set of unflushed paths could change as part of the
 	// resolution, and the revision numbers definitely change.
-	isPendingLocalSquash := bid == PendingLocalSquashBranchID
+	isPendingLocalSquash := bid == kbfsmd.PendingLocalSquashBranchID
 	if !j.unflushedPaths.reinitializeWithResolution(
 		mdInfo, perRevMap, isPendingLocalSquash) {
 		return ImmutableRootMetadata{}, true, nil

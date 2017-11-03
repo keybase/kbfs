@@ -1230,12 +1230,12 @@ func testTLFJournalFlushOrderingAfterSquashAndCR(
 	err = tlfJournal.flush(ctx)
 	require.NoError(t, err)
 	require.Equal(
-		t, PendingLocalSquashBranchID, tlfJournal.mdJournal.getBranchID())
+		t, kbfsmd.PendingLocalSquashBranchID, tlfJournal.mdJournal.getBranchID())
 	requireJournalEntryCounts(t, tlfJournal, blockEnd+2, 2)
 
 	squashMD := config.makeMD(firstRev, firstPrevRoot)
 	irmd, err = tlfJournal.resolveBranch(ctx,
-		PendingLocalSquashBranchID, []kbfsblock.ID{}, squashMD, tlfJournal.key)
+		kbfsmd.PendingLocalSquashBranchID, []kbfsblock.ID{}, squashMD, tlfJournal.key)
 	require.NoError(t, err)
 	prevRoot = irmd.mdID
 	requireJournalEntryCounts(t, tlfJournal, blockEnd+3, 1)
@@ -1277,7 +1277,7 @@ func testTLFJournalFlushOrderingAfterSquashAndCR(
 	err = tlfJournal.flush(ctx)
 	require.NoError(t, err)
 	branchID := tlfJournal.mdJournal.getBranchID()
-	require.NotEqual(t, PendingLocalSquashBranchID, branchID)
+	require.NotEqual(t, kbfsmd.PendingLocalSquashBranchID, branchID)
 	require.NotEqual(t, NullBranchID, branchID)
 	// Blocks: All the unflushed blocks, plus two unflushed rev markers.
 	requireJournalEntryCounts(
@@ -1514,7 +1514,7 @@ func testTLFJournalConvertWhileFlushing(t *testing.T, ver MetadataVer) {
 	requireJournalEntryCounts(
 		t, tlfJournal, blocksLeftAfterFlush, mdsLeftAfterFlush)
 	require.Equal(
-		t, PendingLocalSquashBranchID, tlfJournal.mdJournal.getBranchID())
+		t, kbfsmd.PendingLocalSquashBranchID, tlfJournal.mdJournal.getBranchID())
 }
 
 // testTLFJournalSquashWhileFlushing tests that we can do journal
@@ -1718,7 +1718,7 @@ func testTLFJournalSquashByBytes(t *testing.T, ver MetadataVer) {
 	err = tlfJournal.flush(ctx)
 	require.NoError(t, err)
 	require.Equal(
-		t, PendingLocalSquashBranchID, tlfJournal.mdJournal.getBranchID())
+		t, kbfsmd.PendingLocalSquashBranchID, tlfJournal.mdJournal.getBranchID())
 }
 
 // Test that the first revision of a TLF doesn't get squashed.
@@ -1754,7 +1754,7 @@ func testTLFJournalFirstRevNoSquash(t *testing.T, ver MetadataVer) {
 	err = tlfJournal.flush(ctx)
 	require.NoError(t, err)
 	require.Equal(
-		t, PendingLocalSquashBranchID, tlfJournal.mdJournal.getBranchID())
+		t, kbfsmd.PendingLocalSquashBranchID, tlfJournal.mdJournal.getBranchID())
 	requireJournalEntryCounts(t, tlfJournal, 5, 4)
 	unsquashedRange, err := tlfJournal.getMDRange(
 		ctx, NullBranchID, firstRevision, firstRevision+3)
@@ -1763,7 +1763,7 @@ func testTLFJournalFirstRevNoSquash(t *testing.T, ver MetadataVer) {
 	require.Equal(t, firstRevision, unsquashedRange[0].RevisionNumber())
 	require.Equal(t, firstMdID, unsquashedRange[0].mdID)
 	squashRange, err := tlfJournal.getMDRange(
-		ctx, PendingLocalSquashBranchID, firstRevision, firstRevision+3)
+		ctx, kbfsmd.PendingLocalSquashBranchID, firstRevision, firstRevision+3)
 	require.NoError(t, err)
 	require.Len(t, squashRange, 3)
 	require.Equal(t, firstRevision+1, squashRange[0].RevisionNumber())
@@ -1826,7 +1826,7 @@ func testTLFJournalSingleOp(t *testing.T, ver MetadataVer) {
 	}
 
 	require.Equal(
-		t, PendingLocalSquashBranchID, tlfJournal.mdJournal.getBranchID())
+		t, kbfsmd.PendingLocalSquashBranchID, tlfJournal.mdJournal.getBranchID())
 	resolveMD := config.makeMD(kbfsmd.Revision(10), kbfsmd.FakeID(1))
 	_, err = tlfJournal.resolveBranch(ctx,
 		tlfJournal.mdJournal.getBranchID(), nil, resolveMD, tlfJournal.key)
