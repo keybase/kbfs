@@ -78,7 +78,7 @@ func (m *mounter) Unmount() (err error) {
 	default:
 		err = fuse.Unmount(dir)
 	}
-	if err != nil && m.options.ForceMount {
+	if err != nil {
 		// Unmount failed, so let's try and force it.
 		switch runtime.GOOS {
 		case "darwin":
