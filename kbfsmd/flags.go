@@ -4,6 +4,11 @@
 
 package kbfsmd
 
+import (
+	"fmt"
+	"strings"
+)
+
 // MetadataFlags bitfield.
 type MetadataFlags byte
 
@@ -13,6 +18,26 @@ const (
 	MetadataFlagWriterMetadataCopied
 	MetadataFlagFinal
 )
+
+func (flags MetadataFlags) String() string {
+	var flagStrs []string
+	if flags&MetadataFlagRekey != 0 {
+		flagStrs = append(flagStrs, "Rekey")
+		flags &^= MetadataFlagRekey
+	}
+	if flags&MetadataFlagWriterMetadataCopied != 0 {
+		flagStrs = append(flagStrs, "WriterMetadataCopied")
+		flags &^= MetadataFlagWriterMetadataCopied
+	}
+	if flags&MetadataFlagFinal != 0 {
+		flagStrs = append(flagStrs, "Final")
+		flags &^= MetadataFlagFinal
+	}
+	if flags != 0 {
+		flagStrs = append(flagStrs, fmt.Sprintf("%b", int(flags)))
+	}
+	return fmt.Sprintf("MetadataFlags(%s)", strings.Join(flagStrs, " | "))
+}
 
 // WriterFlags bitfield.
 type WriterFlags byte
