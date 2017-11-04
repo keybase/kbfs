@@ -19,24 +19,28 @@ const (
 	MetadataFlagFinal
 )
 
-func (flags MetadataFlags) String() string {
-	var flagStrs []string
-	if flags&MetadataFlagRekey != 0 {
-		flagStrs = append(flagStrs, "Rekey")
-		flags &^= MetadataFlagRekey
-	}
-	if flags&MetadataFlagWriterMetadataCopied != 0 {
-		flagStrs = append(flagStrs, "WriterMetadataCopied")
-		flags &^= MetadataFlagWriterMetadataCopied
-	}
-	if flags&MetadataFlagFinal != 0 {
-		flagStrs = append(flagStrs, "Final")
-		flags &^= MetadataFlagFinal
+var metadataFlagStringMap = map[int]string{
+	int(MetadataFlagRekey):                "Rekey",
+	int(MetadataFlagWriterMetadataCopied): "WriterMetadataCopied",
+	int(MetadataFlagFinal):                "Final",
+}
+
+func flagsToString(flags int, flagStringMap map[int]string) string {
+	var flagStrings []string
+	for f, s := range flagStringMap {
+		if flags&f != 0 {
+			flagStrings = append(flagStrings, s)
+			flags &^= f
+		}
 	}
 	if flags != 0 {
-		flagStrs = append(flagStrs, fmt.Sprintf("%b", int(flags)))
+		flagStrings = append(flagStrings, fmt.Sprintf("%b", flags))
 	}
-	return fmt.Sprintf("MetadataFlags(%s)", strings.Join(flagStrs, " | "))
+	return strings.Join(flagStrings, " | ")
+}
+
+func (flags MetadataFlags) String() string {
+	return fmt.Sprintf("MetadataFlags(%s)", flagsToString(int(flags), metadataFlagStringMap))
 }
 
 // WriterFlags bitfield.
@@ -46,3 +50,11 @@ type WriterFlags byte
 const (
 	MetadataFlagUnmerged WriterFlags = 1 << iota
 )
+
+var writerFlagStringMap = map[int]string{
+	int(MetadataFlagUnmerged): "Unmerged",
+}
+
+func (flags WriterFlags) String() string {
+	return fmt.Sprintf("WriterFlags(%s)", flagsToString(int(flags), writerFlagStringMap))
+}
