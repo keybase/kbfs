@@ -20,16 +20,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// MetadataFlags is a temporary alias.
-type MetadataFlags = kbfsmd.MetadataFlags
-
-// Temporary aliases.
-const (
-	MetadataFlagRekey                MetadataFlags = kbfsmd.MetadataFlagRekey
-	MetadataFlagWriterMetadataCopied MetadataFlags = kbfsmd.MetadataFlagWriterMetadataCopied
-	MetadataFlagFinal                MetadataFlags = kbfsmd.MetadataFlagFinal
-)
-
 // WriterFlags is a temporary alias.
 type WriterFlags = kbfsmd.WriterFlags
 
