@@ -539,16 +539,13 @@ func (h TlfHandle) IsConflict() bool {
 	return h.conflictInfo != nil
 }
 
-// PreferredTlfName is a temporary alias.
-type PreferredTlfName = tlf.PreferredName
-
 // GetPreferredFormat returns a TLF name formatted with the username given
 // as the parameter first.
 // This calls tlf.CanonicalToPreferredName with the canonical
 // tlf name which will be reordered into the preferred format.
 // An empty username is allowed here and results in the canonical ordering.
 func (h TlfHandle) GetPreferredFormat(
-	username libkb.NormalizedUsername) PreferredTlfName {
+	username libkb.NormalizedUsername) tlf.PreferredName {
 	s, err := tlf.CanonicalToPreferredName(username, h.GetCanonicalName())
 	if err != nil {
 		panic("TlfHandle.GetPreferredFormat: Parsing canonical username failed!")
