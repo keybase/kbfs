@@ -67,10 +67,10 @@ func newFolder(fl *FolderList, h *libkbfs.TlfHandle,
 	return f
 }
 
-func (f *Folder) name() libkbfs.CanonicalTlfName {
+func (f *Folder) name() tlf.CanonicalName {
 	f.handleMu.RLock()
 	defer f.handleMu.RUnlock()
-	return libkbfs.CanonicalTlfName(f.hPreferredName)
+	return tlf.CanonicalName(f.hPreferredName)
 }
 
 func (f *Folder) reportErr(ctx context.Context,
