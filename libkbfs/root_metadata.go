@@ -20,14 +20,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// WriterFlags is a temporary alias.
-type WriterFlags = kbfsmd.WriterFlags
-
-// Temporary aliases.
-const (
-	MetadataFlagUnmerged WriterFlags = kbfsmd.MetadataFlagUnmerged
-)
-
 // PrivateMetadata contains the portion of metadata that's secret for private
 // directories
 type PrivateMetadata struct {
