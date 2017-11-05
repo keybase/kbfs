@@ -72,9 +72,6 @@ func (p PrivateMetadata) ChangesBlockInfo() BlockInfo {
 	return p.cachedChanges.Info
 }
 
-// ExtraMetadata is a temporary alias.
-type ExtraMetadata = kbfsmd.ExtraMetadata
-
 // A RootMetadata is a BareRootMetadata but with a deserialized
 // PrivateMetadata. However, note that it is possible that the
 // PrivateMetadata has to be left serialized due to not having the
@@ -84,7 +81,7 @@ type RootMetadata struct {
 
 	// ExtraMetadata currently contains key bundles for post-v2
 	// metadata.
-	extra ExtraMetadata
+	extra kbfsmd.ExtraMetadata
 
 	// The plaintext, deserialized PrivateMetadata
 	//
@@ -102,7 +99,7 @@ var _ KeyMetadata = (*RootMetadata)(nil)
 // makeRootMetadata makes a RootMetadata object from the given
 // parameters.
 func makeRootMetadata(bareMd MutableBareRootMetadata,
-	extra ExtraMetadata, handle *TlfHandle) *RootMetadata {
+	extra kbfsmd.ExtraMetadata, handle *TlfHandle) *RootMetadata {
 	if bareMd == nil {
 		panic("nil MutableBareRootMetadata")
 	}
@@ -143,7 +140,7 @@ func (md *RootMetadata) Data() *PrivateMetadata {
 }
 
 // Extra returns the extra metadata of this RootMetadata.
-func (md *RootMetadata) Extra() ExtraMetadata {
+func (md *RootMetadata) Extra() kbfsmd.ExtraMetadata {
 	return md.extra
 }
 
@@ -164,7 +161,7 @@ func (md *RootMetadata) deepCopy(codec kbfscodec.Codec) (*RootMetadata, error) {
 		return nil, err
 	}
 
-	var extraCopy ExtraMetadata
+	var extraCopy kbfsmd.ExtraMetadata
 	if md.extra != nil {
 		extraCopy, err = md.extra.DeepCopy(codec)
 		if err != nil {
