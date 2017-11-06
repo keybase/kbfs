@@ -130,7 +130,7 @@ type mdJournal struct {
 	codec          kbfscodec.Codec
 	crypto         cryptoPure
 	clock          Clock
-	teamMemChecker TeamMembershipChecker
+	teamMemChecker kbfsmd.TeamMembershipChecker
 	tlfID          tlf.ID
 	mdVer          MetadataVer
 	dir            string
@@ -160,7 +160,7 @@ type mdJournal struct {
 func makeMDJournalWithIDJournal(
 	ctx context.Context, uid keybase1.UID, key kbfscrypto.VerifyingKey,
 	codec kbfscodec.Codec, crypto cryptoPure, clock Clock,
-	teamMemChecker TeamMembershipChecker, tlfID tlf.ID,
+	teamMemChecker kbfsmd.TeamMembershipChecker, tlfID tlf.ID,
 	mdVer MetadataVer, dir string, idJournal mdIDJournal,
 	log logger.Logger) (*mdJournal, error) {
 	if uid == keybase1.UID("") {
@@ -224,7 +224,7 @@ func mdJournalPath(dir string) string {
 func makeMDJournal(
 	ctx context.Context, uid keybase1.UID, key kbfscrypto.VerifyingKey,
 	codec kbfscodec.Codec, crypto cryptoPure, clock Clock,
-	teamMemChecker TeamMembershipChecker, tlfID tlf.ID,
+	teamMemChecker kbfsmd.TeamMembershipChecker, tlfID tlf.ID,
 	mdVer MetadataVer, dir string,
 	log logger.Logger) (*mdJournal, error) {
 	journalDir := mdJournalPath(dir)

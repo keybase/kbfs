@@ -535,9 +535,6 @@ type CurrentSessionGetter interface {
 	GetCurrentSession(ctx context.Context) (SessionInfo, error)
 }
 
-// TeamMembershipChecker is a temporary alias.
-type TeamMembershipChecker = kbfsmd.TeamMembershipChecker
-
 // teamMembershipChecker is a copy of kbfsmd.TeamMembershipChecker for
 // embedding in KBPKI. Unfortunately, this is necessary since mockgen
 // can't handle embedded interfaces living in other packages.
@@ -644,8 +641,8 @@ type KeyMetadata interface {
 	// IsWriter checks that the given user is a valid writer of the TLF
 	// right now.
 	IsWriter(
-		ctx context.Context, checker TeamMembershipChecker, uid keybase1.UID,
-		verifyingKey kbfscrypto.VerifyingKey) (
+		ctx context.Context, checker kbfsmd.TeamMembershipChecker,
+		uid keybase1.UID, verifyingKey kbfscrypto.VerifyingKey) (
 		bool, error)
 
 	// HasKeyForUser returns whether or not the given user has

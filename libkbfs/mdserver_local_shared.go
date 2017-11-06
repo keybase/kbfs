@@ -21,7 +21,7 @@ import (
 // Helper to aid in enforcement that only specified public keys can
 // access TLF metadata. mergedMasterHead can be nil, in which case
 // true is returned.
-func isReader(ctx context.Context, teamMemChecker TeamMembershipChecker,
+func isReader(ctx context.Context, teamMemChecker kbfsmd.TeamMembershipChecker,
 	currentUID keybase1.UID, mergedMasterHead BareRootMetadata,
 	extra kbfsmd.ExtraMetadata) (bool, error) {
 	h, err := mergedMasterHead.MakeBareTlfHandle(extra)
@@ -45,7 +45,7 @@ func isReader(ctx context.Context, teamMemChecker TeamMembershipChecker,
 // access TLF metadata. mergedMasterHead can be nil, in which case
 // true is returned.
 func isWriterOrValidRekey(ctx context.Context,
-	teamMemChecker TeamMembershipChecker, codec kbfscodec.Codec,
+	teamMemChecker kbfsmd.TeamMembershipChecker, codec kbfscodec.Codec,
 	currentUID keybase1.UID, verifyingKey kbfscrypto.VerifyingKey,
 	mergedMasterHead, newMd BareRootMetadata, prevExtra, extra kbfsmd.ExtraMetadata) (
 	bool, error) {

@@ -2188,7 +2188,7 @@ func (mr *MockKeyMetadataMockRecorder) GetTlfHandle() *gomock.Call {
 }
 
 // IsWriter mocks base method
-func (m *MockKeyMetadata) IsWriter(ctx context.Context, checker TeamMembershipChecker, uid keybase1.UID, verifyingKey kbfscrypto.VerifyingKey) (bool, error) {
+func (m *MockKeyMetadata) IsWriter(ctx context.Context, checker kbfsmd.TeamMembershipChecker, uid keybase1.UID, verifyingKey kbfscrypto.VerifyingKey) (bool, error) {
 	ret := m.ctrl.Call(m, "IsWriter", ctx, checker, uid, verifyingKey)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
