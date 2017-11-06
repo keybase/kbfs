@@ -408,7 +408,7 @@ func testMDOpsGetForHandlePublicFailVerify(t *testing.T, ver MetadataVer) {
 
 	// Change something in rmds that affects the computed MdID,
 	// which will then cause an MDMismatchError.
-	rmds.MD.(MutableBareRootMetadata).SetRefBytes(100)
+	rmds.MD.(kbfsmd.MutableRootMetadata).SetRefBytes(100)
 	config.mockMdserv.EXPECT().GetForHandle(ctx, h.ToBareHandleOrBust(),
 		Merged, nil).Return(tlf.NullID, rmds, nil)
 
@@ -679,7 +679,7 @@ func testMDOpsGetRangeFailBadPrevRoot(t *testing.T, ver MetadataVer) {
 
 	rmdses, extras := makeRMDSRange(t, config, 100, 5, kbfsmd.FakeID(1))
 
-	rmdses[2].MD.(MutableBareRootMetadata).SetPrevRoot(kbfsmd.FakeID(1))
+	rmdses[2].MD.(kbfsmd.MutableRootMetadata).SetPrevRoot(kbfsmd.FakeID(1))
 
 	start := kbfsmd.Revision(100)
 	stop := start + kbfsmd.Revision(len(rmdses))
@@ -858,8 +858,8 @@ func testMDOpsGetRangeFailFinal(t *testing.T, ver MetadataVer) {
 	defer mdOpsShutdown(mockCtrl, config)
 
 	rmdses, extras := makeRMDSRange(t, config, 100, 5, kbfsmd.FakeID(1))
-	rmdses[2].MD.(MutableBareRootMetadata).SetFinalBit()
-	rmdses[2].MD.(MutableBareRootMetadata).SetPrevRoot(rmdses[1].MD.GetPrevRoot())
+	rmdses[2].MD.(kbfsmd.MutableRootMetadata).SetFinalBit()
+	rmdses[2].MD.(kbfsmd.MutableRootMetadata).SetPrevRoot(rmdses[1].MD.GetPrevRoot())
 
 	start := kbfsmd.Revision(100)
 	stop := start + kbfsmd.Revision(len(rmdses))

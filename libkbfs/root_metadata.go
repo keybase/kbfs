@@ -77,7 +77,7 @@ func (p PrivateMetadata) ChangesBlockInfo() BlockInfo {
 // PrivateMetadata has to be left serialized due to not having the
 // right keys.
 type RootMetadata struct {
-	bareMd MutableBareRootMetadata
+	bareMd kbfsmd.MutableRootMetadata
 
 	// ExtraMetadata currently contains key bundles for post-v2
 	// metadata.
@@ -98,10 +98,10 @@ var _ KeyMetadata = (*RootMetadata)(nil)
 
 // makeRootMetadata makes a RootMetadata object from the given
 // parameters.
-func makeRootMetadata(bareMd MutableBareRootMetadata,
+func makeRootMetadata(bareMd kbfsmd.MutableRootMetadata,
 	extra kbfsmd.ExtraMetadata, handle *TlfHandle) *RootMetadata {
 	if bareMd == nil {
-		panic("nil MutableBareRootMetadata")
+		panic("nil kbfsmd.MutableRootMetadata")
 	}
 	// extra can be nil.
 	if handle == nil {

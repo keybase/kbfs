@@ -262,7 +262,7 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 	}
 
 	// TODO: Avoid having to do this type assertion.
-	brmd, ok := rmds.MD.(MutableBareRootMetadata)
+	brmd, ok := rmds.MD.(kbfsmd.MutableRootMetadata)
 	if !ok {
 		return ImmutableRootMetadata{}, kbfsmd.MutableRootMetadataNoImplError{}
 	}

@@ -1942,9 +1942,6 @@ type RekeyQueue interface {
 // BareRootMetadata is a temporary alias.
 type BareRootMetadata = kbfsmd.RootMetadata
 
-// MutableBareRootMetadata is a temporary alias.
-type MutableBareRootMetadata = kbfsmd.MutableRootMetadata
-
 // RekeyFSM is a Finite State Machine (FSM) for housekeeping rekey states for a
 // FolderBranch. Each FolderBranch has its own FSM for rekeys.
 //

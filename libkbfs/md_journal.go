@@ -423,11 +423,11 @@ func (j mdJournal) putExtraMetadata(rmd BareRootMetadata, extra kbfsmd.ExtraMeta
 // makeMDJournal, i.e. when figuring out what to set j.branchID in the
 // first place.
 //
-// It returns a MutableBareRootMetadata so that it can be put in a
+// It returns a kbfsmd.MutableRootMetadata so that it can be put in a
 // RootMetadataSigned object.
 func (j mdJournal) getMDAndExtra(ctx context.Context, entry mdIDJournalEntry,
 	verifyBranchID bool) (
-	MutableBareRootMetadata, kbfsmd.ExtraMetadata, time.Time, error) {
+	kbfsmd.MutableRootMetadata, kbfsmd.ExtraMetadata, time.Time, error) {
 	// Read info.
 
 	timestamp, version, err := j.getMDInfo(entry.ID)
@@ -547,11 +547,11 @@ func (j *mdJournal) removeMD(id kbfsmd.ID) error {
 	return err
 }
 
-// getEarliestWithExtra returns a MutableBareRootMetadata so that it
+// getEarliestWithExtra returns a kbfsmd.MutableRootMetadata so that it
 // can be put in a RootMetadataSigned object.
 func (j mdJournal) getEarliestWithExtra(
 	ctx context.Context, verifyBranchID bool) (
-	kbfsmd.ID, MutableBareRootMetadata, kbfsmd.ExtraMetadata, time.Time, error) {
+	kbfsmd.ID, kbfsmd.MutableRootMetadata, kbfsmd.ExtraMetadata, time.Time, error) {
 	entry, exists, err := j.j.getEarliestEntry()
 	if err != nil {
 		return kbfsmd.ID{}, nil, nil, time.Time{}, err
