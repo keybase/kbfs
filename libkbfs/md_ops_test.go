@@ -653,7 +653,7 @@ func testMDOpsGetRangeSuccessHelper(
 	}
 
 	// Do this first since rmdses is consumed.
-	expectedMDs := make([]BareRootMetadata, len(rmdses))
+	expectedMDs := make([]kbfsmd.RootMetadata, len(rmdses))
 	for i, rmds := range rmdses {
 		expectedMDs[i] = rmds.MD
 	}
@@ -727,7 +727,7 @@ func (s *fakeMDServerPut) Shutdown() {}
 
 func validatePutPublicRMDS(
 	ctx context.Context, t *testing.T, ver MetadataVer, config Config,
-	inputRmd BareRootMetadata, rmds *RootMetadataSigned) {
+	inputRmd kbfsmd.RootMetadata, rmds *RootMetadataSigned) {
 	// TODO: Handle private RMDS, too.
 
 	// Verify LastModifying* fields.

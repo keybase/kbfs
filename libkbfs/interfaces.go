@@ -634,7 +634,7 @@ type KeyMetadata interface {
 	// return nil.
 	//
 	// TODO: Remove the need for this function in this interface,
-	// so that BareRootMetadata can implement this interface
+	// so that kbfsmd.RootMetadata can implement this interface
 	// fully.
 	GetTlfHandle() *TlfHandle
 
@@ -1938,9 +1938,6 @@ type RekeyQueue interface {
 	// RekeyQueue shouldn't be used anymore.
 	Shutdown()
 }
-
-// BareRootMetadata is a temporary alias.
-type BareRootMetadata = kbfsmd.RootMetadata
 
 // RekeyFSM is a Finite State Machine (FSM) for housekeeping rekey states for a
 // FolderBranch. Each FolderBranch has its own FSM for rekeys.

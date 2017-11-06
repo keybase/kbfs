@@ -699,7 +699,7 @@ func (md *MDOpsStandard) GetLatestHandleForTLF(ctx context.Context, id tlf.ID) (
 	return md.config.MDServer().GetLatestHandleForTLF(ctx, id)
 }
 
-func (md *MDOpsStandard) getExtraMD(ctx context.Context, brmd BareRootMetadata) (
+func (md *MDOpsStandard) getExtraMD(ctx context.Context, brmd kbfsmd.RootMetadata) (
 	extra kbfsmd.ExtraMetadata, err error) {
 	wkbID, rkbID := brmd.GetTLFWriterKeyBundleID(), brmd.GetTLFReaderKeyBundleID()
 	if (wkbID == TLFWriterKeyBundleID{}) || (rkbID == TLFReaderKeyBundleID{}) {

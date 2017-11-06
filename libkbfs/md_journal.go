@@ -34,7 +34,7 @@ import (
 // TODO: Move this to bare_root_metadata.go if it's used in more
 // places.
 type ImmutableBareRootMetadata struct {
-	BareRootMetadata
+	kbfsmd.RootMetadata
 	extra          kbfsmd.ExtraMetadata
 	mdID           kbfsmd.ID
 	localTimestamp time.Time
@@ -43,7 +43,7 @@ type ImmutableBareRootMetadata struct {
 // MakeImmutableBareRootMetadata makes a new ImmutableBareRootMetadata
 // from the given BareRootMetadata and its corresponding MdID.
 func MakeImmutableBareRootMetadata(
-	rmd BareRootMetadata, extra kbfsmd.ExtraMetadata, mdID kbfsmd.ID,
+	rmd kbfsmd.RootMetadata, extra kbfsmd.ExtraMetadata, mdID kbfsmd.ID,
 	localTimestamp time.Time) ImmutableBareRootMetadata {
 	if mdID == (kbfsmd.ID{}) {
 		panic("zero mdID passed to MakeImmutableBareRootMetadata")
@@ -55,7 +55,7 @@ func MakeImmutableBareRootMetadata(
 // ImmutableBareRootMetadata. Should be used only by servers and MDOps.
 func (ibrmd ImmutableBareRootMetadata) MakeBareTlfHandleWithExtra() (
 	tlf.Handle, error) {
-	return ibrmd.BareRootMetadata.MakeBareTlfHandle(ibrmd.extra)
+	return ibrmd.RootMetadata.MakeBareTlfHandle(ibrmd.extra)
 }
 
 // mdJournal stores a single ordered list of metadata IDs for a (TLF,
@@ -359,7 +359,7 @@ func (j mdJournal) getExtraMetadata(
 	return kbfsmd.NewExtraMetadataV3(wkb, rkb, wkbNew, rkbNew), nil
 }
 
-func (j mdJournal) putExtraMetadata(rmd BareRootMetadata, extra kbfsmd.ExtraMetadata) (
+func (j mdJournal) putExtraMetadata(rmd kbfsmd.RootMetadata, extra kbfsmd.ExtraMetadata) (
 	wkbNew, rkbNew bool, err error) {
 	wkbID := rmd.GetTLFWriterKeyBundleID()
 	rkbID := rmd.GetTLFReaderKeyBundleID()
@@ -493,7 +493,7 @@ func (j mdJournal) getMDAndExtra(ctx context.Context, entry mdIDJournalEntry,
 // putMD stores the given metadata under its ID, if it's not already
 // stored. The extra metadata is put separately, since sometimes,
 // (e.g., when converting to a branch) we don't need to put it.
-func (j mdJournal) putMD(rmd BareRootMetadata) (kbfsmd.ID, error) {
+func (j mdJournal) putMD(rmd kbfsmd.RootMetadata) (kbfsmd.ID, error) {
 	// TODO: Make crypto and RMD wrap errors.
 
 	err := rmd.IsLastModifiedBy(j.uid, j.key)
@@ -597,7 +597,7 @@ func (j mdJournal) checkGetParams(ctx context.Context) (
 	}
 
 	ok, err := isReader(
-		ctx, j.teamMemChecker, j.uid, head.BareRootMetadata, head.extra)
+		ctx, j.teamMemChecker, j.uid, head.RootMetadata, head.extra)
 	if err != nil {
 		return ImmutableBareRootMetadata{}, err
 	}
@@ -1294,7 +1294,7 @@ func (j *mdJournal) put(
 	// Check permissions and consistency with head, if it exists.
 	if head != (ImmutableBareRootMetadata{}) {
 		ok, err := isWriterOrValidRekey(
-			ctx, j.teamMemChecker, j.codec, j.uid, j.key, head.BareRootMetadata,
+			ctx, j.teamMemChecker, j.codec, j.uid, j.key, head.RootMetadata,
 			rmd.bareMd, head.extra, rmd.extra)
 		if err != nil {
 			return kbfsmd.ID{}, err

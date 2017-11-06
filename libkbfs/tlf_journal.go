@@ -1654,7 +1654,7 @@ func (j *tlfJournal) getUnflushedPathMDInfos(ctx context.Context,
 	for _, ibrmd := range ibrmds {
 		// TODO: Avoid having to do this type assertion and
 		// convert to RootMetadata.
-		brmd, ok := ibrmd.BareRootMetadata.(kbfsmd.MutableRootMetadata)
+		brmd, ok := ibrmd.RootMetadata.(kbfsmd.MutableRootMetadata)
 		if !ok {
 			return nil, kbfsmd.MutableRootMetadataNoImplError{}
 		}

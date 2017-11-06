@@ -737,7 +737,7 @@ func (md *RootMetadata) fakeInitialRekey() {
 }
 
 // GetBareRootMetadata returns an interface to the underlying serializeable metadata.
-func (md *RootMetadata) GetBareRootMetadata() BareRootMetadata {
+func (md *RootMetadata) GetBareRootMetadata() kbfsmd.RootMetadata {
 	return md.bareMd
 }
 
@@ -985,7 +985,7 @@ func makeRootMetadataSigned(rmds *kbfsmd.RootMetadataSigned,
 func SignBareRootMetadata(
 	ctx context.Context, codec kbfscodec.Codec,
 	rootMetadataSigner, writerMetadataSigner kbfscrypto.Signer,
-	md BareRootMetadata, untrustedServerTimestamp time.Time) (
+	md kbfsmd.RootMetadata, untrustedServerTimestamp time.Time) (
 	*RootMetadataSigned, error) {
 	rmds, err := kbfsmd.SignRootMetadata(ctx, codec, rootMetadataSigner, writerMetadataSigner, md)
 	if err != nil {
