@@ -1701,8 +1701,8 @@ type Config interface {
 	MDCache() MDCache
 	SetMDCache(MDCache)
 	KeyCache() KeyCache
-	SetKeyBundleCache(KeyBundleCache)
-	KeyBundleCache() KeyBundleCache
+	SetKeyBundleCache(kbfsmd.KeyBundleCache)
+	KeyBundleCache() kbfsmd.KeyBundleCache
 	SetKeyCache(KeyCache)
 	SetBlockCache(BlockCache)
 	DirtyBlockCache() DirtyBlockCache
@@ -1947,9 +1947,6 @@ type BareRootMetadata = kbfsmd.RootMetadata
 
 // MutableBareRootMetadata is a temporary alias.
 type MutableBareRootMetadata = kbfsmd.MutableRootMetadata
-
-// KeyBundleCache is a temporary alias.
-type KeyBundleCache = kbfsmd.KeyBundleCache
 
 // RekeyFSM is a Finite State Machine (FSM) for housekeeping rekey states for a
 // FolderBranch. Each FolderBranch has its own FSM for rekeys.

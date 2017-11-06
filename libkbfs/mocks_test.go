@@ -5717,7 +5717,7 @@ func (mr *MockConfigMockRecorder) KeyCache() *gomock.Call {
 }
 
 // SetKeyBundleCache mocks base method
-func (m *MockConfig) SetKeyBundleCache(arg0 KeyBundleCache) {
+func (m *MockConfig) SetKeyBundleCache(arg0 kbfsmd.KeyBundleCache) {
 	m.ctrl.Call(m, "SetKeyBundleCache", arg0)
 }
 
@@ -5727,9 +5727,9 @@ func (mr *MockConfigMockRecorder) SetKeyBundleCache(arg0 interface{}) *gomock.Ca
 }
 
 // KeyBundleCache mocks base method
-func (m *MockConfig) KeyBundleCache() KeyBundleCache {
+func (m *MockConfig) KeyBundleCache() kbfsmd.KeyBundleCache {
 	ret := m.ctrl.Call(m, "KeyBundleCache")
-	ret0, _ := ret[0].(KeyBundleCache)
+	ret0, _ := ret[0].(kbfsmd.KeyBundleCache)
 	return ret0
 }
 
