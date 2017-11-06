@@ -7,7 +7,6 @@ package kbfscrypto
 import (
 	"net"
 	"os"
-	"strings"
 
 	"github.com/keybase/client/go/libkb"
 )
@@ -148,17 +147,8 @@ func GetRootCerts(serverAddr string) []byte {
 	}
 
 	if host, _, err := net.SplitHostPort(serverAddr); err == nil {
-		if strings.HasSuffix(host, "dev.keybase.io") {
-			return []byte(DevRootCerts)
-		}
-		if strings.HasSuffix(host, "kbfs.keybase.io") {
-			return []byte(ProductionRootCerts)
-		}
-		if strings.HasSuffix(host, "core.keybase.io") {
-			cert, ok := libkb.BundledCAs["api.keybase.io"]
-			if ok {
-				return []byte(cert)
-			}
+		if rootCA, ok := libkb.GetBundledCAsFromHost(host); ok {
+			return rootCA
 		}
 	}
 
