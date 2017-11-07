@@ -121,7 +121,7 @@ func getMDRange(ctx context.Context, config Config, id tlf.ID, bid kbfsmd.Branch
 		case Merged:
 			fetchedRmds, err = config.MDOps().GetRange(
 				ctx, id, r.start, r.end, lockBeforeGet)
-		case Unmerged:
+		case kbfsmd.Unmerged:
 			fetchedRmds, err = config.MDOps().GetUnmergedRange(
 				ctx, id, bid, r.start, r.end)
 		default:
@@ -306,7 +306,7 @@ func getUnmergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
 		}
 
 		rmds, err := getMDRange(ctx, config, id, bid, startRev, currHead,
-			Unmerged, nil)
+			kbfsmd.Unmerged, nil)
 		if err != nil {
 			return kbfsmd.RevisionUninitialized, nil, err
 		}

@@ -85,7 +85,7 @@ func (j journalMDOps) getHeadFromJournal(
 		return ImmutableRootMetadata{}, nil
 	}
 
-	if mStatus == Unmerged && bid == kbfsmd.NullBranchID {
+	if mStatus == kbfsmd.Unmerged && bid == kbfsmd.NullBranchID {
 		// We need to look up the branch ID because the caller didn't
 		// know it.
 		var err error
@@ -113,7 +113,7 @@ func (j journalMDOps) getHeadFromJournal(
 		return ImmutableRootMetadata{}, nil
 	}
 
-	if mStatus == Unmerged && bid != kbfsmd.NullBranchID && bid != head.BID() {
+	if mStatus == kbfsmd.Unmerged && bid != kbfsmd.NullBranchID && bid != head.BID() {
 		// The given branch ID doesn't match the one in the
 		// journal, which can only be an error.
 		return ImmutableRootMetadata{},
@@ -185,7 +185,7 @@ func (j journalMDOps) getRangeFromJournal(
 		return nil, nil
 	}
 
-	if mStatus == Unmerged && bid != kbfsmd.NullBranchID && bid != head.BID() {
+	if mStatus == kbfsmd.Unmerged && bid != kbfsmd.NullBranchID && bid != head.BID() {
 		// The given branch ID doesn't match the one in the
 		// journal, which can only be an error.
 		return nil, fmt.Errorf("Expected branch ID %s, got %s",
@@ -329,7 +329,7 @@ func (j journalMDOps) GetUnmergedForTLF(
 		ImmutableRootMetadata, error) {
 		return j.MDOps.GetUnmergedForTLF(ctx, id, bid)
 	}
-	return j.getForTLF(ctx, id, bid, Unmerged, nil, delegateFn)
+	return j.getForTLF(ctx, id, bid, kbfsmd.Unmerged, nil, delegateFn)
 }
 
 // TODO: Combine the two GetRange functions in MDOps to avoid the need
@@ -431,7 +431,7 @@ func (j journalMDOps) GetUnmergedRange(
 		[]ImmutableRootMetadata, error) {
 		return j.MDOps.GetUnmergedRange(ctx, id, bid, start, stop)
 	}
-	return j.getRange(ctx, id, bid, Unmerged, start, stop, nil,
+	return j.getRange(ctx, id, bid, kbfsmd.Unmerged, start, stop, nil,
 		delegateFn)
 }
 

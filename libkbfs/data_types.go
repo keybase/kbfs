@@ -538,8 +538,7 @@ type MergeStatus = kbfsmd.MergeStatus
 
 // Temporary aliases.
 const (
-	Merged   MergeStatus = kbfsmd.Merged
-	Unmerged MergeStatus = kbfsmd.Unmerged
+	Merged MergeStatus = kbfsmd.Merged
 )
 
 // OpSummary describes the changes performed by a single op, and is

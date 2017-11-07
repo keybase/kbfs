@@ -336,9 +336,9 @@ func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *TlfHandle,
 	}
 
 	if rmds == nil {
-		if mStatus == Unmerged {
+		if mStatus == kbfsmd.Unmerged {
 			// The caller ignores the id argument for
-			// mStatus == Unmerged.
+			// mStatus == kbfsmd.Unmerged.
 			return tlf.ID{}, ImmutableRootMetadata{}, nil
 		}
 		return id, ImmutableRootMetadata{}, nil
@@ -410,7 +410,7 @@ func (md *MDOpsStandard) getForTLF(ctx context.Context, id tlf.ID,
 		return ImmutableRootMetadata{}, err
 	}
 	if rmds == nil {
-		// Possible if mStatus is Unmerged
+		// Possible if mStatus is kbfsmd.Unmerged
 		return ImmutableRootMetadata{}, nil
 	}
 	extra, err := md.getExtraMD(ctx, rmds.MD)
@@ -443,7 +443,7 @@ func (md *MDOpsStandard) GetForTLF(
 func (md *MDOpsStandard) GetUnmergedForTLF(
 	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID) (
 	ImmutableRootMetadata, error) {
-	return md.getForTLF(ctx, id, bid, Unmerged, nil)
+	return md.getForTLF(ctx, id, bid, kbfsmd.Unmerged, nil)
 }
 
 func (md *MDOpsStandard) processRange(ctx context.Context, id tlf.ID,
@@ -583,7 +583,7 @@ func (md *MDOpsStandard) GetRange(ctx context.Context, id tlf.ID,
 func (md *MDOpsStandard) GetUnmergedRange(ctx context.Context, id tlf.ID,
 	bid kbfsmd.BranchID, start, stop kbfsmd.Revision) (
 	[]ImmutableRootMetadata, error) {
-	return md.getRange(ctx, id, bid, Unmerged, start, stop, nil)
+	return md.getRange(ctx, id, bid, kbfsmd.Unmerged, start, stop, nil)
 }
 
 func (md *MDOpsStandard) put(ctx context.Context, rmd *RootMetadata,
@@ -643,7 +643,7 @@ func (md *MDOpsStandard) put(ctx context.Context, rmd *RootMetadata,
 func (md *MDOpsStandard) Put(ctx context.Context, rmd *RootMetadata,
 	verifyingKey kbfscrypto.VerifyingKey, lockContext *keybase1.LockContext,
 	priority keybase1.MDPriority) (ImmutableRootMetadata, error) {
-	if rmd.MergedStatus() == Unmerged {
+	if rmd.MergedStatus() == kbfsmd.Unmerged {
 		return ImmutableRootMetadata{}, UnexpectedUnmergedPutError{}
 	}
 	return md.put(ctx, rmd, verifyingKey, lockContext, priority)

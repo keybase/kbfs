@@ -338,7 +338,7 @@ func (md *MDServerDisk) GetForTLF(ctx context.Context, id tlf.ID,
 	}
 
 	// Lookup the branch ID if not supplied
-	if mStatus == Unmerged && bid == kbfsmd.NullBranchID {
+	if mStatus == kbfsmd.Unmerged && bid == kbfsmd.NullBranchID {
 		var err error
 		bid, err = md.getBranchID(ctx, id)
 		if err != nil {
@@ -373,7 +373,7 @@ func (md *MDServerDisk) GetRange(ctx context.Context, id tlf.ID,
 	md.log.CDebugf(ctx, "GetRange %d %d (%s)", start, stop, mStatus)
 
 	// Lookup the branch ID if not supplied
-	if mStatus == Unmerged && bid == kbfsmd.NullBranchID {
+	if mStatus == kbfsmd.Unmerged && bid == kbfsmd.NullBranchID {
 		var err error
 		bid, err = md.getBranchID(ctx, id)
 		if err != nil {

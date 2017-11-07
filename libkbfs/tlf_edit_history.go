@@ -384,7 +384,7 @@ func (teh *TlfEditHistory) GetComplete(ctx context.Context,
 	estimates.update(rmds)
 
 	// If unmerged, get all the unmerged updates.
-	if head.MergedStatus() == Unmerged {
+	if head.MergedStatus() == kbfsmd.Unmerged {
 		_, unmergedRmds, err := getUnmergedMDUpdates(ctx, teh.config, head.TlfID(),
 			head.BID(), head.Revision()-1)
 		if err != nil {

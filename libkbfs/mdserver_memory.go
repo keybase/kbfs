@@ -250,7 +250,7 @@ func (md *MDServerMemory) checkGetParamsRLocked(
 	}
 
 	// Lookup the branch ID if not supplied
-	if mStatus == Unmerged && bid == kbfsmd.NullBranchID {
+	if mStatus == kbfsmd.Unmerged && bid == kbfsmd.NullBranchID {
 		return md.getBranchIDRLocked(ctx, id)
 	}
 
@@ -272,7 +272,7 @@ func (md *MDServerMemory) GetForTLF(ctx context.Context, id tlf.ID,
 	if err != nil {
 		return nil, err
 	}
-	if mStatus == Unmerged && bid == kbfsmd.NullBranchID {
+	if mStatus == kbfsmd.Unmerged && bid == kbfsmd.NullBranchID {
 		return nil, nil
 	}
 
@@ -363,7 +363,7 @@ func (md *MDServerMemory) getRangeLocked(ctx context.Context, id tlf.ID,
 		}()
 	}
 
-	if mStatus == Unmerged && bid == kbfsmd.NullBranchID {
+	if mStatus == kbfsmd.Unmerged && bid == kbfsmd.NullBranchID {
 		return nil, nil, nil
 	}
 
@@ -523,7 +523,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 
 	var recordBranchID bool
 
-	if mStatus == Unmerged && head == nil {
+	if mStatus == kbfsmd.Unmerged && head == nil {
 		// currHead for unmerged history might be on the main branch
 		prevRev := rmds.MD.RevisionNumber() - 1
 		rmdses, ch, err := md.getRangeLocked(

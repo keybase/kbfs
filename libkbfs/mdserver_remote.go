@@ -546,7 +546,7 @@ func (md *MDServerRemote) GetForHandle(ctx context.Context,
 	arg := keybase1.GetMetadataArg{
 		FolderHandle:  encodedHandle,
 		BranchID:      kbfsmd.NullBranchID.String(),
-		Unmerged:      mStatus == Unmerged,
+		Unmerged:      mStatus == kbfsmd.Unmerged,
 		LockBeforeGet: lockBeforeGet,
 	}
 
@@ -573,7 +573,7 @@ func (md *MDServerRemote) GetForTLF(ctx context.Context, id tlf.ID,
 	arg := keybase1.GetMetadataArg{
 		FolderID:      id.String(),
 		BranchID:      bid.String(),
-		Unmerged:      mStatus == Unmerged,
+		Unmerged:      mStatus == kbfsmd.Unmerged,
 		LockBeforeGet: lockBeforeGet,
 	}
 
@@ -601,7 +601,7 @@ func (md *MDServerRemote) GetRange(ctx context.Context, id tlf.ID,
 	arg := keybase1.GetMetadataArg{
 		FolderID:      id.String(),
 		BranchID:      bid.String(),
-		Unmerged:      mStatus == Unmerged,
+		Unmerged:      mStatus == kbfsmd.Unmerged,
 		StartRevision: start.Number(),
 		StopRevision:  stop.Number(),
 		LockBeforeGet: lockBeforeGet,

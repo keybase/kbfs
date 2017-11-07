@@ -1223,7 +1223,7 @@ func (j *mdJournal) put(
 	mStatus := rmd.MergedStatus()
 
 	// Make modifications for the Unmerged cases.
-	if mStatus == Unmerged {
+	if mStatus == kbfsmd.Unmerged {
 		var lastMdID kbfsmd.ID
 		if head == (ImmutableBareRootMetadata{}) {
 			lastMdID = j.lastMdID

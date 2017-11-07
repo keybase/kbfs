@@ -728,7 +728,7 @@ func (fbo *folderBranchOps) setHeadLocked(
 	// If this is the first time the MD is being set, and we are
 	// operating on unmerged data, initialize the state properly and
 	// kick off conflict resolution.
-	if isFirstHead && md.MergedStatus() == Unmerged {
+	if isFirstHead && md.MergedStatus() == kbfsmd.Unmerged {
 		fbo.setBranchIDLocked(lState, md.BID())
 		// Use uninitialized for the merged branch; the unmerged
 		// revision is enough to trigger conflict resolution.
@@ -935,7 +935,7 @@ func (fbo *folderBranchOps) setHeadPredecessorLocked(ctx context.Context,
 		return errors.Errorf("setHeadPredecessorLocked unexpectedly called with revision %d", fbo.head.Revision())
 	}
 
-	if fbo.head.MergedStatus() != Unmerged {
+	if fbo.head.MergedStatus() != kbfsmd.Unmerged {
 		return errors.New("Unexpected merged head in setHeadPredecessorLocked")
 	}
 
@@ -969,7 +969,7 @@ func (fbo *folderBranchOps) setHeadConflictResolvedLocked(ctx context.Context,
 	lState *lockState, md ImmutableRootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
-	if fbo.head.MergedStatus() != Unmerged {
+	if fbo.head.MergedStatus() != kbfsmd.Unmerged {
 		return errors.New("Unexpected merged head in setHeadConflictResolvedLocked")
 	}
 	if md.MergedStatus() != Merged {
@@ -1631,7 +1631,7 @@ func (fbo *folderBranchOps) SetInitialHeadFromServer(
 		fbo.mdWriterLock.Lock(lState)
 		defer fbo.mdWriterLock.Unlock(lState)
 
-		if md.MergedStatus() == Unmerged {
+		if md.MergedStatus() == kbfsmd.Unmerged {
 			mdops := fbo.config.MDOps()
 			mergedMD, err := mdops.GetForTLF(ctx, fbo.id(), nil)
 			if err != nil {
@@ -2165,7 +2165,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 
 			if excl == WithExcl {
 				// If this was caused by an exclusive create, we shouldn't do an
-				// UnmergedPut, but rather try to get newest update from server, and
+				// kbfsmd.UnmergedPut, but rather try to get newest update from server, and
 				// retry afterwards.
 				err = fbo.getAndApplyMDUpdates(ctx,
 					lState, nil, fbo.applyMDUpdatesLocked)
@@ -2200,7 +2200,7 @@ func (fbo *folderBranchOps) finalizeMDWriteLocked(ctx context.Context,
 			// data is cleared and the nodeCache is updated.  If we're
 			// wrong, and the update didn't make it to the server,
 			// then the next call will get an
-			// UnmergedSelfConflictError but fail to find any new
+			// kbfsmd.UnmergedSelfConflictError but fail to find any new
 			// updates and fail the operation, but things will get
 			// fixed up once conflict resolution finally completes.
 			//
@@ -2403,7 +2403,7 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *GCOp) (
 		return err
 	}
 
-	if md.MergedStatus() == Unmerged {
+	if md.MergedStatus() == kbfsmd.Unmerged {
 		return UnexpectedUnmergedPutError{}
 	}
 
@@ -6068,7 +6068,7 @@ func (fbo *folderBranchOps) handleTLFBranchChange(ctx context.Context,
 		return
 	}
 
-	if md == (ImmutableRootMetadata{}) || md.MergedStatus() != Unmerged ||
+	if md == (ImmutableRootMetadata{}) || md.MergedStatus() != kbfsmd.Unmerged ||
 		md.BID() != newBID {
 		// This can happen if CR got kicked off in some other way and
 		// completed before we took the lock to process this

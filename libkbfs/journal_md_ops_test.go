@@ -206,7 +206,7 @@ func TestJournalMDOpsBasics(t *testing.T) {
 	require.NotEqual(t, ImmutableRootMetadata{}, head)
 	require.Equal(t, kbfsmd.Revision(10), head.Revision())
 
-	_, head, err = mdOps.GetForHandle(ctx, h, Unmerged, nil)
+	_, head, err = mdOps.GetForHandle(ctx, h, kbfsmd.Unmerged, nil)
 	require.NoError(t, err)
 	require.NotEqual(t, ImmutableRootMetadata{}, head)
 	require.Equal(t, kbfsmd.Revision(10), head.Revision())

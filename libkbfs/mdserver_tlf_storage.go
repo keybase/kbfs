@@ -453,7 +453,7 @@ func (s *mdServerTlfStorage) put(ctx context.Context,
 		return false, kbfsmd.ServerError{Err: err}
 	}
 
-	if mStatus == Unmerged && head == nil {
+	if mStatus == kbfsmd.Unmerged && head == nil {
 		// currHead for unmerged history might be on the main branch
 		prevRev := rmds.MD.RevisionNumber() - 1
 		rmdses, err := s.getRangeReadLocked(

@@ -648,7 +648,7 @@ func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
 	require.Equal(t, mdCount, len(ibrmds))
 
 	checkIBRMDRange(t, j.uid, j.key, codec,
-		ibrmds, firstRevision, firstPrevRoot, Unmerged, ibrmds[0].BID())
+		ibrmds, firstRevision, firstPrevRoot, kbfsmd.Unmerged, ibrmds[0].BID())
 
 	require.Equal(t, uint64(10), j.length())
 
@@ -662,7 +662,7 @@ func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
 	newlyCachedMd, err := mdcache.Get(id, firstRevision, bid)
 	require.NoError(t, err)
 	require.Equal(t, newlyCachedMd.BID(), bid)
-	require.Equal(t, newlyCachedMd.MergedStatus(), Unmerged)
+	require.Equal(t, newlyCachedMd.MergedStatus(), kbfsmd.Unmerged)
 	_, err = mdcache.Get(id, firstRevision, kbfsmd.NullBranchID)
 	require.Error(t, err)
 }
@@ -1047,7 +1047,7 @@ func testMDJournalRestartAfterBranchConversion(t *testing.T, ver MetadataVer) {
 	require.Equal(t, mdCount, len(ibrmds))
 
 	checkIBRMDRange(t, j.uid, j.key, codec,
-		ibrmds, firstRevision, firstPrevRoot, Unmerged, ibrmds[0].BID())
+		ibrmds, firstRevision, firstPrevRoot, kbfsmd.Unmerged, ibrmds[0].BID())
 
 	flushAllMDs(t, ctx, signer, j)
 }
