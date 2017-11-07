@@ -332,7 +332,7 @@ func (f *FS) processError(ctx context.Context,
 	mode libkbfs.ErrorModeType, err error) error {
 	if err == nil {
 		f.errLog.CDebugf(ctx, "Request complete")
-		return err
+		return nil
 	}
 
 	f.config.Reporter().ReportErr(ctx, "", tlf.Private, mode, err)
