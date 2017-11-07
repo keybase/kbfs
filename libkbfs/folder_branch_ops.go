@@ -733,7 +733,7 @@ func (fbo *folderBranchOps) setHeadLocked(
 		// Use uninitialized for the merged branch; the unmerged
 		// revision is enough to trigger conflict resolution.
 		fbo.cr.Resolve(ctx, md.Revision(), kbfsmd.RevisionUninitialized)
-	} else if md.MergedStatus() == Merged {
+	} else if md.MergedStatus() == kbfsmd.Merged {
 		journalEnabled := TLFJournalEnabled(fbo.config, fbo.id())
 		if journalEnabled {
 			if isFirstHead {
@@ -972,7 +972,7 @@ func (fbo *folderBranchOps) setHeadConflictResolvedLocked(ctx context.Context,
 	if fbo.head.MergedStatus() != kbfsmd.Unmerged {
 		return errors.New("Unexpected merged head in setHeadConflictResolvedLocked")
 	}
-	if md.MergedStatus() != Merged {
+	if md.MergedStatus() != kbfsmd.Merged {
 		return errors.New("Unexpected unmerged update in setHeadConflictResolvedLocked")
 	}
 
@@ -1159,7 +1159,7 @@ func (fbo *folderBranchOps) getMostRecentFullyMergedMD(ctx context.Context) (
 
 	// Otherwise, use the specified revision.
 	rmd, err := getSingleMD(ctx, fbo.config, fbo.id(), kbfsmd.NullBranchID,
-		mergedRev, Merged, nil)
+		mergedRev, kbfsmd.Merged, nil)
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
@@ -5005,7 +5005,7 @@ func (fbo *folderBranchOps) undoUnmergedMDUpdatesLocked(
 	fbo.setBranchIDLocked(lState, kbfsmd.NullBranchID)
 
 	rmd, err := getSingleMD(ctx, fbo.config, fbo.id(), kbfsmd.NullBranchID,
-		currHead, Merged, nil)
+		currHead, kbfsmd.Merged, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -6128,7 +6128,7 @@ func (fbo *folderBranchOps) handleMDFlush(ctx context.Context, bid kbfsmd.Branch
 
 	// Get that revision.
 	rmd, err := getSingleMD(ctx, fbo.config, fbo.id(), kbfsmd.NullBranchID,
-		rev, Merged, nil)
+		rev, kbfsmd.Merged, nil)
 	if err != nil {
 		fbo.log.CWarningf(ctx, "Couldn't get revision %d for archiving: %v",
 			rev, err)

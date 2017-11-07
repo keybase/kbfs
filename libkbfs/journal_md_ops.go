@@ -247,7 +247,7 @@ func (j journalMDOps) GetForHandle(ctx context.Context, handle *TlfHandle,
 		return tlf.ID{}, ImmutableRootMetadata{}, err
 	}
 	tlfID, _, err = j.jServer.config.MDServer().GetForHandle(
-		ctx, bh, Merged, lockBeforeGet)
+		ctx, bh, kbfsmd.Merged, lockBeforeGet)
 	if err != nil {
 		return tlf.ID{}, ImmutableRootMetadata{}, err
 	}
@@ -314,7 +314,7 @@ func (j journalMDOps) GetForTLF(
 	}()
 
 	return j.getForTLF(
-		ctx, id, kbfsmd.NullBranchID, Merged, lockBeforeGet, j.MDOps.GetForTLF)
+		ctx, id, kbfsmd.NullBranchID, kbfsmd.Merged, lockBeforeGet, j.MDOps.GetForTLF)
 }
 
 func (j journalMDOps) GetUnmergedForTLF(
@@ -414,7 +414,7 @@ func (j journalMDOps) GetRange(ctx context.Context, id tlf.ID, start,
 		j.jServer.deferLog.LazyTrace(ctx, "jMDOps: GetRange %s %d-%d done (err=%v)", id, start, stop, err)
 	}()
 
-	return j.getRange(ctx, id, kbfsmd.NullBranchID, Merged, start, stop, lockBeforeGet,
+	return j.getRange(ctx, id, kbfsmd.NullBranchID, kbfsmd.Merged, start, stop, lockBeforeGet,
 		j.MDOps.GetRange)
 }
 

@@ -97,7 +97,7 @@ func (md *MDOpsStandard) verifyWriterKey(ctx context.Context,
 	// The writer metadata can be copied only for rekeys or
 	// finalizations, neither of which should happen while
 	// unmerged.
-	if rmds.MD.MergedStatus() != Merged {
+	if rmds.MD.MergedStatus() != kbfsmd.Merged {
 		return fmt.Errorf("Revision %d for %s has a copied writer "+
 			"metadata, but is unexpectedly not merged",
 			rmds.MD.RevisionNumber(), rmds.MD.TlfID())
@@ -436,7 +436,7 @@ func (md *MDOpsStandard) getForTLF(ctx context.Context, id tlf.ID,
 func (md *MDOpsStandard) GetForTLF(
 	ctx context.Context, id tlf.ID, lockBeforeGet *keybase1.LockID) (
 	ImmutableRootMetadata, error) {
-	return md.getForTLF(ctx, id, kbfsmd.NullBranchID, Merged, lockBeforeGet)
+	return md.getForTLF(ctx, id, kbfsmd.NullBranchID, kbfsmd.Merged, lockBeforeGet)
 }
 
 // GetUnmergedForTLF implements the MDOps interface for MDOpsStandard.
@@ -576,7 +576,7 @@ func (md *MDOpsStandard) GetRange(ctx context.Context, id tlf.ID,
 	start, stop kbfsmd.Revision, lockBeforeGet *keybase1.LockID) (
 	[]ImmutableRootMetadata, error) {
 	return md.getRange(
-		ctx, id, kbfsmd.NullBranchID, Merged, start, stop, lockBeforeGet)
+		ctx, id, kbfsmd.NullBranchID, kbfsmd.Merged, start, stop, lockBeforeGet)
 }
 
 // GetUnmergedRange implements the MDOps interface for MDOpsStandard.

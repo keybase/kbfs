@@ -67,7 +67,7 @@ func TestMDServerBasics(t *testing.T) {
 		[]keybase1.UserOrTeamID{uid.AsUserOrTeam()}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
-	id, rmds, err := mdServer.GetForHandle(ctx, h, Merged, nil)
+	id, rmds, err := mdServer.GetForHandle(ctx, h, kbfsmd.Merged, nil)
 	require.NoError(t, err)
 	require.Nil(t, rmds)
 
@@ -148,13 +148,13 @@ func TestMDServerBasics(t *testing.T) {
 	require.Equal(t, 0, len(rmdses))
 
 	// (10) check for proper merged head
-	head, err = mdServer.GetForTLF(ctx, id, kbfsmd.NullBranchID, Merged, nil)
+	head, err = mdServer.GetForTLF(ctx, id, kbfsmd.NullBranchID, kbfsmd.Merged, nil)
 	require.NoError(t, err)
 	require.NotNil(t, head)
 	require.Equal(t, kbfsmd.Revision(10), head.MD.RevisionNumber())
 
 	// (11) try to get merged range
-	rmdses, err = mdServer.GetRange(ctx, id, kbfsmd.NullBranchID, Merged, 1, 100, nil)
+	rmdses, err = mdServer.GetRange(ctx, id, kbfsmd.NullBranchID, kbfsmd.Merged, 1, 100, nil)
 	require.NoError(t, err)
 	require.Equal(t, 10, len(rmdses))
 	for i := kbfsmd.Revision(1); i <= 10; i++ {
@@ -180,7 +180,7 @@ func TestMDServerRegisterForUpdate(t *testing.T) {
 	h1, err := tlf.MakeHandle([]keybase1.UserOrTeamID{id}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
-	id1, _, err := mdServer.GetForHandle(ctx, h1, Merged, nil)
+	id1, _, err := mdServer.GetForHandle(ctx, h1, kbfsmd.Merged, nil)
 	require.NoError(t, err)
 
 	// Create second TLF, which should end up being different from
@@ -190,7 +190,7 @@ func TestMDServerRegisterForUpdate(t *testing.T) {
 		nil, nil, nil)
 	require.NoError(t, err)
 
-	id2, _, err := mdServer.GetForHandle(ctx, h2, Merged, nil)
+	id2, _, err := mdServer.GetForHandle(ctx, h2, kbfsmd.Merged, nil)
 	require.NoError(t, err)
 	require.NotEqual(t, id1, id2)
 

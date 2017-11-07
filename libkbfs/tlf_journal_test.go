@@ -954,7 +954,7 @@ func testTLFJournalFlushMDBasic(t *testing.T, ver MetadataVer) {
 	rmdses := mdserver.rmdses
 	require.Equal(t, mdCount, len(rmdses))
 	config.checkRange(
-		rmdses, firstRevision, firstPrevRoot, Merged, kbfsmd.NullBranchID)
+		rmdses, firstRevision, firstPrevRoot, kbfsmd.Merged, kbfsmd.NullBranchID)
 }
 
 func testTLFJournalFlushMDConflict(t *testing.T, ver MetadataVer) {

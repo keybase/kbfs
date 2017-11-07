@@ -432,7 +432,7 @@ func (teh *TlfEditHistory) GetComplete(ctx context.Context,
 			}
 
 			olderRmds, err := getMDRange(ctx, teh.config, head.TlfID(), kbfsmd.NullBranchID,
-				startRev, endRev, Merged, nil)
+				startRev, endRev, kbfsmd.Merged, nil)
 			if err != nil {
 				return nil, err
 			}

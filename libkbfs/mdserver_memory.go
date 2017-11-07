@@ -215,14 +215,14 @@ func (md *MDServerMemory) GetForHandle(ctx context.Context, handle tlf.Handle,
 func (md *MDServerMemory) checkGetParamsRLocked(
 	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus) (
 	newBid kbfsmd.BranchID, err error) {
-	if mStatus == Merged && bid != kbfsmd.NullBranchID {
+	if mStatus == kbfsmd.Merged && bid != kbfsmd.NullBranchID {
 		return kbfsmd.NullBranchID, kbfsmd.ServerErrorBadRequest{Reason: "Invalid branch ID"}
 	}
 
 	// Check permissions
 
 	mergedMasterHead, err :=
-		md.getHeadForTLFRLocked(ctx, id, kbfsmd.NullBranchID, Merged)
+		md.getHeadForTLFRLocked(ctx, id, kbfsmd.NullBranchID, kbfsmd.Merged)
 	if err != nil {
 		return kbfsmd.NullBranchID, kbfsmd.ServerError{Err: err}
 	}
@@ -313,7 +313,7 @@ func (md *MDServerMemory) getHeadForTLFRLocked(ctx context.Context, id tlf.ID,
 
 func (md *MDServerMemory) getMDKey(
 	id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus) (mdBlockKey, error) {
-	if (mStatus == Merged) != (bid == kbfsmd.NullBranchID) {
+	if (mStatus == kbfsmd.Merged) != (bid == kbfsmd.NullBranchID) {
 		return mdBlockKey{},
 			errors.Errorf("mstatus=%v is inconsistent with bid=%v",
 				mStatus, bid)
@@ -489,7 +489,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 	}
 
 	mergedMasterHead, err :=
-		md.getHeadForTLFRLocked(ctx, id, kbfsmd.NullBranchID, Merged)
+		md.getHeadForTLFRLocked(ctx, id, kbfsmd.NullBranchID, kbfsmd.Merged)
 	if err != nil {
 		return kbfsmd.ServerError{Err: err}
 	}
@@ -527,7 +527,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 		// currHead for unmerged history might be on the main branch
 		prevRev := rmds.MD.RevisionNumber() - 1
 		rmdses, ch, err := md.getRangeLocked(
-			ctx, id, kbfsmd.NullBranchID, Merged, prevRev, prevRev, nil)
+			ctx, id, kbfsmd.NullBranchID, kbfsmd.Merged, prevRev, prevRev, nil)
 		if err != nil {
 			return kbfsmd.ServerError{Err: err}
 		}
@@ -605,7 +605,7 @@ func (md *MDServerMemory) Put(ctx context.Context, rmds *RootMetadataSigned,
 		md.releaseLockLocked(ctx, id, lc.RequireLockID)
 	}
 
-	if mStatus == Merged &&
+	if mStatus == kbfsmd.Merged &&
 		// Don't send notifies if it's just a rekey (the real mdserver
 		// sends a "folder needs rekey" notification in this case).
 		!(rmds.MD.IsRekeySet() && rmds.MD.IsWriterMetadataCopiedSet()) {
@@ -925,7 +925,7 @@ func (md *MDServerMemory) addNewAssertionForTest(uid keybase1.UID,
 
 func (md *MDServerMemory) getCurrentMergedHeadRevision(
 	ctx context.Context, id tlf.ID) (rev kbfsmd.Revision, err error) {
-	head, err := md.GetForTLF(ctx, id, kbfsmd.NullBranchID, Merged, nil)
+	head, err := md.GetForTLF(ctx, id, kbfsmd.NullBranchID, kbfsmd.Merged, nil)
 	if err != nil {
 		return 0, err
 	}

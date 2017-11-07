@@ -429,7 +429,7 @@ func (md *MDServerDisk) Put(ctx context.Context, rmds *RootMetadataSigned,
 	}
 
 	mStatus := rmds.MD.MergedStatus()
-	if mStatus == Merged &&
+	if mStatus == kbfsmd.Merged &&
 		// Don't send notifies if it's just a rekey (the real mdserver
 		// sends a "folder needs rekey" notification in this case).
 		!(rmds.MD.IsRekeySet() && rmds.MD.IsWriterMetadataCopiedSet()) {
@@ -477,7 +477,7 @@ func (md *MDServerDisk) PruneBranch(ctx context.Context, id tlf.ID, bid kbfsmd.B
 
 func (md *MDServerDisk) getCurrentMergedHeadRevision(
 	ctx context.Context, id tlf.ID) (rev kbfsmd.Revision, err error) {
-	head, err := md.GetForTLF(ctx, id, kbfsmd.NullBranchID, Merged, nil)
+	head, err := md.GetForTLF(ctx, id, kbfsmd.NullBranchID, kbfsmd.Merged, nil)
 	if err != nil {
 		return 0, err
 	}

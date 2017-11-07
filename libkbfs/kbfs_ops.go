@@ -340,7 +340,7 @@ func (fs *KBFSOpsStandard) getOrInitializeNewMDMaster(ctx context.Context,
 		}
 	}()
 
-	id, md, err = mdops.GetForHandle(ctx, h, Merged, nil)
+	id, md, err = mdops.GetForHandle(ctx, h, kbfsmd.Merged, nil)
 	if err != nil {
 		return false, ImmutableRootMetadata{}, id, err
 	}
@@ -369,7 +369,7 @@ func (fs *KBFSOpsStandard) getOrInitializeNewMDMaster(ctx context.Context,
 		return false, ImmutableRootMetadata{}, id, err
 	}
 
-	id, md, err = mdops.GetForHandle(ctx, h, Merged, nil)
+	id, md, err = mdops.GetForHandle(ctx, h, kbfsmd.Merged, nil)
 	if err != nil {
 		return false, ImmutableRootMetadata{}, id, err
 	}

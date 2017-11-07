@@ -1269,14 +1269,14 @@ func (j *mdJournal) put(
 
 	// The below is code common to all the cases.
 
-	if (mStatus == Merged) != (rmd.BID() == kbfsmd.NullBranchID) {
+	if (mStatus == kbfsmd.Merged) != (rmd.BID() == kbfsmd.NullBranchID) {
 		return kbfsmd.ID{}, errors.Errorf(
 			"mStatus=%s doesn't match bid=%s", mStatus, rmd.BID())
 	}
 
 	// If we're trying to push a merged MD onto a branch, return a
 	// conflict error so the caller can retry with an unmerged MD.
-	if mStatus == Merged && j.branchID != kbfsmd.NullBranchID {
+	if mStatus == kbfsmd.Merged && j.branchID != kbfsmd.NullBranchID {
 		return kbfsmd.ID{}, MDJournalConflictError{}
 	}
 

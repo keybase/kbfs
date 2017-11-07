@@ -118,7 +118,7 @@ func getMDRange(ctx context.Context, config Config, id tlf.ID, bid kbfsmd.Branch
 	for _, r := range toDownload {
 		var fetchedRmds []ImmutableRootMetadata
 		switch mStatus {
-		case Merged:
+		case kbfsmd.Merged:
 			fetchedRmds, err = config.MDOps().GetRange(
 				ctx, id, r.start, r.end, lockBeforeGet)
 		case kbfsmd.Unmerged:
@@ -202,7 +202,7 @@ func getMergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
 	for {
 		end := start + maxMDsAtATime - 1 // range is inclusive
 		rmds, err := getMDRange(ctx, config, id, kbfsmd.NullBranchID, start, end,
-			Merged, lockBeforeGet)
+			kbfsmd.Merged, lockBeforeGet)
 		if err != nil {
 			return nil, err
 		}

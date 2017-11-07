@@ -536,11 +536,6 @@ type ReportedError struct {
 // MergeStatus is a temporary alias.
 type MergeStatus = kbfsmd.MergeStatus
 
-// Temporary aliases.
-const (
-	Merged MergeStatus = kbfsmd.Merged
-)
-
 // OpSummary describes the changes performed by a single op, and is
 // suitable for encoding directly as JSON.
 type OpSummary struct {
