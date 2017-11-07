@@ -10,6 +10,7 @@ import (
 	"bazil.org/fuse"
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfsmd"
+	"github.com/keybase/kbfs/libkbfs"
 )
 
 type errorWithErrno struct {
@@ -35,6 +36,40 @@ func filterError(err error) error {
 	case kbfsmd.MetadataIsFinalError:
 		return errorWithErrno{err, syscall.EACCES}
 
+	case libkbfs.NoSuchUserError:
+		return errorWithErrno{err, syscall.ENOENT}
+	case libkbfs.NoSuchTeamError:
+		return errorWithErrno{err, syscall.ENOENT}
+	case libkbfs.DirNotEmptyError:
+		return errorWithErrno{err, syscall.ENOTEMPTY}
+	case libkbfs.ReadAccessError:
+		return errorWithErrno{err, syscall.EACCES}
+	case libkbfs.WriteAccessError:
+		return errorWithErrno{err, syscall.EACCES}
+	case libkbfs.WriteUnsupportedError:
+		return errorWithErrno{err, syscall.ENOENT}
+	case libkbfs.UnsupportedOpInUnlinkedDirError:
+		return errorWithErrno{err, syscall.ENOENT}
+	case libkbfs.NeedSelfRekeyError:
+		return errorWithErrno{err, syscall.EACCES}
+	case libkbfs.NeedOtherRekeyError:
+		return errorWithErrno{err, syscall.EACCES}
+	case libkbfs.DisallowedPrefixError:
+		return errorWithErrno{err, syscall.EINVAL}
+	case libkbfs.FileTooBigError:
+		return errorWithErrno{err, syscall.EFBIG}
+	case libkbfs.NameTooLongError:
+		return errorWithErrno{err, syscall.ENAMETOOLONG}
+	case libkbfs.DirTooBigError:
+		return errorWithErrno{err, syscall.EFBIG}
+	case libkbfs.NoCurrentSessionError:
+		return errorWithErrno{err, syscall.EACCES}
+	case libkbfs.NoSuchFolderListError:
+		return errorWithErrno{err, syscall.ENOENT}
+	case libkbfs.RenameAcrossDirsError:
+		return errorWithErrno{err, syscall.EXDEV}
+	case *libkbfs.ErrDiskLimitTimeout:
+		return errorWithErrno{err, syscall.ENOSPC}
 	}
 	return err
 }
