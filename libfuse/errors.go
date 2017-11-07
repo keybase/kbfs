@@ -7,6 +7,8 @@ package libfuse
 import (
 	"syscall"
 
+	"github.com/pkg/errors"
+
 	"bazil.org/fuse"
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfsmd"
@@ -25,7 +27,7 @@ func (e errorWithErrno) Errno() fuse.Errno {
 }
 
 func filterError(err error) error {
-	switch err.(type) {
+	switch errors.Cause(err).(type) {
 	case kbfsblock.ServerErrorUnauthorized:
 		return errorWithErrno{err, syscall.EACCES}
 
