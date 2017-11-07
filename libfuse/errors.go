@@ -27,12 +27,14 @@ func filterError(err error) error {
 	switch err.(type) {
 	case kbfsblock.ServerErrorUnauthorized:
 		return errorWithErrno{err, syscall.EACCES}
+
 	case kbfsmd.ServerErrorUnauthorized:
 		return errorWithErrno{err, syscall.EACCES}
 	case kbfsmd.ServerErrorWriteAccess:
 		return errorWithErrno{err, syscall.EACCES}
 	case kbfsmd.MetadataIsFinalError:
 		return errorWithErrno{err, syscall.EACCES}
+
 	}
 	return err
 }
