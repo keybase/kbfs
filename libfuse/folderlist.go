@@ -236,7 +236,7 @@ var _ fs.HandleReadDirAller = (*FolderList)(nil)
 func (fl *FolderList) ReadDirAll(ctx context.Context) (res []fuse.Dirent, err error) {
 	fl.fs.log.CDebugf(ctx, "FL ReadDirAll")
 	defer func() {
-		fl.fs.reportErr(ctx, libkbfs.ReadMode, err)
+		err = fl.fs.processError(ctx, libkbfs.ReadMode, err)
 	}()
 	session, err := fl.fs.config.KBPKI().GetCurrentSession(ctx)
 	isLoggedIn := err == nil
@@ -273,7 +273,7 @@ var _ fs.NodeRemover = (*FolderList)(nil)
 // Remove implements the fs.NodeRemover interface for FolderList.
 func (fl *FolderList) Remove(ctx context.Context, req *fuse.RemoveRequest) (err error) {
 	fl.fs.log.CDebugf(ctx, "FolderList Remove %s", req.Name)
-	defer func() { fl.fs.reportErr(ctx, libkbfs.WriteMode, err) }()
+	defer func() { err = fl.fs.processError(ctx, libkbfs.WriteMode, err) }()
 
 	h, err := libkbfs.ParseTlfHandlePreferred(
 		ctx, fl.fs.config.KBPKI(), req.Name, fl.tlfType)
