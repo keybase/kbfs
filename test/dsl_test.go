@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libkbfs"
 	"github.com/keybase/kbfs/tlf"
@@ -32,7 +33,7 @@ const (
 )
 
 type opt struct {
-	ver                      libkbfs.MetadataVer
+	ver                      kbfsmd.MetadataVer
 	usernames                []libkb.NormalizedUsername
 	teams                    teamMap
 	tlfName                  string
