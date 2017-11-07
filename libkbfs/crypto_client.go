@@ -127,7 +127,7 @@ func (c *CryptoClient) prepareTLFCryptKeyClientHalf(
 	encryptedClientHalf EncryptedTLFCryptKeyClientHalf) (
 	encryptedData keybase1.EncryptedBytes32, nonce keybase1.BoxNonce,
 	err error) {
-	if encryptedClientHalf.Version != EncryptionSecretbox {
+	if encryptedClientHalf.Version != kbfscrypto.EncryptionSecretbox {
 		return keybase1.EncryptedBytes32{}, keybase1.BoxNonce{},
 			errors.WithStack(kbfscrypto.UnknownEncryptionVer{
 				Ver: encryptedClientHalf.Version})

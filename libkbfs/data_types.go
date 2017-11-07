@@ -71,14 +71,6 @@ type SessionInfo struct {
 	VerifyingKey   kbfscrypto.VerifyingKey
 }
 
-// EncryptionVer is a temporary alias.
-type EncryptionVer = kbfscrypto.EncryptionVer
-
-// Temporary aliases.
-const (
-	EncryptionSecretbox EncryptionVer = kbfscrypto.EncryptionSecretbox
-)
-
 // EncryptedTLFCryptKeyClientHalf is a temporary alias.
 type EncryptedTLFCryptKeyClientHalf = kbfscrypto.EncryptedTLFCryptKeyClientHalf
 
