@@ -53,7 +53,7 @@ func injectShimCrypto(config Config) {
 	config.SetCrypto(crypto)
 }
 
-func mdOpsInit(t *testing.T, ver MetadataVer) (mockCtrl *gomock.Controller,
+func mdOpsInit(t *testing.T, ver kbfsmd.MetadataVer) (mockCtrl *gomock.Controller,
 	config *ConfigMock, ctx context.Context) {
 	ctr := NewSafeTestReporter(t)
 	mockCtrl = gomock.NewController(ctr)
@@ -205,7 +205,7 @@ func putMDForPrivate(config *ConfigMock, rmd *RootMetadata) {
 	config.mockMdcache.EXPECT().Replace(gomock.Any(), gomock.Any())
 }
 
-func testMDOpsGetForHandlePublicSuccess(t *testing.T, ver MetadataVer) {
+func testMDOpsGetForHandlePublicSuccess(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -234,7 +234,7 @@ func expectGetKeyBundles(ctx context.Context, config *ConfigMock, extra kbfsmd.E
 	}
 }
 
-func testMDOpsGetForHandlePrivateSuccess(t *testing.T, ver MetadataVer) {
+func testMDOpsGetForHandlePrivateSuccess(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -254,7 +254,7 @@ func testMDOpsGetForHandlePrivateSuccess(t *testing.T, ver MetadataVer) {
 	require.Equal(t, expectedMD, rmd2.bareMd)
 }
 
-func testMDOpsGetForUnresolvedHandlePublicSuccess(t *testing.T, ver MetadataVer) {
+func testMDOpsGetForUnresolvedHandlePublicSuccess(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -287,7 +287,7 @@ func testMDOpsGetForUnresolvedHandlePublicSuccess(t *testing.T, ver MetadataVer)
 	}
 }
 
-func testMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T, ver MetadataVer) {
+func testMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -346,7 +346,7 @@ func testMDOpsGetForUnresolvedMdHandlePublicSuccess(t *testing.T, ver MetadataVe
 	}
 }
 
-func testMDOpsGetForUnresolvedHandlePublicFailure(t *testing.T, ver MetadataVer) {
+func testMDOpsGetForUnresolvedHandlePublicFailure(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -371,7 +371,7 @@ func testMDOpsGetForUnresolvedHandlePublicFailure(t *testing.T, ver MetadataVer)
 	}
 }
 
-func testMDOpsGetForHandlePublicFailFindKey(t *testing.T, ver MetadataVer) {
+func testMDOpsGetForHandlePublicFailFindKey(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -399,7 +399,7 @@ func (c failVerifyCrypto) Verify(msg []byte, sigInfo kbfscrypto.SignatureInfo) e
 	return c.err
 }
 
-func testMDOpsGetForHandlePublicFailVerify(t *testing.T, ver MetadataVer) {
+func testMDOpsGetForHandlePublicFailVerify(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -416,7 +416,7 @@ func testMDOpsGetForHandlePublicFailVerify(t *testing.T, ver MetadataVer) {
 	require.IsType(t, MDMismatchError{}, err)
 }
 
-func testMDOpsGetForHandleFailGet(t *testing.T, ver MetadataVer) {
+func testMDOpsGetForHandleFailGet(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -433,7 +433,7 @@ func testMDOpsGetForHandleFailGet(t *testing.T, ver MetadataVer) {
 	}
 }
 
-func testMDOpsGetForHandleFailHandleCheck(t *testing.T, ver MetadataVer) {
+func testMDOpsGetForHandleFailHandleCheck(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -452,7 +452,7 @@ func testMDOpsGetForHandleFailHandleCheck(t *testing.T, ver MetadataVer) {
 	}
 }
 
-func testMDOpsGetSuccess(t *testing.T, ver MetadataVer) {
+func testMDOpsGetSuccess(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -473,7 +473,7 @@ func testMDOpsGetSuccess(t *testing.T, ver MetadataVer) {
 	require.Equal(t, expectedMD, rmd2.bareMd)
 }
 
-func testMDOpsGetBlankSigFailure(t *testing.T, ver MetadataVer) {
+func testMDOpsGetBlankSigFailure(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -491,7 +491,7 @@ func testMDOpsGetBlankSigFailure(t *testing.T, ver MetadataVer) {
 	}
 }
 
-func testMDOpsGetFailGet(t *testing.T, ver MetadataVer) {
+func testMDOpsGetFailGet(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -507,7 +507,7 @@ func testMDOpsGetFailGet(t *testing.T, ver MetadataVer) {
 	}
 }
 
-func testMDOpsGetFailIDCheck(t *testing.T, ver MetadataVer) {
+func testMDOpsGetFailIDCheck(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -628,7 +628,7 @@ func (mds *keyBundleMDServer) GetKeyBundles(ctx context.Context, tlfID tlf.ID,
 }
 
 func testMDOpsGetRangeSuccessHelper(
-	t *testing.T, ver MetadataVer, fromStart bool) {
+	t *testing.T, ver kbfsmd.MetadataVer, fromStart bool) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -665,15 +665,15 @@ func testMDOpsGetRangeSuccessHelper(
 	}
 }
 
-func testMDOpsGetRangeSuccess(t *testing.T, ver MetadataVer) {
+func testMDOpsGetRangeSuccess(t *testing.T, ver kbfsmd.MetadataVer) {
 	testMDOpsGetRangeSuccessHelper(t, ver, false)
 }
 
-func testMDOpsGetRangeFromStartSuccess(t *testing.T, ver MetadataVer) {
+func testMDOpsGetRangeFromStartSuccess(t *testing.T, ver kbfsmd.MetadataVer) {
 	testMDOpsGetRangeSuccessHelper(t, ver, true)
 }
 
-func testMDOpsGetRangeFailBadPrevRoot(t *testing.T, ver MetadataVer) {
+func testMDOpsGetRangeFailBadPrevRoot(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -726,7 +726,7 @@ func (s *fakeMDServerPut) getLastRmds() *RootMetadataSigned {
 func (s *fakeMDServerPut) Shutdown() {}
 
 func validatePutPublicRMDS(
-	ctx context.Context, t *testing.T, ver MetadataVer, config Config,
+	ctx context.Context, t *testing.T, ver kbfsmd.MetadataVer, config Config,
 	inputRmd kbfsmd.RootMetadata, rmds *RootMetadataSigned) {
 	// TODO: Handle private RMDS, too.
 
@@ -768,7 +768,7 @@ func validatePutPublicRMDS(
 	require.Equal(t, expectedRmd, rmds.MD)
 }
 
-func testMDOpsPutPublicSuccess(t *testing.T, ver MetadataVer) {
+func testMDOpsPutPublicSuccess(t *testing.T, ver kbfsmd.MetadataVer) {
 	ctx := context.Background()
 	config := MakeTestConfigOrBust(t, "alice", "bob")
 	config.SetMetadataVersion(ver)
@@ -795,7 +795,7 @@ func testMDOpsPutPublicSuccess(t *testing.T, ver MetadataVer) {
 	validatePutPublicRMDS(ctx, t, ver, config, rmd.bareMd, rmds)
 }
 
-func testMDOpsPutPrivateSuccess(t *testing.T, ver MetadataVer) {
+func testMDOpsPutPrivateSuccess(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -825,7 +825,7 @@ func (c failEncodeCodec) Encode(obj interface{}) ([]byte, error) {
 	return nil, c.err
 }
 
-func testMDOpsPutFailEncode(t *testing.T, ver MetadataVer) {
+func testMDOpsPutFailEncode(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -853,7 +853,7 @@ func testMDOpsPutFailEncode(t *testing.T, ver MetadataVer) {
 	}
 }
 
-func testMDOpsGetRangeFailFinal(t *testing.T, ver MetadataVer) {
+func testMDOpsGetRangeFailFinal(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -881,7 +881,7 @@ func testMDOpsGetRangeFailFinal(t *testing.T, ver MetadataVer) {
 	require.IsType(t, MDMismatchError{}, err)
 }
 
-func testMDOpsGetFinalSuccess(t *testing.T, ver MetadataVer) {
+func testMDOpsGetFinalSuccess(t *testing.T, ver kbfsmd.MetadataVer) {
 	mockCtrl, config, ctx := mdOpsInit(t, ver)
 	defer mdOpsShutdown(mockCtrl, config)
 
@@ -921,7 +921,7 @@ func testMDOpsGetFinalSuccess(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDOps(t *testing.T) {
-	tests := []func(*testing.T, MetadataVer){
+	tests := []func(*testing.T, kbfsmd.MetadataVer){
 		testMDOpsGetForHandlePublicSuccess,
 		testMDOpsGetForHandlePrivateSuccess,
 		testMDOpsGetForUnresolvedHandlePublicSuccess,

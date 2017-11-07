@@ -513,7 +513,7 @@ func (md *MDServerRemote) get(ctx context.Context, arg keybase1.GetMetadataArg) 
 	// deserialize blocks
 	rmdses = make([]*RootMetadataSigned, len(response.MdBlocks))
 	for i, block := range response.MdBlocks {
-		ver, max := MetadataVer(block.Version), md.config.MetadataVersion()
+		ver, max := kbfsmd.MetadataVer(block.Version), md.config.MetadataVersion()
 		rmds, err := DecodeRootMetadataSigned(
 			md.config.Codec(), tlfID, ver, max, block.Block,
 			keybase1.FromTime(block.Timestamp))

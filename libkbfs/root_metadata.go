@@ -119,7 +119,7 @@ func makeRootMetadata(bareMd kbfsmd.MutableRootMetadata,
 // and handle. Note that if the given ID/handle are private, rekeying
 // must be done separately.
 func makeInitialRootMetadata(
-	ver MetadataVer, tlfID tlf.ID, h *TlfHandle) (*RootMetadata, error) {
+	ver kbfsmd.MetadataVer, tlfID tlf.ID, h *TlfHandle) (*RootMetadata, error) {
 	bh, err := h.ToBareHandle()
 	if err != nil {
 		return nil, err
@@ -190,7 +190,7 @@ func (md *RootMetadata) deepCopy(codec kbfscodec.Codec) (*RootMetadata, error) {
 // with cleared block change lists and cleared serialized metadata),
 // with the revision incremented and a correct backpointer.
 func (md *RootMetadata) MakeSuccessor(
-	ctx context.Context, latestMDVer MetadataVer, codec kbfscodec.Codec,
+	ctx context.Context, latestMDVer kbfsmd.MetadataVer, codec kbfscodec.Codec,
 	keyManager KeyManager, merkleGetter merkleRootGetter,
 	teamKeyer teamKeysGetter, mdID kbfsmd.ID, isWriter bool) (
 	*RootMetadata, error) {
@@ -602,7 +602,7 @@ func (md *RootMetadata) PrevRoot() kbfsmd.ID {
 }
 
 // Version returns the underlying BareRootMetadata version.
-func (md *RootMetadata) Version() MetadataVer {
+func (md *RootMetadata) Version() kbfsmd.MetadataVer {
 	return md.bareMd.Version()
 }
 
@@ -1009,7 +1009,7 @@ func (rmds *RootMetadataSigned) MakeFinalCopy(
 // DecodeRootMetadataSigned deserializes a metadata block into the
 // specified versioned structure.
 func DecodeRootMetadataSigned(
-	codec kbfscodec.Codec, tlf tlf.ID, ver, max MetadataVer, buf []byte,
+	codec kbfscodec.Codec, tlf tlf.ID, ver, max kbfsmd.MetadataVer, buf []byte,
 	untrustedServerTimestamp time.Time) (
 	*RootMetadataSigned, error) {
 	rmds, err := kbfsmd.DecodeRootMetadataSigned(codec, tlf, ver, max, buf)

@@ -26,7 +26,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-var testMetadataVers = []MetadataVer{
+var testMetadataVers = []kbfsmd.MetadataVer{
 	kbfsmd.InitialExtraMetadataVer, kbfsmd.SegregatedKeyBundlesVer,
 }
 
@@ -44,7 +44,7 @@ var testMetadataVers = []MetadataVer{
 //	...
 // }
 func runTestOverMetadataVers(
-	t *testing.T, f func(t *testing.T, ver MetadataVer)) {
+	t *testing.T, f func(t *testing.T, ver kbfsmd.MetadataVer)) {
 	for _, ver := range testMetadataVers {
 		ver := ver // capture range variable.
 		t.Run(ver.String(), func(t *testing.T) {
@@ -59,7 +59,7 @@ func runTestOverMetadataVers(
 // be taken to be the strings after that prefix. Example use:
 //
 // func TestFoo(t *testing.T) {
-// 	tests := []func(*testing.T, MetadataVer){
+// 	tests := []func(*testing.T, kbfsmd.MetadataVer){
 //		testFooBar1,
 //		testFooBar2,
 //		testFooBar3,
@@ -68,7 +68,7 @@ func runTestOverMetadataVers(
 //	runTestsOverMetadataVers(t, "testFoo", tests)
 // }
 func runTestsOverMetadataVers(t *testing.T, prefix string,
-	fs []func(t *testing.T, ver MetadataVer)) {
+	fs []func(t *testing.T, ver kbfsmd.MetadataVer)) {
 	for _, f := range fs {
 		f := f // capture range variable.
 		name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
@@ -92,13 +92,13 @@ func runTestsOverMetadataVers(t *testing.T, prefix string,
 //	runBenchmarkOverMetadataVers(b, testFoo)
 // }
 //
-// func benchmarkFoo(b *testing.B, ver MetadataVer) {
+// func benchmarkFoo(b *testing.B, ver kbfsmd.MetadataVer) {
 //	...
 // 	brmd, err := MakeInitialRootMetadata(ver, ...)
 //	...
 // }
 func runBenchmarkOverMetadataVers(
-	b *testing.B, f func(b *testing.B, ver MetadataVer)) {
+	b *testing.B, f func(b *testing.B, ver kbfsmd.MetadataVer)) {
 	for _, ver := range testMetadataVers {
 		ver := ver // capture range variable.
 		b.Run(ver.String(), func(b *testing.B) {
@@ -193,7 +193,7 @@ func makeFakeTlfHandle(
 
 // Test that GetTlfHandle() and MakeBareTlfHandle() work properly for
 // public TLFs.
-func testRootMetadataGetTlfHandlePublic(t *testing.T, ver MetadataVer) {
+func testRootMetadataGetTlfHandlePublic(t *testing.T, ver kbfsmd.MetadataVer) {
 	uw := []keybase1.SocialAssertion{
 		{
 			User:    "user2",
@@ -220,7 +220,7 @@ func testRootMetadataGetTlfHandlePublic(t *testing.T, ver MetadataVer) {
 
 // Test that GetTlfHandle() and MakeBareTlfHandle() work properly for
 // non-public TLFs.
-func testRootMetadataGetTlfHandlePrivate(t *testing.T, ver MetadataVer) {
+func testRootMetadataGetTlfHandlePrivate(t *testing.T, ver kbfsmd.MetadataVer) {
 	uw := []keybase1.SocialAssertion{
 		{
 			User:    "user2",
@@ -258,7 +258,7 @@ func testRootMetadataGetTlfHandlePrivate(t *testing.T, ver MetadataVer) {
 }
 
 // Test that key generations work as expected for private TLFs.
-func testRootMetadataLatestKeyGenerationPrivate(t *testing.T, ver MetadataVer) {
+func testRootMetadataLatestKeyGenerationPrivate(t *testing.T, ver kbfsmd.MetadataVer) {
 	tlfID := tlf.FakeID(0, tlf.Private)
 	h := makeFakeTlfHandle(t, 14, tlf.Private, nil, nil)
 	rmd, err := makeInitialRootMetadata(ver, tlfID, h)
@@ -274,7 +274,7 @@ func testRootMetadataLatestKeyGenerationPrivate(t *testing.T, ver MetadataVer) {
 }
 
 // Test that key generations work as expected for public TLFs.
-func testRootMetadataLatestKeyGenerationPublic(t *testing.T, ver MetadataVer) {
+func testRootMetadataLatestKeyGenerationPublic(t *testing.T, ver kbfsmd.MetadataVer) {
 	tlfID := tlf.FakeID(0, tlf.Public)
 	h := makeFakeTlfHandle(t, 14, tlf.Public, nil, nil)
 	rmd, err := makeInitialRootMetadata(ver, tlfID, h)
@@ -285,7 +285,7 @@ func testRootMetadataLatestKeyGenerationPublic(t *testing.T, ver MetadataVer) {
 	}
 }
 
-func testMakeRekeyReadError(t *testing.T, ver MetadataVer) {
+func testMakeRekeyReadError(t *testing.T, ver kbfsmd.MetadataVer) {
 	ctx := context.Background()
 	config := MakeTestConfigOrBust(t, "alice", "bob")
 	config.SetMetadataVersion(ver)
@@ -312,7 +312,7 @@ func testMakeRekeyReadError(t *testing.T, ver MetadataVer) {
 	require.Equal(t, NeedSelfRekeyError{"alice", dummyErr}, err)
 }
 
-func testMakeRekeyReadErrorResolvedHandle(t *testing.T, ver MetadataVer) {
+func testMakeRekeyReadErrorResolvedHandle(t *testing.T, ver kbfsmd.MetadataVer) {
 	ctx := context.Background()
 	config := MakeTestConfigOrBust(t, "alice", "bob")
 	defer config.Shutdown(ctx)
@@ -349,7 +349,7 @@ func testMakeRekeyReadErrorResolvedHandle(t *testing.T, ver MetadataVer) {
 
 // Test that MakeSuccessor fails when the final bit is set.
 
-func testRootMetadataFinalIsFinal(t *testing.T, ver MetadataVer) {
+func testRootMetadataFinalIsFinal(t *testing.T, ver kbfsmd.MetadataVer) {
 	tlfID := tlf.FakeID(0, tlf.Public)
 	h := makeFakeTlfHandle(t, 14, tlf.Public, nil, nil)
 	rmd, err := makeInitialRootMetadata(ver, tlfID, h)
@@ -922,7 +922,7 @@ func TestRootMetadataTeamMakeSuccessor(t *testing.T) {
 }
 
 func TestRootMetadata(t *testing.T) {
-	tests := []func(*testing.T, MetadataVer){
+	tests := []func(*testing.T, kbfsmd.MetadataVer){
 		testRootMetadataGetTlfHandlePublic,
 		testRootMetadataGetTlfHandlePrivate,
 		testRootMetadataLatestKeyGenerationPrivate,

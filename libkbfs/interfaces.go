@@ -1726,8 +1726,8 @@ type Config interface {
 	SetClock(Clock)
 	ConflictRenamer() ConflictRenamer
 	SetConflictRenamer(ConflictRenamer)
-	MetadataVersion() MetadataVer
-	SetMetadataVersion(MetadataVer)
+	MetadataVersion() kbfsmd.MetadataVer
+	SetMetadataVersion(kbfsmd.MetadataVer)
 	DefaultBlockType() keybase1.BlockType
 	SetDefaultBlockType(blockType keybase1.BlockType)
 	RekeyQueue() RekeyQueue

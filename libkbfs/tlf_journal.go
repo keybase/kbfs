@@ -35,7 +35,7 @@ type tlfJournalConfig interface {
 	BlockCache() BlockCache
 	BlockOps() BlockOps
 	MDCache() MDCache
-	MetadataVersion() MetadataVer
+	MetadataVersion() kbfsmd.MetadataVer
 	Reporter() Reporter
 	encryptionKeyGetter() encryptionKeyGetter
 	mdDecryptionKeyGetter() mdDecryptionKeyGetter

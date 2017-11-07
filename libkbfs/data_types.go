@@ -82,11 +82,8 @@ type EncryptedTLFCryptKeyClientAndEphemeral struct {
 	EPubKey kbfscrypto.TLFEphemeralPublicKey
 }
 
-// MetadataVer is a temporary alias.
-type MetadataVer = kbfsmd.MetadataVer
-
 const (
-	defaultClientMetadataVer MetadataVer = kbfsmd.SegregatedKeyBundlesVer
+	defaultClientMetadataVer kbfsmd.MetadataVer = kbfsmd.SegregatedKeyBundlesVer
 )
 
 // DataVer is the type of a version for marshalled KBFS data

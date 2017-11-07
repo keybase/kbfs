@@ -6019,9 +6019,9 @@ func (mr *MockConfigMockRecorder) SetConflictRenamer(arg0 interface{}) *gomock.C
 }
 
 // MetadataVersion mocks base method
-func (m *MockConfig) MetadataVersion() MetadataVer {
+func (m *MockConfig) MetadataVersion() kbfsmd.MetadataVer {
 	ret := m.ctrl.Call(m, "MetadataVersion")
-	ret0, _ := ret[0].(MetadataVer)
+	ret0, _ := ret[0].(kbfsmd.MetadataVer)
 	return ret0
 }
 
@@ -6031,7 +6031,7 @@ func (mr *MockConfigMockRecorder) MetadataVersion() *gomock.Call {
 }
 
 // SetMetadataVersion mocks base method
-func (m *MockConfig) SetMetadataVersion(arg0 MetadataVer) {
+func (m *MockConfig) SetMetadataVersion(arg0 kbfsmd.MetadataVer) {
 	m.ctrl.Call(m, "SetMetadataVersion", arg0)
 }
 

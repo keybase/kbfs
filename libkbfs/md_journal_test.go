@@ -39,7 +39,7 @@ func (g singleEncryptionKeyGetter) GetTLFCryptKeyForMDDecryption(
 	return g.k, nil
 }
 
-func setupMDJournalTest(t testing.TB, ver MetadataVer) (
+func setupMDJournalTest(t testing.TB, ver kbfsmd.MetadataVer) (
 	codec kbfscodec.Codec, crypto CryptoCommon, tlfID tlf.ID,
 	signer kbfscrypto.Signer, ekg singleEncryptionKeyGetter,
 	bsplit BlockSplitter, tempdir string, j *mdJournal) {
@@ -85,7 +85,7 @@ func teardownMDJournalTest(t testing.TB, tempdir string) {
 	assert.NoError(t, err)
 }
 
-func makeMDForTest(t testing.TB, ver MetadataVer, tlfID tlf.ID,
+func makeMDForTest(t testing.TB, ver kbfsmd.MetadataVer, tlfID tlf.ID,
 	revision kbfsmd.Revision, uid keybase1.UID,
 	signer kbfscrypto.Signer, prevRoot kbfsmd.ID) *RootMetadata {
 	nug := testNormalizedUsernameGetter{
@@ -114,7 +114,7 @@ func (cmrg constMerkleRootGetter) GetCurrentMerkleRoot(
 	return keybase1.MerkleRootV2{}, nil
 }
 
-func putMDRangeHelper(t testing.TB, ver MetadataVer, tlfID tlf.ID,
+func putMDRangeHelper(t testing.TB, ver kbfsmd.MetadataVer, tlfID tlf.ID,
 	signer kbfscrypto.Signer, firstRevision kbfsmd.Revision,
 	firstPrevRoot kbfsmd.ID, mdCount int, uid keybase1.UID,
 	putMD func(context.Context, *RootMetadata) (kbfsmd.ID, error)) (
@@ -141,7 +141,7 @@ func putMDRangeHelper(t testing.TB, ver MetadataVer, tlfID tlf.ID,
 	return mds, prevRoot
 }
 
-func putMDRange(t testing.TB, ver MetadataVer, tlfID tlf.ID,
+func putMDRange(t testing.TB, ver kbfsmd.MetadataVer, tlfID tlf.ID,
 	signer kbfscrypto.Signer, ekg encryptionKeyGetter,
 	bsplit BlockSplitter, firstRevision kbfsmd.Revision,
 	firstPrevRoot kbfsmd.ID, mdCount int, j *mdJournal) ([]*RootMetadata, kbfsmd.ID) {
@@ -202,7 +202,7 @@ func BenchmarkMDJournalBasic(b *testing.B) {
 	runBenchmarkOverMetadataVers(b, benchmarkMDJournalBasic)
 }
 
-func benchmarkMDJournalBasicBody(b *testing.B, ver MetadataVer, mdCount int) {
+func benchmarkMDJournalBasicBody(b *testing.B, ver kbfsmd.MetadataVer, mdCount int) {
 	b.StopTimer()
 
 	_, _, id, signer, ekg, bsplit, tempdir, j :=
@@ -218,7 +218,7 @@ func benchmarkMDJournalBasicBody(b *testing.B, ver MetadataVer, mdCount int) {
 		})
 }
 
-func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
+func benchmarkMDJournalBasic(b *testing.B, ver kbfsmd.MetadataVer) {
 	for _, mdCount := range []int{1, 10, 100, 1000, 10000} {
 		mdCount := mdCount // capture range variable.
 		name := fmt.Sprintf("mdCount=%d", mdCount)
@@ -232,7 +232,7 @@ func benchmarkMDJournalBasic(b *testing.B, ver MetadataVer) {
 	}
 }
 
-func testMDJournalBasic(t *testing.T, ver MetadataVer) {
+func testMDJournalBasic(t *testing.T, ver kbfsmd.MetadataVer) {
 	codec, _, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
@@ -275,7 +275,7 @@ func testMDJournalBasic(t *testing.T, ver MetadataVer) {
 	}
 }
 
-func testMDJournalGetNextEntry(t *testing.T, ver MetadataVer) {
+func testMDJournalGetNextEntry(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -303,7 +303,7 @@ func testMDJournalGetNextEntry(t *testing.T, ver MetadataVer) {
 
 // Putting the same md twice should return the same MD ID.  Regression
 // for KBFS-1955.
-func testMDJournalPutEntryTwice(t *testing.T, ver MetadataVer) {
+func testMDJournalPutEntryTwice(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -319,7 +319,7 @@ func testMDJournalPutEntryTwice(t *testing.T, ver MetadataVer) {
 	require.Equal(t, id1, id2)
 }
 
-func testMDJournalPutCase1Empty(t *testing.T, ver MetadataVer) {
+func testMDJournalPutCase1Empty(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -334,7 +334,7 @@ func testMDJournalPutCase1Empty(t *testing.T, ver MetadataVer) {
 	require.Equal(t, md.extra, head.extra)
 }
 
-func testMDJournalPutCase1Conflict(t *testing.T, ver MetadataVer) {
+func testMDJournalPutCase1Conflict(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -354,7 +354,7 @@ func testMDJournalPutCase1Conflict(t *testing.T, ver MetadataVer) {
 
 // The append portion of case 1 is covered by TestMDJournalBasic.
 
-func testMDJournalPutCase1ReplaceHead(t *testing.T, ver MetadataVer) {
+func testMDJournalPutCase1ReplaceHead(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -383,7 +383,7 @@ func testMDJournalPutCase1ReplaceHead(t *testing.T, ver MetadataVer) {
 	require.Equal(t, md.extra, head.extra)
 }
 
-func testMDJournalPutCase2NonEmptyReplace(t *testing.T, ver MetadataVer) {
+func testMDJournalPutCase2NonEmptyReplace(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -402,7 +402,7 @@ func testMDJournalPutCase2NonEmptyReplace(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 }
 
-func testMDJournalPutCase2NonEmptyAppend(t *testing.T, ver MetadataVer) {
+func testMDJournalPutCase2NonEmptyAppend(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -422,7 +422,7 @@ func testMDJournalPutCase2NonEmptyAppend(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 }
 
-func testMDJournalPutCase2Empty(t *testing.T, ver MetadataVer) {
+func testMDJournalPutCase2Empty(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -448,7 +448,7 @@ func testMDJournalPutCase2Empty(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 }
 
-func testMDJournalPutCase3NonEmptyAppend(t *testing.T, ver MetadataVer) {
+func testMDJournalPutCase3NonEmptyAppend(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -474,7 +474,7 @@ func testMDJournalPutCase3NonEmptyAppend(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 }
 
-func testMDJournalPutCase3NonEmptyReplace(t *testing.T, ver MetadataVer) {
+func testMDJournalPutCase3NonEmptyReplace(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -499,7 +499,7 @@ func testMDJournalPutCase3NonEmptyReplace(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 }
 
-func testMDJournalPutCase3EmptyAppend(t *testing.T, ver MetadataVer) {
+func testMDJournalPutCase3EmptyAppend(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -526,7 +526,7 @@ func testMDJournalPutCase3EmptyAppend(t *testing.T, ver MetadataVer) {
 	require.NoError(t, err)
 }
 
-func testMDJournalPutCase4(t *testing.T, ver MetadataVer) {
+func testMDJournalPutCase4(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -571,7 +571,7 @@ func listDir(t *testing.T, dir string) []string {
 	return names
 }
 
-func getMDJournalNames(ver MetadataVer) []string {
+func getMDJournalNames(ver kbfsmd.MetadataVer) []string {
 	var expectedNames []string
 	if ver < kbfsmd.SegregatedKeyBundlesVer {
 		expectedNames = []string{"md_journal", "mds"}
@@ -583,7 +583,7 @@ func getMDJournalNames(ver MetadataVer) []string {
 	return expectedNames
 }
 
-func testMDJournalFlushAll(t *testing.T, ver MetadataVer) {
+func testMDJournalFlushAll(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -608,7 +608,7 @@ func testMDJournalFlushAll(t *testing.T, ver MetadataVer) {
 	require.Equal(t, []string{"extra_file"}, names)
 }
 
-func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
+func testMDJournalBranchConversion(t *testing.T, ver kbfsmd.MetadataVer) {
 	codec, _, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
@@ -667,7 +667,7 @@ func testMDJournalBranchConversion(t *testing.T, ver MetadataVer) {
 	require.Error(t, err)
 }
 
-func testMDJournalResolveAndClear(t *testing.T, ver MetadataVer, bid kbfsmd.BranchID) {
+func testMDJournalResolveAndClear(t *testing.T, ver kbfsmd.MetadataVer, bid kbfsmd.BranchID) {
 	_, _, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
@@ -722,7 +722,7 @@ func testMDJournalResolveAndClear(t *testing.T, ver MetadataVer, bid kbfsmd.Bran
 	flushAllMDs(t, ctx, signer, j)
 }
 
-func testMDJournalResolveAndClearRemoteBranch(t *testing.T, ver MetadataVer) {
+func testMDJournalResolveAndClearRemoteBranch(t *testing.T, ver kbfsmd.MetadataVer) {
 	codec := kbfscodec.NewMsgpack()
 	crypto := MakeCryptoCommon(codec)
 	bid, err := crypto.MakeRandomBranchID()
@@ -730,7 +730,7 @@ func testMDJournalResolveAndClearRemoteBranch(t *testing.T, ver MetadataVer) {
 	testMDJournalResolveAndClear(t, ver, bid)
 }
 
-func testMDJournalResolveAndClearLocalSquash(t *testing.T, ver MetadataVer) {
+func testMDJournalResolveAndClearLocalSquash(t *testing.T, ver kbfsmd.MetadataVer) {
 	testMDJournalResolveAndClear(t, ver, kbfsmd.PendingLocalSquashBranchID)
 }
 
@@ -798,7 +798,7 @@ type mdIDJournalEntryExtra struct {
 	Extra int
 }
 
-func testMDJournalBranchConversionPreservesUnknownFields(t *testing.T, ver MetadataVer) {
+func testMDJournalBranchConversionPreservesUnknownFields(t *testing.T, ver kbfsmd.MetadataVer) {
 	codec, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -855,7 +855,7 @@ func testMDJournalBranchConversionPreservesUnknownFields(t *testing.T, ver Metad
 	flushAllMDs(t, ctx, signer, j)
 }
 
-func testMDJournalClear(t *testing.T, ver MetadataVer) {
+func testMDJournalClear(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -931,7 +931,7 @@ func testMDJournalClear(t *testing.T, ver MetadataVer) {
 	flushAllMDs(t, ctx, signer, j)
 }
 
-func testMDJournalClearPendingWithMaster(t *testing.T, ver MetadataVer) {
+func testMDJournalClearPendingWithMaster(t *testing.T, ver kbfsmd.MetadataVer) {
 	_, _, id, signer, ekg, bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
 
@@ -978,7 +978,7 @@ func testMDJournalClearPendingWithMaster(t *testing.T, ver MetadataVer) {
 	require.Equal(t, kbfsmd.NullBranchID, head.BID())
 }
 
-func testMDJournalRestart(t *testing.T, ver MetadataVer) {
+func testMDJournalRestart(t *testing.T, ver kbfsmd.MetadataVer) {
 	codec, crypto, id, signer, ekg,
 		bsplit, tempdir, j := setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
@@ -1010,7 +1010,7 @@ func testMDJournalRestart(t *testing.T, ver MetadataVer) {
 	flushAllMDs(t, context.Background(), signer, j)
 }
 
-func testMDJournalRestartAfterBranchConversion(t *testing.T, ver MetadataVer) {
+func testMDJournalRestartAfterBranchConversion(t *testing.T, ver kbfsmd.MetadataVer) {
 	codec, crypto, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t, ver)
 	defer teardownMDJournalTest(t, tempdir)
@@ -1053,7 +1053,7 @@ func testMDJournalRestartAfterBranchConversion(t *testing.T, ver MetadataVer) {
 }
 
 func TestMDJournal(t *testing.T) {
-	tests := []func(*testing.T, MetadataVer){
+	tests := []func(*testing.T, kbfsmd.MetadataVer){
 		testMDJournalBasic,
 		testMDJournalGetNextEntry,
 		testMDJournalPutEntryTwice,

@@ -136,7 +136,7 @@ type ConfigLocal struct {
 	bgFlushPeriod time.Duration
 
 	// metadataVersion is the version to use when creating new metadata.
-	metadataVersion MetadataVer
+	metadataVersion kbfsmd.MetadataVer
 
 	mode InitMode
 
@@ -772,14 +772,14 @@ func (c *ConfigLocal) SetConflictRenamer(cr ConflictRenamer) {
 }
 
 // MetadataVersion implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) MetadataVersion() MetadataVer {
+func (c *ConfigLocal) MetadataVersion() kbfsmd.MetadataVer {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.metadataVersion
 }
 
 // SetMetadataVersion implements the Config interface for ConfigLocal.
-func (c *ConfigLocal) SetMetadataVersion(mdVer MetadataVer) {
+func (c *ConfigLocal) SetMetadataVersion(mdVer kbfsmd.MetadataVer) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.metadataVersion = mdVer

@@ -46,7 +46,7 @@ type mdBlockMem struct {
 	// An encoded RootMetdataSigned.
 	encodedMd []byte
 	timestamp time.Time
-	version   MetadataVer
+	version   kbfsmd.MetadataVer
 }
 
 type mdBlockMemList struct {
