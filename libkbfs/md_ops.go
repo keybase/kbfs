@@ -306,7 +306,7 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 
 // GetForHandle implements the MDOps interface for MDOpsStandard.
 func (md *MDOpsStandard) GetForHandle(ctx context.Context, handle *TlfHandle,
-	mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (
+	mStatus kbfsmd.MergeStatus, lockBeforeGet *keybase1.LockID) (
 	id tlf.ID, rmd ImmutableRootMetadata, err error) {
 	md.log.CDebugf(
 		ctx, "GetForHandle: %s %s", handle.GetCanonicalPath(), mStatus)
@@ -402,7 +402,7 @@ func (md *MDOpsStandard) processMetadataWithID(ctx context.Context,
 }
 
 func (md *MDOpsStandard) getForTLF(ctx context.Context, id tlf.ID,
-	bid kbfsmd.BranchID, mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (
+	bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, lockBeforeGet *keybase1.LockID) (
 	ImmutableRootMetadata, error) {
 	rmds, err := md.config.MDServer().GetForTLF(
 		ctx, id, bid, mStatus, lockBeforeGet)
@@ -557,7 +557,7 @@ func (md *MDOpsStandard) processRange(ctx context.Context, id tlf.ID,
 }
 
 func (md *MDOpsStandard) getRange(ctx context.Context, id tlf.ID,
-	bid kbfsmd.BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
+	bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, start, stop kbfsmd.Revision,
 	lockBeforeGet *keybase1.LockID) ([]ImmutableRootMetadata, error) {
 	rmds, err := md.config.MDServer().GetRange(
 		ctx, id, bid, mStatus, start, stop, lockBeforeGet)

@@ -141,7 +141,7 @@ func (md *MDServerMemory) checkShutdownRLocked() error {
 }
 
 func (md *MDServerMemory) getHandleID(ctx context.Context, handle tlf.Handle,
-	mStatus MergeStatus) (tlfID tlf.ID, created bool, err error) {
+	mStatus kbfsmd.MergeStatus) (tlfID tlf.ID, created bool, err error) {
 	handleBytes, err := md.config.Codec().Encode(handle)
 	if err != nil {
 		return tlf.NullID, false, kbfsmd.ServerError{Err: err}
@@ -190,7 +190,7 @@ func (md *MDServerMemory) getHandleID(ctx context.Context, handle tlf.Handle,
 
 // GetForHandle implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetForHandle(ctx context.Context, handle tlf.Handle,
-	mStatus MergeStatus, _ *keybase1.LockID) (
+	mStatus kbfsmd.MergeStatus, _ *keybase1.LockID) (
 	tlf.ID, *RootMetadataSigned, error) {
 	if err := checkContext(ctx); err != nil {
 		return tlf.NullID, nil, err
@@ -213,7 +213,7 @@ func (md *MDServerMemory) GetForHandle(ctx context.Context, handle tlf.Handle,
 }
 
 func (md *MDServerMemory) checkGetParamsRLocked(
-	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus) (
+	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus) (
 	newBid kbfsmd.BranchID, err error) {
 	if mStatus == kbfsmd.Merged && bid != kbfsmd.NullBranchID {
 		return kbfsmd.NullBranchID, kbfsmd.ServerErrorBadRequest{Reason: "Invalid branch ID"}
@@ -259,7 +259,7 @@ func (md *MDServerMemory) checkGetParamsRLocked(
 
 // GetForTLF implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetForTLF(ctx context.Context, id tlf.ID,
-	bid kbfsmd.BranchID, mStatus MergeStatus, _ *keybase1.LockID) (
+	bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, _ *keybase1.LockID) (
 	*RootMetadataSigned, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
@@ -284,7 +284,7 @@ func (md *MDServerMemory) GetForTLF(ctx context.Context, id tlf.ID,
 }
 
 func (md *MDServerMemory) getHeadForTLFRLocked(ctx context.Context, id tlf.ID,
-	bid kbfsmd.BranchID, mStatus MergeStatus) (*RootMetadataSigned, error) {
+	bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus) (*RootMetadataSigned, error) {
 	key, err := md.getMDKey(id, bid, mStatus)
 	if err != nil {
 		return nil, err
@@ -312,7 +312,7 @@ func (md *MDServerMemory) getHeadForTLFRLocked(ctx context.Context, id tlf.ID,
 }
 
 func (md *MDServerMemory) getMDKey(
-	id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus) (mdBlockKey, error) {
+	id tlf.ID, bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus) (mdBlockKey, error) {
 	if (mStatus == kbfsmd.Merged) != (bid == kbfsmd.NullBranchID) {
 		return mdBlockKey{},
 			errors.Errorf("mstatus=%v is inconsistent with bid=%v",
@@ -342,7 +342,7 @@ func (md *MDServerMemory) getCurrentDeviceKey(ctx context.Context) (
 
 // GetRange implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) getRangeLocked(ctx context.Context, id tlf.ID,
-	bid kbfsmd.BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
+	bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, start, stop kbfsmd.Revision,
 	lockBeforeGet *keybase1.LockID) (
 	rmdses []*RootMetadataSigned, lockWaitCh <-chan struct{}, err error) {
 	md.log.CDebugf(ctx, "GetRange %d %d (%s)", start, stop, mStatus)
@@ -415,7 +415,7 @@ func (md *MDServerMemory) getRangeLocked(ctx context.Context, id tlf.ID,
 }
 
 func (md *MDServerMemory) doGetRange(ctx context.Context, id tlf.ID,
-	bid kbfsmd.BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
+	bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, start, stop kbfsmd.Revision,
 	lockBeforeGet *keybase1.LockID) (
 	[]*RootMetadataSigned, <-chan struct{}, error) {
 	md.lock.Lock()
@@ -425,7 +425,7 @@ func (md *MDServerMemory) doGetRange(ctx context.Context, id tlf.ID,
 
 // GetRange implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetRange(ctx context.Context, id tlf.ID,
-	bid kbfsmd.BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
+	bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, start, stop kbfsmd.Revision,
 	lockBeforeGet *keybase1.LockID) ([]*RootMetadataSigned, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err

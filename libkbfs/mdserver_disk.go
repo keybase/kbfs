@@ -158,7 +158,7 @@ func (md *MDServerDisk) getStorage(tlfID tlf.ID) (*mdServerTlfStorage, error) {
 }
 
 func (md *MDServerDisk) getHandleID(ctx context.Context, handle tlf.Handle,
-	mStatus MergeStatus) (tlfID tlf.ID, created bool, err error) {
+	mStatus kbfsmd.MergeStatus) (tlfID tlf.ID, created bool, err error) {
 	handleBytes, err := md.config.Codec().Encode(handle)
 	if err != nil {
 		return tlf.NullID, false, kbfsmd.ServerError{Err: err}
@@ -216,7 +216,7 @@ func (md *MDServerDisk) getHandleID(ctx context.Context, handle tlf.Handle,
 
 // GetForHandle implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) GetForHandle(ctx context.Context, handle tlf.Handle,
-	mStatus MergeStatus, _ *keybase1.LockID) (
+	mStatus kbfsmd.MergeStatus, _ *keybase1.LockID) (
 	tlf.ID, *RootMetadataSigned, error) {
 	if err := checkContext(ctx); err != nil {
 		return tlf.NullID, nil, err
@@ -331,7 +331,7 @@ func (md *MDServerDisk) deleteBranchID(ctx context.Context, id tlf.ID) error {
 
 // GetForTLF implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) GetForTLF(ctx context.Context, id tlf.ID,
-	bid kbfsmd.BranchID, mStatus MergeStatus, _ *keybase1.LockID) (
+	bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, _ *keybase1.LockID) (
 	*RootMetadataSigned, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err
@@ -364,7 +364,7 @@ func (md *MDServerDisk) GetForTLF(ctx context.Context, id tlf.ID,
 
 // GetRange implements the MDServer interface for MDServerDisk.
 func (md *MDServerDisk) GetRange(ctx context.Context, id tlf.ID,
-	bid kbfsmd.BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
+	bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, start, stop kbfsmd.Revision,
 	_ *keybase1.LockID) ([]*RootMetadataSigned, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, err

@@ -533,9 +533,6 @@ type ReportedError struct {
 	Stack []uintptr
 }
 
-// MergeStatus is a temporary alias.
-type MergeStatus = kbfsmd.MergeStatus
-
 // OpSummary describes the changes performed by a single op, and is
 // suitable for encoding directly as JSON.
 type OpSummary struct {

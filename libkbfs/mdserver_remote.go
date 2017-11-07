@@ -527,7 +527,7 @@ func (md *MDServerRemote) get(ctx context.Context, arg keybase1.GetMetadataArg) 
 
 // GetForHandle implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetForHandle(ctx context.Context,
-	handle tlf.Handle, mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (
+	handle tlf.Handle, mStatus kbfsmd.MergeStatus, lockBeforeGet *keybase1.LockID) (
 	tlfID tlf.ID, rmds *RootMetadataSigned, err error) {
 	ctx = rpc.WithFireNow(ctx)
 	// TODO: Ideally, *tlf.Handle would have a nicer String() function.
@@ -563,7 +563,7 @@ func (md *MDServerRemote) GetForHandle(ctx context.Context,
 
 // GetForTLF implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetForTLF(ctx context.Context, id tlf.ID,
-	bid kbfsmd.BranchID, mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (rmds *RootMetadataSigned, err error) {
+	bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, lockBeforeGet *keybase1.LockID) (rmds *RootMetadataSigned, err error) {
 	ctx = rpc.WithFireNow(ctx)
 	md.log.LazyTrace(ctx, "MDServer: GetForTLF %s %s %s", id, bid, mStatus)
 	defer func() {
@@ -590,7 +590,7 @@ func (md *MDServerRemote) GetForTLF(ctx context.Context, id tlf.ID,
 
 // GetRange implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetRange(ctx context.Context, id tlf.ID,
-	bid kbfsmd.BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
+	bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, start, stop kbfsmd.Revision,
 	lockBeforeGet *keybase1.LockID) (rmdses []*RootMetadataSigned, err error) {
 	ctx = rpc.WithFireNow(ctx)
 	md.log.LazyTrace(ctx, "MDServer: GetRange %s %s %s %d-%d", id, bid, mStatus, start, stop)

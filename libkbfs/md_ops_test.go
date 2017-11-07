@@ -602,7 +602,7 @@ func (mds *keyBundleMDServer) processRMDSes(
 }
 
 func (mds *keyBundleMDServer) GetForTLF(ctx context.Context, id tlf.ID,
-	bid kbfsmd.BranchID, mStatus MergeStatus, _ *keybase1.LockID) (
+	bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, _ *keybase1.LockID) (
 	*RootMetadataSigned, error) {
 	rmd := mds.nextHead
 	mds.nextHead = nil
@@ -610,7 +610,7 @@ func (mds *keyBundleMDServer) GetForTLF(ctx context.Context, id tlf.ID,
 }
 
 func (mds *keyBundleMDServer) GetRange(ctx context.Context, id tlf.ID,
-	bid kbfsmd.BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision,
+	bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, start, stop kbfsmd.Revision,
 	_ *keybase1.LockID) ([]*RootMetadataSigned, error) {
 	rmdses := mds.nextGetRange
 	mds.nextGetRange = nil

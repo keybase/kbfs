@@ -3594,7 +3594,7 @@ func (m *MockMDOps) EXPECT() *MockMDOpsMockRecorder {
 }
 
 // GetForHandle mocks base method
-func (m *MockMDOps) GetForHandle(ctx context.Context, handle *TlfHandle, mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (tlf.ID, ImmutableRootMetadata, error) {
+func (m *MockMDOps) GetForHandle(ctx context.Context, handle *TlfHandle, mStatus kbfsmd.MergeStatus, lockBeforeGet *keybase1.LockID) (tlf.ID, ImmutableRootMetadata, error) {
 	ret := m.ctrl.Call(m, "GetForHandle", ctx, handle, mStatus, lockBeforeGet)
 	ret0, _ := ret[0].(tlf.ID)
 	ret1, _ := ret[1].(ImmutableRootMetadata)
@@ -4039,7 +4039,7 @@ func (mr *MockMDServerMockRecorder) RefreshAuthToken(arg0 interface{}) *gomock.C
 }
 
 // GetForHandle mocks base method
-func (m *MockMDServer) GetForHandle(ctx context.Context, handle tlf.Handle, mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (tlf.ID, *RootMetadataSigned, error) {
+func (m *MockMDServer) GetForHandle(ctx context.Context, handle tlf.Handle, mStatus kbfsmd.MergeStatus, lockBeforeGet *keybase1.LockID) (tlf.ID, *RootMetadataSigned, error) {
 	ret := m.ctrl.Call(m, "GetForHandle", ctx, handle, mStatus, lockBeforeGet)
 	ret0, _ := ret[0].(tlf.ID)
 	ret1, _ := ret[1].(*RootMetadataSigned)
@@ -4053,7 +4053,7 @@ func (mr *MockMDServerMockRecorder) GetForHandle(ctx, handle, mStatus, lockBefor
 }
 
 // GetForTLF mocks base method
-func (m *MockMDServer) GetForTLF(ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (*RootMetadataSigned, error) {
+func (m *MockMDServer) GetForTLF(ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, lockBeforeGet *keybase1.LockID) (*RootMetadataSigned, error) {
 	ret := m.ctrl.Call(m, "GetForTLF", ctx, id, bid, mStatus, lockBeforeGet)
 	ret0, _ := ret[0].(*RootMetadataSigned)
 	ret1, _ := ret[1].(error)
@@ -4066,7 +4066,7 @@ func (mr *MockMDServerMockRecorder) GetForTLF(ctx, id, bid, mStatus, lockBeforeG
 }
 
 // GetRange mocks base method
-func (m *MockMDServer) GetRange(ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision, lockBeforeGet *keybase1.LockID) ([]*RootMetadataSigned, error) {
+func (m *MockMDServer) GetRange(ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, start, stop kbfsmd.Revision, lockBeforeGet *keybase1.LockID) ([]*RootMetadataSigned, error) {
 	ret := m.ctrl.Call(m, "GetRange", ctx, id, bid, mStatus, start, stop, lockBeforeGet)
 	ret0, _ := ret[0].([]*RootMetadataSigned)
 	ret1, _ := ret[1].(error)
@@ -4313,7 +4313,7 @@ func (mr *MockmdServerLocalMockRecorder) RefreshAuthToken(arg0 interface{}) *gom
 }
 
 // GetForHandle mocks base method
-func (m *MockmdServerLocal) GetForHandle(ctx context.Context, handle tlf.Handle, mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (tlf.ID, *RootMetadataSigned, error) {
+func (m *MockmdServerLocal) GetForHandle(ctx context.Context, handle tlf.Handle, mStatus kbfsmd.MergeStatus, lockBeforeGet *keybase1.LockID) (tlf.ID, *RootMetadataSigned, error) {
 	ret := m.ctrl.Call(m, "GetForHandle", ctx, handle, mStatus, lockBeforeGet)
 	ret0, _ := ret[0].(tlf.ID)
 	ret1, _ := ret[1].(*RootMetadataSigned)
@@ -4327,7 +4327,7 @@ func (mr *MockmdServerLocalMockRecorder) GetForHandle(ctx, handle, mStatus, lock
 }
 
 // GetForTLF mocks base method
-func (m *MockmdServerLocal) GetForTLF(ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (*RootMetadataSigned, error) {
+func (m *MockmdServerLocal) GetForTLF(ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, lockBeforeGet *keybase1.LockID) (*RootMetadataSigned, error) {
 	ret := m.ctrl.Call(m, "GetForTLF", ctx, id, bid, mStatus, lockBeforeGet)
 	ret0, _ := ret[0].(*RootMetadataSigned)
 	ret1, _ := ret[1].(error)
@@ -4340,7 +4340,7 @@ func (mr *MockmdServerLocalMockRecorder) GetForTLF(ctx, id, bid, mStatus, lockBe
 }
 
 // GetRange mocks base method
-func (m *MockmdServerLocal) GetRange(ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus, start, stop kbfsmd.Revision, lockBeforeGet *keybase1.LockID) ([]*RootMetadataSigned, error) {
+func (m *MockmdServerLocal) GetRange(ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, start, stop kbfsmd.Revision, lockBeforeGet *keybase1.LockID) ([]*RootMetadataSigned, error) {
 	ret := m.ctrl.Call(m, "GetRange", ctx, id, bid, mStatus, start, stop, lockBeforeGet)
 	ret0, _ := ret[0].([]*RootMetadataSigned)
 	ret1, _ := ret[1].(error)

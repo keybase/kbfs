@@ -174,7 +174,7 @@ func (c testTLFJournalConfig) makeMD(
 
 func (c testTLFJournalConfig) checkMD(rmds *RootMetadataSigned,
 	extra kbfsmd.ExtraMetadata, expectedRevision kbfsmd.Revision,
-	expectedPrevRoot kbfsmd.ID, expectedMergeStatus MergeStatus,
+	expectedPrevRoot kbfsmd.ID, expectedMergeStatus kbfsmd.MergeStatus,
 	expectedBranchID kbfsmd.BranchID) {
 	verifyingKey := c.crypto.SigningKeySigner.Key.GetVerifyingKey()
 	checkBRMD(c.t, c.uid, verifyingKey, c.Codec(),
@@ -189,7 +189,7 @@ func (c testTLFJournalConfig) checkMD(rmds *RootMetadataSigned,
 
 func (c testTLFJournalConfig) checkRange(rmdses []rmdsWithExtra,
 	firstRevision kbfsmd.Revision, firstPrevRoot kbfsmd.ID,
-	mStatus MergeStatus, bid kbfsmd.BranchID) {
+	mStatus kbfsmd.MergeStatus, bid kbfsmd.BranchID) {
 	c.checkMD(rmdses[0].rmds, rmdses[0].extra, firstRevision,
 		firstPrevRoot, mStatus, bid)
 
@@ -860,7 +860,7 @@ type shimMDServer struct {
 }
 
 func (s *shimMDServer) GetRange(
-	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus,
+	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus,
 	start, stop kbfsmd.Revision, _ *keybase1.LockID) ([]*RootMetadataSigned, error) {
 	rmdses := s.nextGetRange
 	s.nextGetRange = nil
@@ -886,7 +886,7 @@ func (s *shimMDServer) Put(ctx context.Context, rmds *RootMetadataSigned,
 }
 
 func (s *shimMDServer) GetForTLF(
-	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus, _ *keybase1.LockID) (
+	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus, _ *keybase1.LockID) (
 	*RootMetadataSigned, error) {
 	s.getForTLFCalled = true
 	if len(s.rmdses) == 0 {

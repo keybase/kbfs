@@ -587,7 +587,7 @@ func (md *RootMetadata) MerkleRoot() keybase1.MerkleRootV2 {
 }
 
 // MergedStatus wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) MergedStatus() MergeStatus {
+func (md *RootMetadata) MergedStatus() kbfsmd.MergeStatus {
 	return md.bareMd.MergedStatus()
 }
 

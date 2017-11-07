@@ -155,7 +155,7 @@ func putMDRange(t testing.TB, ver MetadataVer, tlfID tlf.ID,
 func checkBRMD(t *testing.T, uid keybase1.UID, key kbfscrypto.VerifyingKey,
 	codec kbfscodec.Codec, brmd kbfsmd.RootMetadata,
 	extra kbfsmd.ExtraMetadata, expectedRevision kbfsmd.Revision,
-	expectedPrevRoot kbfsmd.ID, expectedMergeStatus MergeStatus,
+	expectedPrevRoot kbfsmd.ID, expectedMergeStatus kbfsmd.MergeStatus,
 	expectedBranchID kbfsmd.BranchID) {
 	require.Equal(t, expectedRevision, brmd.RevisionNumber())
 	require.Equal(t, expectedPrevRoot, brmd.GetPrevRoot())
@@ -174,7 +174,7 @@ func checkBRMD(t *testing.T, uid keybase1.UID, key kbfscrypto.VerifyingKey,
 func checkIBRMDRange(t *testing.T, uid keybase1.UID,
 	key kbfscrypto.VerifyingKey, codec kbfscodec.Codec,
 	ibrmds []ImmutableBareRootMetadata, firstRevision kbfsmd.Revision,
-	firstPrevRoot kbfsmd.ID, mStatus MergeStatus, bid kbfsmd.BranchID) {
+	firstPrevRoot kbfsmd.ID, mStatus kbfsmd.MergeStatus, bid kbfsmd.BranchID) {
 	checkBRMD(t, uid, key, codec, ibrmds[0], ibrmds[0].extra,
 		firstRevision, firstPrevRoot, mStatus, bid)
 

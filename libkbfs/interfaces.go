@@ -1084,7 +1084,7 @@ type MDOps interface {
 	// returned, but if it is non-empty, then its ID must match
 	// the returned ID.
 	GetForHandle(
-		ctx context.Context, handle *TlfHandle, mStatus MergeStatus,
+		ctx context.Context, handle *TlfHandle, mStatus kbfsmd.MergeStatus,
 		lockBeforeGet *keybase1.LockID) (tlf.ID, ImmutableRootMetadata, error)
 
 	// GetForTLF returns the current metadata object
@@ -1295,7 +1295,7 @@ type MDServer interface {
 	// returned, but if it is non-nil, then its ID must match the
 	// returned ID.
 	GetForHandle(ctx context.Context, handle tlf.Handle,
-		mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (
+		mStatus kbfsmd.MergeStatus, lockBeforeGet *keybase1.LockID) (
 		tlf.ID, *RootMetadataSigned, error)
 
 	// GetForTLF returns the current (signed/encrypted) metadata object
@@ -1305,7 +1305,7 @@ type MDServer interface {
 	// If lockBeforeGet is not nil, it takes a lock on the lock ID before
 	// trying to get anything. If taking the lock fails, an error is returned.
 	// Note that taking a lock from the mdserver is idempotent.
-	GetForTLF(ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus,
+	GetForTLF(ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus,
 		lockBeforeGet *keybase1.LockID) (*RootMetadataSigned, error)
 
 	// GetRange returns a range of (signed/encrypted) metadata objects
@@ -1314,7 +1314,7 @@ type MDServer interface {
 	// If lockBeforeGet is not nil, it takes a lock on the lock ID before
 	// trying to get anything. If taking the lock fails, an error is returned.
 	// Note that taking a lock from the mdserver is idempotent.
-	GetRange(ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus,
+	GetRange(ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus,
 		start, stop kbfsmd.Revision, lockBeforeGet *keybase1.LockID) (
 		[]*RootMetadataSigned, error)
 

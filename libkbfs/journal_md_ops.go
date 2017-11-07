@@ -77,7 +77,7 @@ func (j journalMDOps) convertImmutableBareRMDToIRMD(ctx context.Context,
 // kbfsmd.NullBranchID and mStatus is Unmerged, the branch ID check is
 // skipped.
 func (j journalMDOps) getHeadFromJournal(
-	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus,
+	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus,
 	handle *TlfHandle) (
 	ImmutableRootMetadata, error) {
 	tlfJournal, ok := j.jServer.getTLFJournal(id, handle)
@@ -157,7 +157,7 @@ func (j journalMDOps) getHeadFromJournal(
 }
 
 func (j journalMDOps) getRangeFromJournal(
-	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus,
+	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus,
 	start, stop kbfsmd.Revision) (
 	[]ImmutableRootMetadata, error) {
 	tlfJournal, ok := j.jServer.getTLFJournal(id, nil)
@@ -223,7 +223,7 @@ func (j journalMDOps) getRangeFromJournal(
 }
 
 func (j journalMDOps) GetForHandle(ctx context.Context, handle *TlfHandle,
-	mStatus MergeStatus, lockBeforeGet *keybase1.LockID) (
+	mStatus kbfsmd.MergeStatus, lockBeforeGet *keybase1.LockID) (
 	tlfID tlf.ID, rmd ImmutableRootMetadata, err error) {
 	// TODO: Ideally, *TlfHandle would have a nicer String() function.
 	j.jServer.log.LazyTrace(ctx, "jMDOps: GetForHandle %+v %s", handle, mStatus)
@@ -289,7 +289,7 @@ func (j journalMDOps) GetForHandle(ctx context.Context, handle *TlfHandle,
 // TODO: Combine the two GetForTLF functions in MDOps to avoid the
 // need for this helper function.
 func (j journalMDOps) getForTLF(ctx context.Context, id tlf.ID, bid kbfsmd.BranchID,
-	mStatus MergeStatus, lockBeforeGet *keybase1.LockID,
+	mStatus kbfsmd.MergeStatus, lockBeforeGet *keybase1.LockID,
 	delegateFn func(context.Context, tlf.ID, *keybase1.LockID) (
 		ImmutableRootMetadata, error)) (ImmutableRootMetadata, error) {
 	// If the journal has a head, use that.
@@ -335,7 +335,7 @@ func (j journalMDOps) GetUnmergedForTLF(
 // TODO: Combine the two GetRange functions in MDOps to avoid the need
 // for this helper function.
 func (j journalMDOps) getRange(
-	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus MergeStatus,
+	ctx context.Context, id tlf.ID, bid kbfsmd.BranchID, mStatus kbfsmd.MergeStatus,
 	start, stop kbfsmd.Revision, lockBeforeGet *keybase1.LockID,
 	delegateFn func(ctx context.Context, id tlf.ID,
 		start, stop kbfsmd.Revision, lockBeforeGet *keybase1.LockID) (
