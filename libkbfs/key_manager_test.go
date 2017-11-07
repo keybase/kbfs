@@ -53,7 +53,7 @@ func keyManagerShutdown(mockCtrl *gomock.Controller, config *ConfigMock) {
 
 var serverHalf = kbfscrypto.MakeTLFCryptKeyServerHalf([32]byte{0x2})
 
-func expectUncachedGetTLFCryptKey(t *testing.T, config *ConfigMock, tlfID tlf.ID, keyGen, currKeyGen KeyGen,
+func expectUncachedGetTLFCryptKey(t *testing.T, config *ConfigMock, tlfID tlf.ID, keyGen, currKeyGen kbfsmd.KeyGen,
 	storesHistoric bool, tlfCryptKey, currTLFCryptKey kbfscrypto.TLFCryptKey) {
 	if keyGen == currKeyGen {
 		require.Equal(t, tlfCryptKey, currTLFCryptKey)
@@ -78,7 +78,7 @@ func expectUncachedGetTLFCryptKey(t *testing.T, config *ConfigMock, tlfID tlf.ID
 }
 
 func expectUncachedGetTLFCryptKeyAnyDevice(
-	config *ConfigMock, tlfID tlf.ID, keyGen KeyGen, uid keybase1.UID,
+	config *ConfigMock, tlfID tlf.ID, keyGen kbfsmd.KeyGen, uid keybase1.UID,
 	subkey kbfscrypto.CryptPublicKey, tlfCryptKey kbfscrypto.TLFCryptKey) {
 	clientHalf := kbfscrypto.MaskTLFCryptKey(serverHalf, tlfCryptKey)
 
@@ -127,7 +127,7 @@ func expectRekey(config *ConfigMock, bh tlf.Handle, numDevices int,
 
 type emptyKeyMetadata struct {
 	tlfID  tlf.ID
-	keyGen KeyGen
+	keyGen kbfsmd.KeyGen
 }
 
 var _ KeyMetadata = emptyKeyMetadata{}
@@ -149,7 +149,7 @@ func (kmd emptyKeyMetadata) IsWriter(
 	return false, nil
 }
 
-func (kmd emptyKeyMetadata) LatestKeyGeneration() KeyGen {
+func (kmd emptyKeyMetadata) LatestKeyGeneration() kbfsmd.KeyGen {
 	return kmd.keyGen
 }
 
@@ -158,7 +158,7 @@ func (kmd emptyKeyMetadata) HasKeyForUser(user keybase1.UID) (bool, error) {
 }
 
 func (kmd emptyKeyMetadata) GetTLFCryptKeyParams(
-	keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (
+	keyGen kbfsmd.KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (
 	kbfscrypto.TLFEphemeralPublicKey, kbfscrypto.EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {
 	return kbfscrypto.TLFEphemeralPublicKey{},
@@ -171,7 +171,7 @@ func (kmd emptyKeyMetadata) StoresHistoricTLFCryptKeys() bool {
 }
 
 func (kmd emptyKeyMetadata) GetHistoricTLFCryptKey(
-	codec kbfscodec.Codec, keyGen KeyGen, key kbfscrypto.TLFCryptKey) (
+	codec kbfscodec.Codec, keyGen kbfsmd.KeyGen, key kbfscrypto.TLFCryptKey) (
 	kbfscrypto.TLFCryptKey, error) {
 	return kbfscrypto.TLFCryptKey{}, nil
 }
@@ -1104,7 +1104,7 @@ func testKeyManagerRekeyAddAndRevokeDevice(t *testing.T, ver MetadataVer) {
 	if !ok {
 		t.Fatal("Wrong kind of key manager for config2")
 	}
-	for keyGen := FirstValidKeyGen; keyGen <= currKeyGen; keyGen++ {
+	for keyGen := kbfsmd.FirstValidKeyGen; keyGen <= currKeyGen; keyGen++ {
 		_, err = km2.getTLFCryptKeyUsingCurrentDevice(ctx, rmd.ReadOnly(), keyGen, true)
 		if err == nil {
 			t.Errorf("User 2 could still fetch a key for keygen %d", keyGen)

@@ -51,8 +51,8 @@ type TeamInfo struct {
 	// a nice type, unfortunately.
 	Name         libkb.NormalizedUsername
 	TID          keybase1.TeamID
-	CryptKeys    map[KeyGen]kbfscrypto.TLFCryptKey
-	LatestKeyGen KeyGen
+	CryptKeys    map[kbfsmd.KeyGen]kbfscrypto.TLFCryptKey
+	LatestKeyGen kbfsmd.KeyGen
 	RootID       keybase1.TeamID // for subteams only
 
 	Writers map[keybase1.UID]bool
@@ -81,16 +81,6 @@ type EncryptedTLFCryptKeyClientAndEphemeral struct {
 	// EPubKey contains the ephemeral public key used to encrypt ClientHalf
 	EPubKey kbfscrypto.TLFEphemeralPublicKey
 }
-
-// KeyGen is a temporary alias.
-type KeyGen = kbfsmd.KeyGen
-
-// Temporary aliases.
-const (
-	PublicKeyGen      KeyGen = kbfsmd.PublicKeyGen
-	UnspecifiedKeyGen KeyGen = kbfsmd.UnspecifiedKeyGen
-	FirstValidKeyGen  KeyGen = kbfsmd.FirstValidKeyGen
-)
 
 // MetadataVer is a temporary alias.
 type MetadataVer = kbfsmd.MetadataVer
@@ -209,7 +199,7 @@ func (bdt BlockDirectType) String() string {
 // considering how old clients will handle them.
 type BlockPointer struct {
 	ID         kbfsblock.ID    `codec:"i"`
-	KeyGen     KeyGen          `codec:"k"`           // if valid, which generation of the TLF{Writer,Reader}KeyBundle to use.
+	KeyGen     kbfsmd.KeyGen   `codec:"k"`           // if valid, which generation of the TLF{Writer,Reader}KeyBundle to use.
 	DataVer    DataVer         `codec:"d"`           // if valid, which version of the KBFS data structures is pointed to
 	DirectType BlockDirectType `codec:"t,omitempty"` // the type (direct, indirect, or unknown [if omitted]) of the pointed-to block
 	kbfsblock.Context

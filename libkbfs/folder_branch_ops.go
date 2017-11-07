@@ -1422,11 +1422,11 @@ func (fbo *folderBranchOps) initMDLocked(
 			handle, session.Name, handle.GetCanonicalPath())
 	}
 
-	var expectedKeyGen KeyGen
+	var expectedKeyGen kbfsmd.KeyGen
 	var tlfCryptKey *kbfscrypto.TLFCryptKey
 	switch md.TlfID().Type() {
 	case tlf.Public:
-		expectedKeyGen = PublicKeyGen
+		expectedKeyGen = kbfsmd.PublicKeyGen
 	case tlf.Private:
 		var rekeyDone bool
 		// create a new set of keys for this metadata
@@ -1438,7 +1438,7 @@ func (fbo *folderBranchOps) initMDLocked(
 			return errors.Errorf("Initial rekey unexpectedly not done for "+
 				"private TLF %v", md.TlfID())
 		}
-		expectedKeyGen = FirstValidKeyGen
+		expectedKeyGen = kbfsmd.FirstValidKeyGen
 	case tlf.SingleTeam:
 		// Teams get their crypt key from the service, no need to
 		// rekey in KBFS.
@@ -1447,11 +1447,11 @@ func (fbo *folderBranchOps) initMDLocked(
 			return err
 		}
 		keys, keyGen, err := fbo.config.KBPKI().GetTeamTLFCryptKeys(
-			ctx, tid, UnspecifiedKeyGen)
+			ctx, tid, kbfsmd.UnspecifiedKeyGen)
 		if err != nil {
 			return err
 		}
-		if keyGen < FirstValidKeyGen {
+		if keyGen < kbfsmd.FirstValidKeyGen {
 			return errors.WithStack(
 				kbfsmd.InvalidKeyGenerationError{TlfID: md.TlfID(), KeyGen: keyGen})
 		}
@@ -5290,7 +5290,7 @@ func (fbo *folderBranchOps) rekeyLocked(ctx context.Context,
 
 	// send rekey finish notification
 	handle := md.GetTlfHandle()
-	if currKeyGen >= FirstValidKeyGen && rekeyDone {
+	if currKeyGen >= kbfsmd.FirstValidKeyGen && rekeyDone {
 		fbo.config.Reporter().Notify(ctx,
 			rekeyNotification(ctx, fbo.config, handle, true))
 	}

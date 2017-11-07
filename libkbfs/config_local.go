@@ -276,7 +276,7 @@ func MakeLocalUserCryptPublicKeyOrBust(
 // MakeLocalTLFCryptKeyOrBust returns a unique private symmetric key
 // for a TLF.
 func MakeLocalTLFCryptKeyOrBust(
-	name string, keyGen KeyGen) kbfscrypto.TLFCryptKey {
+	name string, keyGen kbfsmd.KeyGen) kbfscrypto.TLFCryptKey {
 	return kbfscrypto.MakeFakeTLFCryptKeyOrBust(
 		string(name) + " crypt key " + string(keyGen))
 }
@@ -313,14 +313,14 @@ func MakeLocalTeams(teams []libkb.NormalizedUsername) []TeamInfo {
 	for i := 0; i < len(teams); i++ {
 		cryptKey := MakeLocalTLFCryptKeyOrBust(
 			buildCanonicalPathForTlfType(tlf.SingleTeam, string(teams[i])),
-			FirstValidKeyGen)
+			kbfsmd.FirstValidKeyGen)
 		localTeams[i] = TeamInfo{
 			Name: teams[i],
 			TID:  keybase1.MakeTestTeamID(uint32(i+1), false),
-			CryptKeys: map[KeyGen]kbfscrypto.TLFCryptKey{
-				FirstValidKeyGen: cryptKey,
+			CryptKeys: map[kbfsmd.KeyGen]kbfscrypto.TLFCryptKey{
+				kbfsmd.FirstValidKeyGen: cryptKey,
 			},
-			LatestKeyGen: FirstValidKeyGen,
+			LatestKeyGen: kbfsmd.FirstValidKeyGen,
 		}
 		// If this is a subteam, set the root ID.
 		if strings.Contains(string(teams[i]), ".") {

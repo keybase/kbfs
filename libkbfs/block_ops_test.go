@@ -15,6 +15,7 @@ import (
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfshash"
+	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
@@ -38,10 +39,10 @@ var _ KeyMetadata = fakeKeyMetadata{}
 // KeyGen up to latestKeyGen. The key for KeyGen i is a deterministic
 // function of i, so multiple calls to this function will have the
 // same keys.
-func makeFakeKeyMetadata(tlfID tlf.ID, latestKeyGen KeyGen) fakeKeyMetadata {
+func makeFakeKeyMetadata(tlfID tlf.ID, latestKeyGen kbfsmd.KeyGen) fakeKeyMetadata {
 	keys := make([]kbfscrypto.TLFCryptKey, 0,
-		latestKeyGen-FirstValidKeyGen+1)
-	for keyGen := FirstValidKeyGen; keyGen <= latestKeyGen; keyGen++ {
+		latestKeyGen-kbfsmd.FirstValidKeyGen+1)
+	for keyGen := kbfsmd.FirstValidKeyGen; keyGen <= latestKeyGen; keyGen++ {
 		keys = append(keys,
 			kbfscrypto.MakeTLFCryptKey([32]byte{byte(keyGen)}))
 	}
@@ -68,7 +69,7 @@ func (kg fakeBlockKeyGetter) GetTLFCryptKeyForBlockDecryption(
 	ctx context.Context, kmd KeyMetadata, blockPtr BlockPointer) (
 	kbfscrypto.TLFCryptKey, error) {
 	fkmd := kmd.(fakeKeyMetadata)
-	i := int(blockPtr.KeyGen - FirstValidKeyGen)
+	i := int(blockPtr.KeyGen - kbfsmd.FirstValidKeyGen)
 	if i >= len(fkmd.keys) {
 		return kbfscrypto.TLFCryptKey{}, errors.Errorf(
 			"no key for block decryption (keygen=%d)",
@@ -131,7 +132,7 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 	defer bops.Shutdown()
 
 	tlfID := tlf.FakeID(0, tlf.Private)
-	var latestKeyGen KeyGen = 5
+	var latestKeyGen kbfsmd.KeyGen = 5
 	kmd := makeFakeKeyMetadata(tlfID, latestKeyGen)
 
 	block := &FileBlock{
@@ -156,7 +157,7 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 
 	blockCryptKey := kbfscrypto.UnmaskBlockCryptKey(
 		readyBlockData.serverHalf,
-		kmd.keys[latestKeyGen-FirstValidKeyGen])
+		kmd.keys[latestKeyGen-kbfsmd.FirstValidKeyGen])
 
 	decryptedBlock := &FileBlock{}
 	err = config.cryptoPure().DecryptBlock(
@@ -202,7 +203,7 @@ func TestBlockOpsReadyFailServerHalfGet(t *testing.T) {
 	defer bops.Shutdown()
 
 	tlfID := tlf.FakeID(0, tlf.Private)
-	kmd := makeFakeKeyMetadata(tlfID, FirstValidKeyGen)
+	kmd := makeFakeKeyMetadata(tlfID, kbfsmd.FirstValidKeyGen)
 
 	ctx := context.Background()
 	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
@@ -229,7 +230,7 @@ func TestBlockOpsReadyFailEncryption(t *testing.T) {
 	defer bops.Shutdown()
 
 	tlfID := tlf.FakeID(0, tlf.Private)
-	kmd := makeFakeKeyMetadata(tlfID, FirstValidKeyGen)
+	kmd := makeFakeKeyMetadata(tlfID, kbfsmd.FirstValidKeyGen)
 
 	ctx := context.Background()
 	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
@@ -269,7 +270,7 @@ func TestBlockOpsReadyFailEncode(t *testing.T) {
 	defer bops.Shutdown()
 
 	tlfID := tlf.FakeID(0, tlf.Private)
-	kmd := makeFakeKeyMetadata(tlfID, FirstValidKeyGen)
+	kmd := makeFakeKeyMetadata(tlfID, kbfsmd.FirstValidKeyGen)
 
 	ctx := context.Background()
 	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
@@ -295,7 +296,7 @@ func TestBlockOpsReadyTooSmallEncode(t *testing.T) {
 	defer bops.Shutdown()
 
 	tlfID := tlf.FakeID(0, tlf.Private)
-	kmd := makeFakeKeyMetadata(tlfID, FirstValidKeyGen)
+	kmd := makeFakeKeyMetadata(tlfID, kbfsmd.FirstValidKeyGen)
 
 	ctx := context.Background()
 	_, _, _, err := bops.Ready(ctx, kmd, &FileBlock{})
@@ -312,7 +313,7 @@ func TestBlockOpsGetSuccess(t *testing.T) {
 	defer bops.Shutdown()
 
 	tlfID := tlf.FakeID(0, tlf.Private)
-	var keyGen KeyGen = 3
+	var keyGen kbfsmd.KeyGen = 3
 	kmd1 := makeFakeKeyMetadata(tlfID, keyGen)
 
 	block := &FileBlock{
@@ -348,7 +349,7 @@ func TestBlockOpsGetFailServerGet(t *testing.T) {
 	defer bops.Shutdown()
 
 	tlfID := tlf.FakeID(0, tlf.Private)
-	var latestKeyGen KeyGen = 5
+	var latestKeyGen kbfsmd.KeyGen = 5
 	kmd := makeFakeKeyMetadata(tlfID, latestKeyGen)
 
 	ctx := context.Background()
@@ -391,7 +392,7 @@ func TestBlockOpsGetFailVerify(t *testing.T) {
 	defer bops.Shutdown()
 
 	tlfID := tlf.FakeID(0, tlf.Private)
-	var latestKeyGen KeyGen = 5
+	var latestKeyGen kbfsmd.KeyGen = 5
 	kmd := makeFakeKeyMetadata(tlfID, latestKeyGen)
 
 	ctx := context.Background()
@@ -421,7 +422,7 @@ func TestBlockOpsGetFailKeyGet(t *testing.T) {
 	defer bops.Shutdown()
 
 	tlfID := tlf.FakeID(0, tlf.Private)
-	var latestKeyGen KeyGen = 5
+	var latestKeyGen kbfsmd.KeyGen = 5
 	kmd := makeFakeKeyMetadata(tlfID, latestKeyGen)
 
 	ctx := context.Background()
@@ -489,7 +490,7 @@ func TestBlockOpsGetFailDecode(t *testing.T) {
 	defer bops.Shutdown()
 
 	tlfID := tlf.FakeID(0, tlf.Private)
-	var latestKeyGen KeyGen = 5
+	var latestKeyGen kbfsmd.KeyGen = 5
 	kmd := makeFakeKeyMetadata(tlfID, latestKeyGen)
 
 	ctx := context.Background()
@@ -532,7 +533,7 @@ func TestBlockOpsGetFailDecrypt(t *testing.T) {
 	defer bops.Shutdown()
 
 	tlfID := tlf.FakeID(0, tlf.Private)
-	var latestKeyGen KeyGen = 5
+	var latestKeyGen kbfsmd.KeyGen = 5
 	kmd := makeFakeKeyMetadata(tlfID, latestKeyGen)
 
 	ctx := context.Background()

@@ -230,7 +230,7 @@ func (md *RootMetadata) MakeSuccessor(
 				return nil, err
 			}
 			_, keyGen, err := teamKeyer.GetTeamTLFCryptKeys(
-				ctx, tid, UnspecifiedKeyGen)
+				ctx, tid, kbfsmd.UnspecifiedKeyGen)
 			if err != nil {
 				return nil, err
 			}
@@ -282,10 +282,10 @@ func (md *RootMetadata) MakeBareTlfHandle() (tlf.Handle, error) {
 func (md *RootMetadata) IsInitialized() bool {
 	keyGen := md.LatestKeyGeneration()
 	if md.TlfID().Type() == tlf.Public {
-		return keyGen == PublicKeyGen
+		return keyGen == kbfsmd.PublicKeyGen
 	}
 	// The data is only initialized once we have at least one set of keys
-	return keyGen >= FirstValidKeyGen
+	return keyGen >= kbfsmd.FirstValidKeyGen
 }
 
 // AddRefBlock adds the newly-referenced block to the add block change list.
@@ -454,19 +454,19 @@ func (md *RootMetadata) loadCachedBlockChanges(
 
 // GetTLFCryptKeyParams wraps the respective method of the underlying BareRootMetadata for convenience.
 func (md *RootMetadata) GetTLFCryptKeyParams(
-	keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (
+	keyGen kbfsmd.KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (
 	kbfscrypto.TLFEphemeralPublicKey, kbfscrypto.EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {
 	return md.bareMd.GetTLFCryptKeyParams(keyGen, user, key, md.extra)
 }
 
 // KeyGenerationsToUpdate wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) KeyGenerationsToUpdate() (KeyGen, KeyGen) {
+func (md *RootMetadata) KeyGenerationsToUpdate() (kbfsmd.KeyGen, kbfsmd.KeyGen) {
 	return md.bareMd.KeyGenerationsToUpdate()
 }
 
 // LatestKeyGeneration wraps the respective method of the underlying BareRootMetadata for convenience.
-func (md *RootMetadata) LatestKeyGeneration() KeyGen {
+func (md *RootMetadata) LatestKeyGeneration() kbfsmd.KeyGen {
 	return md.bareMd.LatestKeyGeneration()
 }
 
@@ -812,7 +812,7 @@ func (md *RootMetadata) StoresHistoricTLFCryptKeys() bool {
 
 // GetHistoricTLFCryptKey implements the KeyMetadata interface for RootMetadata.
 func (md *RootMetadata) GetHistoricTLFCryptKey(
-	codec kbfscodec.Codec, keyGen KeyGen,
+	codec kbfscodec.Codec, keyGen kbfsmd.KeyGen,
 	currentKey kbfscrypto.TLFCryptKey) (kbfscrypto.TLFCryptKey, error) {
 	return md.bareMd.GetHistoricTLFCryptKey(
 		codec, keyGen, currentKey, md.extra)

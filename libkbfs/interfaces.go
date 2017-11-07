@@ -440,7 +440,7 @@ type KeybaseService interface {
 	// isn't a member of the team yet according to local caches; it
 	// may be set to "" if no server check is required.
 	LoadTeamPlusKeys(ctx context.Context, tid keybase1.TeamID,
-		desiredKeyGen KeyGen, desiredUser keybase1.UserVersion,
+		desiredKeyGen kbfsmd.KeyGen, desiredUser keybase1.UserVersion,
 		desiredRole keybase1.TeamRole) (TeamInfo, error)
 
 	// CurrentSession returns a SessionInfo struct with all the
@@ -556,8 +556,8 @@ type teamKeysGetter interface {
 	// check if that particular key gen isn't yet known; it may be set
 	// to UnspecifiedKeyGen if no server check is required.
 	GetTeamTLFCryptKeys(ctx context.Context, tid keybase1.TeamID,
-		desiredKeyGen KeyGen) (
-		map[KeyGen]kbfscrypto.TLFCryptKey, KeyGen, error)
+		desiredKeyGen kbfsmd.KeyGen) (
+		map[kbfsmd.KeyGen]kbfscrypto.TLFCryptKey, kbfsmd.KeyGen, error)
 }
 
 type teamRootIDGetter interface {
@@ -628,7 +628,7 @@ type KeyMetadata interface {
 	// LatestKeyGeneration returns the most recent key generation
 	// with key data in this object, or PublicKeyGen if this TLF
 	// is public.
-	LatestKeyGeneration() KeyGen
+	LatestKeyGeneration() kbfsmd.KeyGen
 
 	// GetTlfHandle returns the handle for the TLF. It must not
 	// return nil.
@@ -656,7 +656,7 @@ type KeyMetadata interface {
 	// false if not found. This returns an error if the TLF is
 	// public.
 	GetTLFCryptKeyParams(
-		keyGen KeyGen, user keybase1.UID,
+		keyGen kbfsmd.KeyGen, user keybase1.UID,
 		key kbfscrypto.CryptPublicKey) (
 		kbfscrypto.TLFEphemeralPublicKey,
 		kbfscrypto.EncryptedTLFCryptKeyClientHalf,
@@ -668,7 +668,7 @@ type KeyMetadata interface {
 
 	// GetHistoricTLFCryptKey attempts to symmetrically decrypt the key at the given
 	// generation using the current generation's TLFCryptKey.
-	GetHistoricTLFCryptKey(codec kbfscodec.Codec, keyGen KeyGen,
+	GetHistoricTLFCryptKey(codec kbfscodec.Codec, keyGen kbfsmd.KeyGen,
 		currentKey kbfscrypto.TLFCryptKey) (
 		kbfscrypto.TLFCryptKey, error)
 }
@@ -782,9 +782,9 @@ type MDCache interface {
 // KeyCache handles caching for both TLFCryptKeys and BlockCryptKeys.
 type KeyCache interface {
 	// GetTLFCryptKey gets the crypt key for the given TLF.
-	GetTLFCryptKey(tlf.ID, KeyGen) (kbfscrypto.TLFCryptKey, error)
+	GetTLFCryptKey(tlf.ID, kbfsmd.KeyGen) (kbfscrypto.TLFCryptKey, error)
 	// PutTLFCryptKey stores the crypt key for the given TLF.
-	PutTLFCryptKey(tlf.ID, KeyGen, kbfscrypto.TLFCryptKey) error
+	PutTLFCryptKey(tlf.ID, kbfsmd.KeyGen, kbfscrypto.TLFCryptKey) error
 }
 
 // BlockCacheLifetime denotes the lifetime of an entry in BlockCache.
