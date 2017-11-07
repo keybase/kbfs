@@ -1026,12 +1026,12 @@ type cryptoPure interface {
 	// block; EncryptBlock() must guarantee that plainSize <=
 	// len(encryptedBlock).
 	EncryptBlock(block Block, key kbfscrypto.BlockCryptKey) (
-		plainSize int, encryptedBlock EncryptedBlock, err error)
+		plainSize int, encryptedBlock kbfscrypto.EncryptedBlock, err error)
 
 	// DecryptBlock decrypts a block. Similar to EncryptBlock(),
 	// DecryptBlock() must guarantee that (size of the decrypted
 	// block) <= len(encryptedBlock).
-	DecryptBlock(encryptedBlock EncryptedBlock,
+	DecryptBlock(encryptedBlock kbfscrypto.EncryptedBlock,
 		key kbfscrypto.BlockCryptKey, block Block) error
 }
 

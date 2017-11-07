@@ -3300,10 +3300,10 @@ func (mr *MockcryptoPureMockRecorder) DecryptPrivateMetadata(encryptedPMD, key i
 }
 
 // EncryptBlock mocks base method
-func (m *MockcryptoPure) EncryptBlock(block Block, key kbfscrypto.BlockCryptKey) (int, EncryptedBlock, error) {
+func (m *MockcryptoPure) EncryptBlock(block Block, key kbfscrypto.BlockCryptKey) (int, kbfscrypto.EncryptedBlock, error) {
 	ret := m.ctrl.Call(m, "EncryptBlock", block, key)
 	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(EncryptedBlock)
+	ret1, _ := ret[1].(kbfscrypto.EncryptedBlock)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -3314,7 +3314,7 @@ func (mr *MockcryptoPureMockRecorder) EncryptBlock(block, key interface{}) *gomo
 }
 
 // DecryptBlock mocks base method
-func (m *MockcryptoPure) DecryptBlock(encryptedBlock EncryptedBlock, key kbfscrypto.BlockCryptKey, block Block) error {
+func (m *MockcryptoPure) DecryptBlock(encryptedBlock kbfscrypto.EncryptedBlock, key kbfscrypto.BlockCryptKey, block Block) error {
 	ret := m.ctrl.Call(m, "DecryptBlock", encryptedBlock, key, block)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -3469,10 +3469,10 @@ func (mr *MockCryptoMockRecorder) DecryptPrivateMetadata(encryptedPMD, key inter
 }
 
 // EncryptBlock mocks base method
-func (m *MockCrypto) EncryptBlock(block Block, key kbfscrypto.BlockCryptKey) (int, EncryptedBlock, error) {
+func (m *MockCrypto) EncryptBlock(block Block, key kbfscrypto.BlockCryptKey) (int, kbfscrypto.EncryptedBlock, error) {
 	ret := m.ctrl.Call(m, "EncryptBlock", block, key)
 	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(EncryptedBlock)
+	ret1, _ := ret[1].(kbfscrypto.EncryptedBlock)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -3483,7 +3483,7 @@ func (mr *MockCryptoMockRecorder) EncryptBlock(block, key interface{}) *gomock.C
 }
 
 // DecryptBlock mocks base method
-func (m *MockCrypto) DecryptBlock(encryptedBlock EncryptedBlock, key kbfscrypto.BlockCryptKey, block Block) error {
+func (m *MockCrypto) DecryptBlock(encryptedBlock kbfscrypto.EncryptedBlock, key kbfscrypto.BlockCryptKey, block Block) error {
 	ret := m.ctrl.Call(m, "DecryptBlock", encryptedBlock, key, block)
 	ret0, _ := ret[0].(error)
 	return ret0

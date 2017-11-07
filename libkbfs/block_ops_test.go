@@ -150,7 +150,7 @@ func TestBlockOpsReadySuccess(t *testing.T) {
 	err = kbfsblock.VerifyID(readyBlockData.buf, id)
 	require.NoError(t, err)
 
-	var encryptedBlock EncryptedBlock
+	var encryptedBlock kbfscrypto.EncryptedBlock
 	err = config.Codec().Decode(readyBlockData.buf, &encryptedBlock)
 	require.NoError(t, err)
 
@@ -215,8 +215,8 @@ type badBlockEncryptor struct {
 
 func (c badBlockEncryptor) EncryptBlock(
 	block Block, key kbfscrypto.BlockCryptKey) (
-	plainSize int, encryptedBlock EncryptedBlock, err error) {
-	return 0, EncryptedBlock{}, errors.New("could not encrypt block")
+	plainSize int, encryptedBlock kbfscrypto.EncryptedBlock, err error) {
+	return 0, kbfscrypto.EncryptedBlock{}, errors.New("could not encrypt block")
 }
 
 // TestBlockOpsReadyFailEncryption checks that BlockOpsStandard.Ready()
@@ -242,10 +242,10 @@ type tooSmallBlockEncryptor struct {
 
 func (c tooSmallBlockEncryptor) EncryptBlock(
 	block Block, key kbfscrypto.BlockCryptKey) (
-	plainSize int, encryptedBlock EncryptedBlock, err error) {
+	plainSize int, encryptedBlock kbfscrypto.EncryptedBlock, err error) {
 	plainSize, encryptedBlock, err = c.CryptoCommon.EncryptBlock(block, key)
 	if err != nil {
-		return 0, EncryptedBlock{}, err
+		return 0, kbfscrypto.EncryptedBlock{}, err
 	}
 	encryptedBlock.EncryptedData = nil
 	return plainSize, encryptedBlock, nil
@@ -517,7 +517,7 @@ type badBlockDecryptor struct {
 	cryptoPure
 }
 
-func (c badBlockDecryptor) DecryptBlock(encryptedBlock EncryptedBlock,
+func (c badBlockDecryptor) DecryptBlock(encryptedBlock kbfscrypto.EncryptedBlock,
 	key kbfscrypto.BlockCryptKey, block Block) error {
 	return errors.New("could not decrypt block")
 }

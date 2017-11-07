@@ -71,9 +71,6 @@ type SessionInfo struct {
 	VerifyingKey   kbfscrypto.VerifyingKey
 }
 
-// EncryptedBlock is a temporary alias.
-type EncryptedBlock = kbfscrypto.EncryptedBlock
-
 // EncryptedTLFCryptKeys is a temporary alias.
 type EncryptedTLFCryptKeys = kbfscrypto.EncryptedTLFCryptKeys
 
