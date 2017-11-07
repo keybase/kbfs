@@ -573,7 +573,7 @@ func listDir(t *testing.T, dir string) []string {
 
 func getMDJournalNames(ver MetadataVer) []string {
 	var expectedNames []string
-	if ver < SegregatedKeyBundlesVer {
+	if ver < kbfsmd.SegregatedKeyBundlesVer {
 		expectedNames = []string{"md_journal", "mds"}
 	} else {
 		expectedNames = []string{
@@ -749,9 +749,9 @@ func (s *limitedCryptoSigner) Sign(ctx context.Context, msg []byte) (
 }
 
 func TestMDJournalBranchConversionAtomic(t *testing.T) {
-	// Do this with InitialExtraMetadataVer only, since any later
+	// Do this with kbfsmd.InitialExtraMetadataVer only, since any later
 	// version doesn't actually do any signing.
-	ver := InitialExtraMetadataVer
+	ver := kbfsmd.InitialExtraMetadataVer
 
 	codec, _, id, signer, ekg, bsplit, tempdir, j :=
 		setupMDJournalTest(t, ver)

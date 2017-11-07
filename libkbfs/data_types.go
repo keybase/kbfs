@@ -85,13 +85,7 @@ type EncryptedTLFCryptKeyClientAndEphemeral struct {
 // MetadataVer is a temporary alias.
 type MetadataVer = kbfsmd.MetadataVer
 
-// Temporary aliases.
 const (
-	FirstValidMetadataVer   MetadataVer = kbfsmd.FirstValidMetadataVer
-	PreExtraMetadataVer     MetadataVer = kbfsmd.PreExtraMetadataVer
-	InitialExtraMetadataVer MetadataVer = kbfsmd.InitialExtraMetadataVer
-	SegregatedKeyBundlesVer MetadataVer = kbfsmd.SegregatedKeyBundlesVer
-
 	defaultClientMetadataVer MetadataVer = kbfsmd.SegregatedKeyBundlesVer
 )
 

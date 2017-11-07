@@ -641,7 +641,7 @@ func (md *MDServerRemote) Put(ctx context.Context, rmds *RootMetadataSigned,
 		arg.LockContext = &copied
 	}
 
-	if rmds.Version() < SegregatedKeyBundlesVer {
+	if rmds.Version() < kbfsmd.SegregatedKeyBundlesVer {
 		if extra != nil {
 			return fmt.Errorf("Unexpected non-nil extra: %+v", extra)
 		}
@@ -1155,7 +1155,7 @@ func (md *MDServerRemote) GetKeyBundles(ctx context.Context,
 	}
 
 	if response.WriterBundle.Bundle != nil {
-		if response.WriterBundle.Version != int(SegregatedKeyBundlesVer) {
+		if response.WriterBundle.Version != int(kbfsmd.SegregatedKeyBundlesVer) {
 			err = fmt.Errorf("Unsupported writer bundle version: %d",
 				response.WriterBundle.Version)
 			return nil, nil, err
@@ -1178,7 +1178,7 @@ func (md *MDServerRemote) GetKeyBundles(ctx context.Context,
 	}
 
 	if response.ReaderBundle.Bundle != nil {
-		if response.ReaderBundle.Version != int(SegregatedKeyBundlesVer) {
+		if response.ReaderBundle.Version != int(kbfsmd.SegregatedKeyBundlesVer) {
 			err = fmt.Errorf("Unsupported reader bundle version: %d",
 				response.ReaderBundle.Version)
 			return nil, nil, err

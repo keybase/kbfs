@@ -19,6 +19,7 @@ import (
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc/rpc"
+	"github.com/keybase/kbfs/kbfsmd"
 )
 
 const (
@@ -145,13 +146,13 @@ func defaultMDServer(ctx Context) string {
 func defaultMetadataVersion(ctx Context) MetadataVer {
 	switch ctx.GetRunMode() {
 	case libkb.DevelRunMode:
-		return SegregatedKeyBundlesVer
+		return kbfsmd.SegregatedKeyBundlesVer
 	case libkb.StagingRunMode:
-		return SegregatedKeyBundlesVer
+		return kbfsmd.SegregatedKeyBundlesVer
 	case libkb.ProductionRunMode:
-		return SegregatedKeyBundlesVer
+		return kbfsmd.SegregatedKeyBundlesVer
 	default:
-		return SegregatedKeyBundlesVer
+		return kbfsmd.SegregatedKeyBundlesVer
 	}
 }
 
