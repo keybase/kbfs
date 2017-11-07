@@ -71,9 +71,6 @@ type SessionInfo struct {
 	VerifyingKey   kbfscrypto.VerifyingKey
 }
 
-// EncryptedTLFCryptKeys is a temporary alias.
-type EncryptedTLFCryptKeys = kbfscrypto.EncryptedTLFCryptKeys
-
 // EncryptedTLFCryptKeyClientAndEphemeral has what's needed to
 // request a client half decryption.
 type EncryptedTLFCryptKeyClientAndEphemeral struct {
