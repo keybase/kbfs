@@ -87,7 +87,7 @@ func (f *Folder) processError(ctx context.Context,
 	// TODO: Classify errors and escalate the logging level of the
 	// important ones.
 	f.fs.errLog.CDebugf(ctx, err.Error())
-	return err
+	return filterError(err)
 }
 
 func (f *Folder) setFolderBranch(folderBranch libkbfs.FolderBranch) error {

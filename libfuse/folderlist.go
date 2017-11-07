@@ -79,7 +79,7 @@ func (fl *FolderList) processError(ctx context.Context,
 	// TODO: Classify errors and escalate the logging level of the
 	// important ones.
 	fl.fs.errLog.CDebugf(ctx, err.Error())
-	return err
+	return filterError(err)
 }
 
 func (fl *FolderList) addToRecentlyRemoved(name tlf.CanonicalName) {

@@ -342,7 +342,7 @@ func (f *FS) processError(ctx context.Context,
 	// TODO: Classify errors and escalate the logging level of the
 	// important ones.
 	f.errLog.CDebugf(ctx, err.Error())
-	return err
+	return filterError(err)
 }
 
 // Root implements the fs.FS interface for FS.
