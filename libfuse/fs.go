@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"bazil.org/fuse"
@@ -484,7 +485,7 @@ func (r *Root) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.C
 	if strings.HasPrefix(req.Name, "._") {
 		// Quietly ignore writes to special macOS files, without
 		// triggering a notification.
-		return nil, nil, libkbfs.WriteUnsupportedError{}.Errno()
+		return nil, nil, syscall.ENOENT
 	}
 	return nil, nil, libkbfs.NewWriteUnsupportedError(libkbfs.BuildCanonicalPath(r.PathType(), req.Name))
 }

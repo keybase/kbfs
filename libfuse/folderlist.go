@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"bazil.org/fuse"
@@ -143,7 +144,7 @@ func (fl *FolderList) Create(ctx context.Context, req *fuse.CreateRequest, resp 
 	if strings.HasPrefix(req.Name, "._") {
 		// Quietly ignore writes to special macOS files, without
 		// triggering a notification.
-		return nil, nil, libkbfs.WriteUnsupportedError{}.Errno()
+		return nil, nil, syscall.ENOENT
 	}
 	return nil, nil, libkbfs.NewWriteUnsupportedError(libkbfs.BuildCanonicalPath(fl.PathType(), string(tlfName)))
 }
