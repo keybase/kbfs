@@ -455,7 +455,7 @@ func (md *RootMetadata) loadCachedBlockChanges(
 // GetTLFCryptKeyParams wraps the respective method of the underlying BareRootMetadata for convenience.
 func (md *RootMetadata) GetTLFCryptKeyParams(
 	keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (
-	kbfscrypto.TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
+	kbfscrypto.TLFEphemeralPublicKey, kbfscrypto.EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {
 	return md.bareMd.GetTLFCryptKeyParams(keyGen, user, key, md.extra)
 }

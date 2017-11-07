@@ -2214,10 +2214,10 @@ func (mr *MockKeyMetadataMockRecorder) HasKeyForUser(user interface{}) *gomock.C
 }
 
 // GetTLFCryptKeyParams mocks base method
-func (m *MockKeyMetadata) GetTLFCryptKeyParams(keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (kbfscrypto.TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf, TLFCryptKeyServerHalfID, bool, error) {
+func (m *MockKeyMetadata) GetTLFCryptKeyParams(keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (kbfscrypto.TLFEphemeralPublicKey, kbfscrypto.EncryptedTLFCryptKeyClientHalf, TLFCryptKeyServerHalfID, bool, error) {
 	ret := m.ctrl.Call(m, "GetTLFCryptKeyParams", keyGen, user, key)
 	ret0, _ := ret[0].(kbfscrypto.TLFEphemeralPublicKey)
-	ret1, _ := ret[1].(EncryptedTLFCryptKeyClientHalf)
+	ret1, _ := ret[1].(kbfscrypto.EncryptedTLFCryptKeyClientHalf)
 	ret2, _ := ret[2].(TLFCryptKeyServerHalfID)
 	ret3, _ := ret[3].(bool)
 	ret4, _ := ret[4].(error)
@@ -3274,9 +3274,9 @@ func (mr *MockcryptoPureMockRecorder) MakeRandomBlockCryptKeyServerHalf() *gomoc
 }
 
 // EncryptPrivateMetadata mocks base method
-func (m *MockcryptoPure) EncryptPrivateMetadata(pmd PrivateMetadata, key kbfscrypto.TLFCryptKey) (EncryptedPrivateMetadata, error) {
+func (m *MockcryptoPure) EncryptPrivateMetadata(pmd PrivateMetadata, key kbfscrypto.TLFCryptKey) (kbfscrypto.EncryptedPrivateMetadata, error) {
 	ret := m.ctrl.Call(m, "EncryptPrivateMetadata", pmd, key)
-	ret0, _ := ret[0].(EncryptedPrivateMetadata)
+	ret0, _ := ret[0].(kbfscrypto.EncryptedPrivateMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3287,7 +3287,7 @@ func (mr *MockcryptoPureMockRecorder) EncryptPrivateMetadata(pmd, key interface{
 }
 
 // DecryptPrivateMetadata mocks base method
-func (m *MockcryptoPure) DecryptPrivateMetadata(encryptedPMD EncryptedPrivateMetadata, key kbfscrypto.TLFCryptKey) (PrivateMetadata, error) {
+func (m *MockcryptoPure) DecryptPrivateMetadata(encryptedPMD kbfscrypto.EncryptedPrivateMetadata, key kbfscrypto.TLFCryptKey) (PrivateMetadata, error) {
 	ret := m.ctrl.Call(m, "DecryptPrivateMetadata", encryptedPMD, key)
 	ret0, _ := ret[0].(PrivateMetadata)
 	ret1, _ := ret[1].(error)
@@ -3443,9 +3443,9 @@ func (mr *MockCryptoMockRecorder) MakeRandomBlockCryptKeyServerHalf() *gomock.Ca
 }
 
 // EncryptPrivateMetadata mocks base method
-func (m *MockCrypto) EncryptPrivateMetadata(pmd PrivateMetadata, key kbfscrypto.TLFCryptKey) (EncryptedPrivateMetadata, error) {
+func (m *MockCrypto) EncryptPrivateMetadata(pmd PrivateMetadata, key kbfscrypto.TLFCryptKey) (kbfscrypto.EncryptedPrivateMetadata, error) {
 	ret := m.ctrl.Call(m, "EncryptPrivateMetadata", pmd, key)
-	ret0, _ := ret[0].(EncryptedPrivateMetadata)
+	ret0, _ := ret[0].(kbfscrypto.EncryptedPrivateMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3456,7 +3456,7 @@ func (mr *MockCryptoMockRecorder) EncryptPrivateMetadata(pmd, key interface{}) *
 }
 
 // DecryptPrivateMetadata mocks base method
-func (m *MockCrypto) DecryptPrivateMetadata(encryptedPMD EncryptedPrivateMetadata, key kbfscrypto.TLFCryptKey) (PrivateMetadata, error) {
+func (m *MockCrypto) DecryptPrivateMetadata(encryptedPMD kbfscrypto.EncryptedPrivateMetadata, key kbfscrypto.TLFCryptKey) (PrivateMetadata, error) {
 	ret := m.ctrl.Call(m, "DecryptPrivateMetadata", encryptedPMD, key)
 	ret0, _ := ret[0].(PrivateMetadata)
 	ret1, _ := ret[1].(error)
@@ -3534,7 +3534,7 @@ func (mr *MockCryptoMockRecorder) SignToString(arg0, arg1 interface{}) *gomock.C
 }
 
 // DecryptTLFCryptKeyClientHalf mocks base method
-func (m *MockCrypto) DecryptTLFCryptKeyClientHalf(ctx context.Context, publicKey kbfscrypto.TLFEphemeralPublicKey, encryptedClientHalf EncryptedTLFCryptKeyClientHalf) (kbfscrypto.TLFCryptKeyClientHalf, error) {
+func (m *MockCrypto) DecryptTLFCryptKeyClientHalf(ctx context.Context, publicKey kbfscrypto.TLFEphemeralPublicKey, encryptedClientHalf kbfscrypto.EncryptedTLFCryptKeyClientHalf) (kbfscrypto.TLFCryptKeyClientHalf, error) {
 	ret := m.ctrl.Call(m, "DecryptTLFCryptKeyClientHalf", ctx, publicKey, encryptedClientHalf)
 	ret0, _ := ret[0].(kbfscrypto.TLFCryptKeyClientHalf)
 	ret1, _ := ret[1].(error)

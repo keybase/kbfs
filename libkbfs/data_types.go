@@ -71,12 +71,6 @@ type SessionInfo struct {
 	VerifyingKey   kbfscrypto.VerifyingKey
 }
 
-// EncryptedTLFCryptKeyClientHalf is a temporary alias.
-type EncryptedTLFCryptKeyClientHalf = kbfscrypto.EncryptedTLFCryptKeyClientHalf
-
-// EncryptedPrivateMetadata is a temporary alias.
-type EncryptedPrivateMetadata = kbfscrypto.EncryptedPrivateMetadata
-
 // EncryptedBlock is a temporary alias.
 type EncryptedBlock = kbfscrypto.EncryptedBlock
 
@@ -89,7 +83,7 @@ type EncryptedTLFCryptKeyClientAndEphemeral struct {
 	// PublicKey contains the wrapped Key ID of the public key
 	PubKey kbfscrypto.CryptPublicKey
 	// ClientHalf contains the encrypted client half of the TLF key
-	ClientHalf EncryptedTLFCryptKeyClientHalf
+	ClientHalf kbfscrypto.EncryptedTLFCryptKeyClientHalf
 	// EPubKey contains the ephemeral public key used to encrypt ClientHalf
 	EPubKey kbfscrypto.TLFEphemeralPublicKey
 }

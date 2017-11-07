@@ -659,7 +659,7 @@ type KeyMetadata interface {
 		keyGen KeyGen, user keybase1.UID,
 		key kbfscrypto.CryptPublicKey) (
 		kbfscrypto.TLFEphemeralPublicKey,
-		EncryptedTLFCryptKeyClientHalf,
+		kbfscrypto.EncryptedTLFCryptKeyClientHalf,
 		TLFCryptKeyServerHalfID, bool, error)
 
 	// StoresHistoricTLFCryptKeys returns whether or not history keys are
@@ -1016,10 +1016,10 @@ type cryptoPure interface {
 	// EncryptPrivateMetadata encrypts a PrivateMetadata object.
 	EncryptPrivateMetadata(
 		pmd PrivateMetadata, key kbfscrypto.TLFCryptKey) (
-		EncryptedPrivateMetadata, error)
+		kbfscrypto.EncryptedPrivateMetadata, error)
 	// DecryptPrivateMetadata decrypts a PrivateMetadata object.
 	DecryptPrivateMetadata(
-		encryptedPMD EncryptedPrivateMetadata,
+		encryptedPMD kbfscrypto.EncryptedPrivateMetadata,
 		key kbfscrypto.TLFCryptKey) (PrivateMetadata, error)
 
 	// EncryptBlocks encrypts a block. plainSize is the size of the encoded
@@ -1050,7 +1050,7 @@ type Crypto interface {
 	// private key and the TLF's ephemeral public key.
 	DecryptTLFCryptKeyClientHalf(ctx context.Context,
 		publicKey kbfscrypto.TLFEphemeralPublicKey,
-		encryptedClientHalf EncryptedTLFCryptKeyClientHalf) (
+		encryptedClientHalf kbfscrypto.EncryptedTLFCryptKeyClientHalf) (
 		kbfscrypto.TLFCryptKeyClientHalf, error)
 
 	// DecryptTLFCryptKeyClientHalfAny decrypts one of the

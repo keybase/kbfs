@@ -494,7 +494,7 @@ func decryptMDPrivateData(ctx context.Context, codec kbfscodec.Codec,
 		}
 	} else {
 		// decrypt the root data for non-public directories
-		var encryptedPrivateMetadata EncryptedPrivateMetadata
+		var encryptedPrivateMetadata kbfscrypto.EncryptedPrivateMetadata
 		if err := codec.Decode(serializedPrivateMetadata,
 			&encryptedPrivateMetadata); err != nil {
 			return PrivateMetadata{}, err

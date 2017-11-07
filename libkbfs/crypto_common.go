@@ -90,10 +90,10 @@ func (c CryptoCommon) MakeRandomTLFKeys() (kbfscrypto.TLFPublicKey,
 // EncryptPrivateMetadata implements the Crypto interface for CryptoCommon.
 func (c CryptoCommon) EncryptPrivateMetadata(
 	pmd PrivateMetadata, key kbfscrypto.TLFCryptKey) (
-	encryptedPmd EncryptedPrivateMetadata, err error) {
+	encryptedPmd kbfscrypto.EncryptedPrivateMetadata, err error) {
 	encodedPmd, err := c.codec.Encode(pmd)
 	if err != nil {
-		return EncryptedPrivateMetadata{}, err
+		return kbfscrypto.EncryptedPrivateMetadata{}, err
 	}
 
 	return kbfscrypto.EncryptEncodedPrivateMetadata(encodedPmd, key)
@@ -101,7 +101,7 @@ func (c CryptoCommon) EncryptPrivateMetadata(
 
 // DecryptPrivateMetadata implements the Crypto interface for CryptoCommon.
 func (c CryptoCommon) DecryptPrivateMetadata(
-	encryptedPmd EncryptedPrivateMetadata, key kbfscrypto.TLFCryptKey) (
+	encryptedPmd kbfscrypto.EncryptedPrivateMetadata, key kbfscrypto.TLFCryptKey) (
 	PrivateMetadata, error) {
 	encodedPrivateMetadata, err := kbfscrypto.DecryptPrivateMetadata(
 		encryptedPmd, key)

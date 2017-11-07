@@ -159,10 +159,10 @@ func (kmd emptyKeyMetadata) HasKeyForUser(user keybase1.UID) (bool, error) {
 
 func (kmd emptyKeyMetadata) GetTLFCryptKeyParams(
 	keyGen KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (
-	kbfscrypto.TLFEphemeralPublicKey, EncryptedTLFCryptKeyClientHalf,
+	kbfscrypto.TLFEphemeralPublicKey, kbfscrypto.EncryptedTLFCryptKeyClientHalf,
 	TLFCryptKeyServerHalfID, bool, error) {
 	return kbfscrypto.TLFEphemeralPublicKey{},
-		EncryptedTLFCryptKeyClientHalf{},
+		kbfscrypto.EncryptedTLFCryptKeyClientHalf{},
 		TLFCryptKeyServerHalfID{}, false, nil
 }
 
