@@ -743,7 +743,7 @@ func (md *RootMetadata) GetBareRootMetadata() kbfsmd.RootMetadata {
 
 // AddKeyGeneration adds a new key generation to this revision of metadata.
 func (md *RootMetadata) AddKeyGeneration(codec kbfscodec.Codec,
-	wKeys, rKeys UserDevicePublicKeys,
+	wKeys, rKeys kbfsmd.UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	pubKey kbfscrypto.TLFPublicKey,
@@ -767,13 +767,13 @@ func (md *RootMetadata) promoteReaders(
 }
 
 func (md *RootMetadata) revokeRemovedDevices(
-	wKeys, rKeys UserDevicePublicKeys) (
+	wKeys, rKeys kbfsmd.UserDevicePublicKeys) (
 	ServerHalfRemovalInfo, error) {
 	return md.bareMd.RevokeRemovedDevices(wKeys, rKeys, md.extra)
 }
 
 func (md *RootMetadata) updateKeyBundles(
-	codec kbfscodec.Codec, wKeys, rKeys UserDevicePublicKeys,
+	codec kbfscodec.Codec, wKeys, rKeys kbfsmd.UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKeys []kbfscrypto.TLFCryptKey) (
@@ -787,7 +787,7 @@ func (md *RootMetadata) finalizeRekey(codec kbfscodec.Codec) error {
 }
 
 func (md *RootMetadata) getUserDevicePublicKeys() (
-	writers, readers UserDevicePublicKeys, err error) {
+	writers, readers kbfsmd.UserDevicePublicKeys, err error) {
 	return md.bareMd.GetUserDevicePublicKeys(md.extra)
 }
 

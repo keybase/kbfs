@@ -343,7 +343,7 @@ func (km *KeyManagerStandard) unmaskTLFCryptKey(ctx context.Context, serverHalfI
 
 func (km *KeyManagerStandard) updateKeyBundles(ctx context.Context,
 	md *RootMetadata,
-	updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
+	updatedWriterKeys, updatedReaderKeys kbfsmd.UserDevicePublicKeys,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKeys []kbfscrypto.TLFCryptKey) error {
@@ -371,7 +371,7 @@ func (km *KeyManagerStandard) updateKeyBundles(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
-	tlfID tlf.ID, keys, expectedKeys UserDevicePublicKeys) map[keybase1.UID]bool {
+	tlfID tlf.ID, keys, expectedKeys kbfsmd.UserDevicePublicKeys) map[keybase1.UID]bool {
 	users := make(map[keybase1.UID]bool)
 	for u, expectedDeviceKeys := range expectedKeys {
 		deviceKeys, ok := keys[u]
@@ -397,7 +397,7 @@ func (km *KeyManagerStandard) usersWithNewDevices(ctx context.Context,
 }
 
 func (km *KeyManagerStandard) usersWithRemovedDevices(ctx context.Context,
-	tlfID tlf.ID, keys, expectedKeys UserDevicePublicKeys) map[keybase1.UID]bool {
+	tlfID tlf.ID, keys, expectedKeys kbfsmd.UserDevicePublicKeys) map[keybase1.UID]bool {
 	users := make(map[keybase1.UID]bool)
 	for u, deviceKeys := range keys {
 		expectedDeviceKeys, ok := expectedKeys[u]
@@ -446,13 +446,13 @@ func (km *KeyManagerStandard) identifyUIDSets(ctx context.Context,
 	return identifyUserList(ctx, kbpki, kbpki, ids, tlfID.Type())
 }
 
-// generateKeyMapForUsers returns a UserDevicePublicKeys object for
+// generateKeyMapForUsers returns a kbfsmd.UserDevicePublicKeys object for
 // the given list of users. Note that keyless users are retained in
-// the returned UserDevicePublicKeys object.
+// the returned kbfsmd.UserDevicePublicKeys object.
 func (km *KeyManagerStandard) generateKeyMapForUsers(
 	ctx context.Context, users []keybase1.UserOrTeamID) (
-	UserDevicePublicKeys, error) {
-	keyMap := make(UserDevicePublicKeys)
+	kbfsmd.UserDevicePublicKeys, error) {
+	keyMap := make(kbfsmd.UserDevicePublicKeys)
 
 	// TODO: parallelize
 	for _, w := range users {
@@ -666,7 +666,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 		if _, userHasNewKeys := newReaderUsers[session.UID]; userHasNewKeys {
 			// Only rekey the logged-in reader.
 			updatedWriterKeys = nil
-			updatedReaderKeys = UserDevicePublicKeys{
+			updatedReaderKeys = kbfsmd.UserDevicePublicKeys{
 				session.UID: updatedReaderKeys[session.UID],
 			}
 			delete(newReaderUsers, session.UID)

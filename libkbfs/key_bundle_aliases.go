@@ -11,9 +11,6 @@ import (
 // DevicePublicKeys is a temporary alias.
 type DevicePublicKeys = kbfsmd.DevicePublicKeys
 
-// UserDevicePublicKeys is a temporary alias.
-type UserDevicePublicKeys = kbfsmd.UserDevicePublicKeys
-
 // DeviceKeyServerHalves is a temporary alias.
 type DeviceKeyServerHalves = kbfsmd.DeviceKeyServerHalves
 
