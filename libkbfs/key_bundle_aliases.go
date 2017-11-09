@@ -31,6 +31,3 @@ type TLFReaderKeyBundleV2 = kbfsmd.TLFReaderKeyBundleV2
 
 // TLFReaderKeyGenerationsV2 is a temporary alias.
 type TLFReaderKeyGenerationsV2 = kbfsmd.TLFReaderKeyGenerationsV2
-
-// DeviceKeyInfoMapV3 is a temporary alias.
-type DeviceKeyInfoMapV3 = kbfsmd.DeviceKeyInfoMapV3
