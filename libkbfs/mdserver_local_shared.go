@@ -209,22 +209,22 @@ func (m *mdServerLocalUpdateManager) cancel(id tlf.ID, server mdServerLocal) {
 	}
 }
 
-type keyBundleGetter func(tlf.ID, TLFWriterKeyBundleID, kbfsmd.TLFReaderKeyBundleID) (
+type keyBundleGetter func(tlf.ID, kbfsmd.TLFWriterKeyBundleID, kbfsmd.TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error)
 
 func getExtraMetadata(kbg keyBundleGetter, brmd kbfsmd.RootMetadata) (kbfsmd.ExtraMetadata, error) {
 	tlfID := brmd.TlfID()
 	wkbID := brmd.GetTLFWriterKeyBundleID()
 	rkbID := brmd.GetTLFReaderKeyBundleID()
-	if (wkbID == TLFWriterKeyBundleID{}) !=
+	if (wkbID == kbfsmd.TLFWriterKeyBundleID{}) !=
 		(rkbID == kbfsmd.TLFReaderKeyBundleID{}) {
 		return nil, errors.Errorf(
 			"wkbID is empty (%t) != rkbID is empty (%t)",
-			wkbID == TLFWriterKeyBundleID{},
+			wkbID == kbfsmd.TLFWriterKeyBundleID{},
 			rkbID == kbfsmd.TLFReaderKeyBundleID{})
 	}
 
-	if wkbID == (TLFWriterKeyBundleID{}) {
+	if wkbID == (kbfsmd.TLFWriterKeyBundleID{}) {
 		return nil, nil
 	}
 

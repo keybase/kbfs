@@ -791,14 +791,14 @@ func (md *RootMetadata) getUserDevicePublicKeys() (
 	return md.bareMd.GetUserDevicePublicKeys(md.extra)
 }
 
-// GetTLFWriterKeyBundleID returns the ID of the externally-stored
+// Getkbfsmd.TLFWriterKeyBundleID returns the ID of the externally-stored
 // writer key bundle, or the zero value if this object stores it
 // internally.
-func (md *RootMetadata) GetTLFWriterKeyBundleID() TLFWriterKeyBundleID {
+func (md *RootMetadata) GetTLFWriterKeyBundleID() kbfsmd.TLFWriterKeyBundleID {
 	return md.bareMd.GetTLFWriterKeyBundleID()
 }
 
-// Getkbfsmd.TLFReaderKeyBundleID returns the ID of the externally-stored
+// GetTLFReaderKeyBundleID returns the ID of the externally-stored
 // reader key bundle, or the zero value if this object stores it
 // internally.
 func (md *RootMetadata) GetTLFReaderKeyBundleID() kbfsmd.TLFReaderKeyBundleID {

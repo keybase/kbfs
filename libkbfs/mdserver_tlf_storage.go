@@ -102,7 +102,7 @@ func (s *mdServerTlfStorage) mdsPath() string {
 }
 
 func (s *mdServerTlfStorage) writerKeyBundleV3Path(
-	id TLFWriterKeyBundleID) string {
+	id kbfsmd.TLFWriterKeyBundleID) string {
 	return filepath.Join(s.dir, "wkbv3", id.String())
 }
 
@@ -307,7 +307,7 @@ func (s *mdServerTlfStorage) putExtraMetadataLocked(rmds *RootMetadataSigned,
 
 	if extraV3.IsWriterKeyBundleNew() {
 		wkbID := rmds.MD.GetTLFWriterKeyBundleID()
-		if wkbID == (TLFWriterKeyBundleID{}) {
+		if wkbID == (kbfsmd.TLFWriterKeyBundleID{}) {
 			panic("writer key bundle ID is empty")
 		}
 		err := kbfscodec.SerializeToFileIfNotExist(
@@ -507,7 +507,7 @@ func (s *mdServerTlfStorage) put(ctx context.Context,
 }
 
 func (s *mdServerTlfStorage) getKeyBundlesReadLocked(tlfID tlf.ID,
-	wkbID TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (
+	wkbID kbfsmd.TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error) {
 	err := s.checkShutdownReadLocked()
 	if err != nil {
@@ -515,7 +515,7 @@ func (s *mdServerTlfStorage) getKeyBundlesReadLocked(tlfID tlf.ID,
 	}
 
 	var wkb *TLFWriterKeyBundleV3
-	if wkbID != (TLFWriterKeyBundleID{}) {
+	if wkbID != (kbfsmd.TLFWriterKeyBundleID{}) {
 		foundWKB, err := kbfsmd.DeserializeTLFWriterKeyBundleV3(
 			s.codec, s.writerKeyBundleV3Path(wkbID))
 		if err != nil {
@@ -548,7 +548,7 @@ func (s *mdServerTlfStorage) getKeyBundlesReadLocked(tlfID tlf.ID,
 }
 
 func (s *mdServerTlfStorage) getKeyBundles(tlfID tlf.ID,
-	wkbID TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (
+	wkbID kbfsmd.TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
