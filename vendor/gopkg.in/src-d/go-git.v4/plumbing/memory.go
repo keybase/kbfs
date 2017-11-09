@@ -26,6 +26,26 @@ func (o *MemoryObject) Hash() Hash {
 	return o.h
 }
 
+func (o *MemoryObject) Reset() {
+	if o.cont == nil {
+		return
+	}
+
+	if len(o.cont) < cap(o.cont)/2 {
+		// If we're not using more than half of the slice's capacity,
+		// completely reset it.  This optimizes for reading objects in
+		// order of descending size, as is usually done during
+		// compression.
+		o.cont = nil
+	} else {
+		o.cont = o.cont[:0]
+	}
+
+	o.t = 0
+	o.h = Hash{}
+	o.sz = 0
+}
+
 // Type return the ObjectType
 func (o *MemoryObject) Type() ObjectType { return o.t }
 
