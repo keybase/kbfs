@@ -768,7 +768,7 @@ func (md *RootMetadata) promoteReaders(
 
 func (md *RootMetadata) revokeRemovedDevices(
 	wKeys, rKeys kbfsmd.UserDevicePublicKeys) (
-	ServerHalfRemovalInfo, error) {
+	kbfsmd.ServerHalfRemovalInfo, error) {
 	return md.bareMd.RevokeRemovedDevices(wKeys, rKeys, md.extra)
 }
 
