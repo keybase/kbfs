@@ -28,6 +28,3 @@ type TLFWriterKeyBundleV2 = kbfsmd.TLFWriterKeyBundleV2
 
 // TLFReaderKeyBundleV2 is a temporary alias.
 type TLFReaderKeyBundleV2 = kbfsmd.TLFReaderKeyBundleV2
-
-// TLFReaderKeyGenerationsV2 is a temporary alias.
-type TLFReaderKeyGenerationsV2 = kbfsmd.TLFReaderKeyGenerationsV2
