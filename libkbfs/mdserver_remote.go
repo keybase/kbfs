@@ -1138,7 +1138,7 @@ func (md *MDServerRemote) backgroundRekeyChecker(ctx context.Context) {
 // GetKeyBundles implements the MDServer interface for MDServerRemote.
 func (md *MDServerRemote) GetKeyBundles(ctx context.Context,
 	tlf tlf.ID, wkbID TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (
-	wkb *TLFWriterKeyBundleV3, rkb *TLFReaderKeyBundleV3, err error) {
+	wkb *TLFWriterKeyBundleV3, rkb *kbfsmd.TLFReaderKeyBundleV3, err error) {
 	ctx = rpc.WithFireNow(ctx)
 	md.log.LazyTrace(ctx, "KeyServer: GetKeyBundles %s %s %s", tlf, wkbID, rkbID)
 	defer func() {
@@ -1185,7 +1185,7 @@ func (md *MDServerRemote) GetKeyBundles(ctx context.Context,
 				response.ReaderBundle.Version)
 			return nil, nil, err
 		}
-		rkb = new(TLFReaderKeyBundleV3)
+		rkb = new(kbfsmd.TLFReaderKeyBundleV3)
 		err = md.config.Codec().Decode(response.ReaderBundle.Bundle, rkb)
 		if err != nil {
 			return nil, nil, err

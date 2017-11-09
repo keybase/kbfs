@@ -52,7 +52,7 @@ func NewKeyBundleCacheMeasured(delegate kbfsmd.KeyBundleCache, r metrics.Registr
 // GetTLFReaderKeyBundle implements the KeyBundleCache interface for
 // KeyBundleCacheMeasured.
 func (b KeyBundleCacheMeasured) GetTLFReaderKeyBundle(
-	bundleID kbfsmd.TLFReaderKeyBundleID) (rkb *TLFReaderKeyBundleV3, err error) {
+	bundleID kbfsmd.TLFReaderKeyBundleID) (rkb *kbfsmd.TLFReaderKeyBundleV3, err error) {
 	b.attemptReaderBundleCountMeter.Mark(1)
 	b.getReaderBundleTimer.Time(func() {
 		rkb, err = b.delegate.GetTLFReaderKeyBundle(bundleID)
@@ -80,7 +80,7 @@ func (b KeyBundleCacheMeasured) GetTLFWriterKeyBundle(
 // PutTLFReaderKeyBundle implements the KeyBundleCache interface for
 // KeyBundleCacheMeasured.
 func (b KeyBundleCacheMeasured) PutTLFReaderKeyBundle(
-	bundleID kbfsmd.TLFReaderKeyBundleID, rkb TLFReaderKeyBundleV3) {
+	bundleID kbfsmd.TLFReaderKeyBundleID, rkb kbfsmd.TLFReaderKeyBundleV3) {
 	b.putReaderBundleTimer.Time(func() {
 		b.delegate.PutTLFReaderKeyBundle(bundleID, rkb)
 	})

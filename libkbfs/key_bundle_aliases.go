@@ -43,6 +43,3 @@ type TLFWriterKeyBundleV3 = kbfsmd.TLFWriterKeyBundleV3
 
 // TLFWriterKeyBundleID is a temporary alias.
 type TLFWriterKeyBundleID = kbfsmd.TLFWriterKeyBundleID
-
-// TLFReaderKeyBundleV3 is a temporary alias.
-type TLFReaderKeyBundleV3 = kbfsmd.TLFReaderKeyBundleV3
