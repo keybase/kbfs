@@ -14,9 +14,6 @@ type DevicePublicKeys = kbfsmd.DevicePublicKeys
 // DeviceKeyServerHalves is a temporary alias.
 type DeviceKeyServerHalves = kbfsmd.DeviceKeyServerHalves
 
-// DeviceServerHalfRemovalInfo is a temporary alias.
-type DeviceServerHalfRemovalInfo = kbfsmd.DeviceServerHalfRemovalInfo
-
 // UserServerHalfRemovalInfo is a temporary alias.
 type UserServerHalfRemovalInfo = kbfsmd.UserServerHalfRemovalInfo
 
