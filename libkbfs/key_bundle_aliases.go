@@ -8,9 +8,6 @@ import (
 	"github.com/keybase/kbfs/kbfsmd"
 )
 
-// TLFCryptKeyInfo is a temporary alias.
-type TLFCryptKeyInfo = kbfsmd.TLFCryptKeyInfo
-
 // DevicePublicKeys is a temporary alias.
 type DevicePublicKeys = kbfsmd.DevicePublicKeys
 
