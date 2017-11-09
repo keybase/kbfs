@@ -34,6 +34,3 @@ type TLFReaderKeyGenerationsV2 = kbfsmd.TLFReaderKeyGenerationsV2
 
 // DeviceKeyInfoMapV3 is a temporary alias.
 type DeviceKeyInfoMapV3 = kbfsmd.DeviceKeyInfoMapV3
-
-// UserDeviceKeyInfoMapV3 is a temporary alias.
-type UserDeviceKeyInfoMapV3 = kbfsmd.UserDeviceKeyInfoMapV3
