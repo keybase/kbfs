@@ -463,7 +463,7 @@ func (km *KeyManagerStandard) generateKeyMapForUsers(
 		if err != nil {
 			return nil, err
 		}
-		keyMap[uid] = make(DevicePublicKeys)
+		keyMap[uid] = make(kbfsmd.DevicePublicKeys)
 		for _, key := range publicKeys {
 			keyMap[uid][key] = true
 		}
