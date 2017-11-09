@@ -16,6 +16,3 @@ type DeviceKeyServerHalves = kbfsmd.DeviceKeyServerHalves
 
 // DeviceKeyInfoMapV2 is a temporary alias.
 type DeviceKeyInfoMapV2 = kbfsmd.DeviceKeyInfoMapV2
-
-// UserDeviceKeyInfoMapV2 is a temporary alias.
-type UserDeviceKeyInfoMapV2 = kbfsmd.UserDeviceKeyInfoMapV2
