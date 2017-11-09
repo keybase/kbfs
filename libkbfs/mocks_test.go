@@ -3760,7 +3760,7 @@ func (mr *MockKeyOpsMockRecorder) GetTLFCryptKeyServerHalf(ctx, serverHalfID, cr
 }
 
 // PutTLFCryptKeyServerHalves mocks base method
-func (m *MockKeyOps) PutTLFCryptKeyServerHalves(ctx context.Context, keyServerHalves UserDeviceKeyServerHalves) error {
+func (m *MockKeyOps) PutTLFCryptKeyServerHalves(ctx context.Context, keyServerHalves kbfsmd.UserDeviceKeyServerHalves) error {
 	ret := m.ctrl.Call(m, "PutTLFCryptKeyServerHalves", ctx, keyServerHalves)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -5037,7 +5037,7 @@ func (mr *MockKeyServerMockRecorder) GetTLFCryptKeyServerHalf(ctx, serverHalfID,
 }
 
 // PutTLFCryptKeyServerHalves mocks base method
-func (m *MockKeyServer) PutTLFCryptKeyServerHalves(ctx context.Context, keyServerHalves UserDeviceKeyServerHalves) error {
+func (m *MockKeyServer) PutTLFCryptKeyServerHalves(ctx context.Context, keyServerHalves kbfsmd.UserDeviceKeyServerHalves) error {
 	ret := m.ctrl.Call(m, "PutTLFCryptKeyServerHalves", ctx, keyServerHalves)
 	ret0, _ := ret[0].(error)
 	return ret0

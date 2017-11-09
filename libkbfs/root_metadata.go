@@ -749,7 +749,7 @@ func (md *RootMetadata) AddKeyGeneration(codec kbfscodec.Codec,
 	pubKey kbfscrypto.TLFPublicKey,
 	privKey kbfscrypto.TLFPrivateKey,
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (
-	serverHalves UserDeviceKeyServerHalves, err error) {
+	serverHalves kbfsmd.UserDeviceKeyServerHalves, err error) {
 	nextExtra, serverHalves, err := md.bareMd.AddKeyGeneration(
 		codec, md.extra, wKeys, rKeys, ePubKey, ePrivKey,
 		pubKey, currCryptKey, nextCryptKey)
@@ -777,7 +777,7 @@ func (md *RootMetadata) updateKeyBundles(
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKeys []kbfscrypto.TLFCryptKey) (
-	[]UserDeviceKeyServerHalves, error) {
+	[]kbfsmd.UserDeviceKeyServerHalves, error) {
 	return md.bareMd.UpdateKeyBundles(codec, md.extra,
 		wKeys, rKeys, ePubKey, ePrivKey, tlfCryptKeys)
 }

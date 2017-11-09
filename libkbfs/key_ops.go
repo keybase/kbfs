@@ -7,6 +7,7 @@ package libkbfs
 import (
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscrypto"
+	"github.com/keybase/kbfs/kbfsmd"
 	"golang.org/x/net/context"
 )
 
@@ -44,7 +45,7 @@ func (k *KeyOpsStandard) GetTLFCryptKeyServerHalf(ctx context.Context,
 
 // PutTLFCryptKeyServerHalves is an implementation of the KeyOps interface.
 func (k *KeyOpsStandard) PutTLFCryptKeyServerHalves(ctx context.Context,
-	keyServerHalves UserDeviceKeyServerHalves) error {
+	keyServerHalves kbfsmd.UserDeviceKeyServerHalves) error {
 	// upload the keys
 	return k.config.KeyServer().PutTLFCryptKeyServerHalves(ctx, keyServerHalves)
 }

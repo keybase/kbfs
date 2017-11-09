@@ -125,7 +125,7 @@ func (ks *KeyServerLocal) GetTLFCryptKeyServerHalf(ctx context.Context,
 
 // PutTLFCryptKeyServerHalves implements the KeyOps interface for KeyServerLocal.
 func (ks *KeyServerLocal) PutTLFCryptKeyServerHalves(ctx context.Context,
-	keyServerHalves UserDeviceKeyServerHalves) error {
+	keyServerHalves kbfsmd.UserDeviceKeyServerHalves) error {
 	if err := checkContext(ctx); err != nil {
 		return err
 	}
