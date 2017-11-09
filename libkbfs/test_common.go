@@ -319,9 +319,9 @@ func ConfigAsUser(config *ConfigLocal,
 	return configAsUserWithMode(config, loggedInUser, config.Mode())
 }
 
-// NewEmptyTLFWriterKeyBundle creates a new empty TLFWriterKeyBundleV2
-func NewEmptyTLFWriterKeyBundle() TLFWriterKeyBundleV2 {
-	return TLFWriterKeyBundleV2{
+// NewEmptyTLFWriterKeyBundle creates a new empty kbfsmd.TLFWriterKeyBundleV2
+func NewEmptyTLFWriterKeyBundle() kbfsmd.TLFWriterKeyBundleV2 {
+	return kbfsmd.TLFWriterKeyBundleV2{
 		WKeys: make(UserDeviceKeyInfoMapV2, 0),
 	}
 }

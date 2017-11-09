@@ -22,6 +22,3 @@ type UserDeviceKeyInfoMapV2 = kbfsmd.UserDeviceKeyInfoMapV2
 
 // TLFWriterKeyGenerationsV2 is a temporary alias.
 type TLFWriterKeyGenerationsV2 = kbfsmd.TLFWriterKeyGenerationsV2
-
-// TLFWriterKeyBundleV2 is a temporary alias.
-type TLFWriterKeyBundleV2 = kbfsmd.TLFWriterKeyBundleV2
