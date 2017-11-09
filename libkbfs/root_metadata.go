@@ -456,7 +456,7 @@ func (md *RootMetadata) loadCachedBlockChanges(
 func (md *RootMetadata) GetTLFCryptKeyParams(
 	keyGen kbfsmd.KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (
 	kbfscrypto.TLFEphemeralPublicKey, kbfscrypto.EncryptedTLFCryptKeyClientHalf,
-	TLFCryptKeyServerHalfID, bool, error) {
+	kbfscrypto.TLFCryptKeyServerHalfID, bool, error) {
 	return md.bareMd.GetTLFCryptKeyParams(keyGen, user, key, md.extra)
 }
 

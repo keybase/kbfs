@@ -39,7 +39,7 @@ func NewKeyServerMeasured(delegate KeyServer, r metrics.Registry) KeyServerMeasu
 // GetTLFCryptKeyServerHalf implements the KeyServer interface for
 // KeyServerMeasured.
 func (b KeyServerMeasured) GetTLFCryptKeyServerHalf(ctx context.Context,
-	serverHalfID TLFCryptKeyServerHalfID, key kbfscrypto.CryptPublicKey) (
+	serverHalfID kbfscrypto.TLFCryptKeyServerHalfID, key kbfscrypto.CryptPublicKey) (
 	serverHalf kbfscrypto.TLFCryptKeyServerHalf, err error) {
 	b.getTimer.Time(func() {
 		serverHalf, err = b.delegate.GetTLFCryptKeyServerHalf(ctx, serverHalfID, key)
@@ -61,7 +61,7 @@ func (b KeyServerMeasured) PutTLFCryptKeyServerHalves(ctx context.Context,
 // KeyServerMeasured.
 func (b KeyServerMeasured) DeleteTLFCryptKeyServerHalf(ctx context.Context,
 	uid keybase1.UID, key kbfscrypto.CryptPublicKey,
-	serverHalfID TLFCryptKeyServerHalfID) (err error) {
+	serverHalfID kbfscrypto.TLFCryptKeyServerHalfID) (err error) {
 	b.deleteTimer.Time(func() {
 		err = b.delegate.DeleteTLFCryptKeyServerHalf(
 			ctx, uid, key, serverHalfID)

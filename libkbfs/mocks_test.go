@@ -2214,11 +2214,11 @@ func (mr *MockKeyMetadataMockRecorder) HasKeyForUser(user interface{}) *gomock.C
 }
 
 // GetTLFCryptKeyParams mocks base method
-func (m *MockKeyMetadata) GetTLFCryptKeyParams(keyGen kbfsmd.KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (kbfscrypto.TLFEphemeralPublicKey, kbfscrypto.EncryptedTLFCryptKeyClientHalf, TLFCryptKeyServerHalfID, bool, error) {
+func (m *MockKeyMetadata) GetTLFCryptKeyParams(keyGen kbfsmd.KeyGen, user keybase1.UID, key kbfscrypto.CryptPublicKey) (kbfscrypto.TLFEphemeralPublicKey, kbfscrypto.EncryptedTLFCryptKeyClientHalf, kbfscrypto.TLFCryptKeyServerHalfID, bool, error) {
 	ret := m.ctrl.Call(m, "GetTLFCryptKeyParams", keyGen, user, key)
 	ret0, _ := ret[0].(kbfscrypto.TLFEphemeralPublicKey)
 	ret1, _ := ret[1].(kbfscrypto.EncryptedTLFCryptKeyClientHalf)
-	ret2, _ := ret[2].(TLFCryptKeyServerHalfID)
+	ret2, _ := ret[2].(kbfscrypto.TLFCryptKeyServerHalfID)
 	ret3, _ := ret[3].(bool)
 	ret4, _ := ret[4].(error)
 	return ret0, ret1, ret2, ret3, ret4
@@ -3747,7 +3747,7 @@ func (m *MockKeyOps) EXPECT() *MockKeyOpsMockRecorder {
 }
 
 // GetTLFCryptKeyServerHalf mocks base method
-func (m *MockKeyOps) GetTLFCryptKeyServerHalf(ctx context.Context, serverHalfID TLFCryptKeyServerHalfID, cryptPublicKey kbfscrypto.CryptPublicKey) (kbfscrypto.TLFCryptKeyServerHalf, error) {
+func (m *MockKeyOps) GetTLFCryptKeyServerHalf(ctx context.Context, serverHalfID kbfscrypto.TLFCryptKeyServerHalfID, cryptPublicKey kbfscrypto.CryptPublicKey) (kbfscrypto.TLFCryptKeyServerHalf, error) {
 	ret := m.ctrl.Call(m, "GetTLFCryptKeyServerHalf", ctx, serverHalfID, cryptPublicKey)
 	ret0, _ := ret[0].(kbfscrypto.TLFCryptKeyServerHalf)
 	ret1, _ := ret[1].(error)
@@ -3772,7 +3772,7 @@ func (mr *MockKeyOpsMockRecorder) PutTLFCryptKeyServerHalves(ctx, keyServerHalve
 }
 
 // DeleteTLFCryptKeyServerHalf mocks base method
-func (m *MockKeyOps) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, key kbfscrypto.CryptPublicKey, serverHalfID TLFCryptKeyServerHalfID) error {
+func (m *MockKeyOps) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, key kbfscrypto.CryptPublicKey, serverHalfID kbfscrypto.TLFCryptKeyServerHalfID) error {
 	ret := m.ctrl.Call(m, "DeleteTLFCryptKeyServerHalf", ctx, uid, key, serverHalfID)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -5024,7 +5024,7 @@ func (m *MockKeyServer) EXPECT() *MockKeyServerMockRecorder {
 }
 
 // GetTLFCryptKeyServerHalf mocks base method
-func (m *MockKeyServer) GetTLFCryptKeyServerHalf(ctx context.Context, serverHalfID TLFCryptKeyServerHalfID, cryptPublicKey kbfscrypto.CryptPublicKey) (kbfscrypto.TLFCryptKeyServerHalf, error) {
+func (m *MockKeyServer) GetTLFCryptKeyServerHalf(ctx context.Context, serverHalfID kbfscrypto.TLFCryptKeyServerHalfID, cryptPublicKey kbfscrypto.CryptPublicKey) (kbfscrypto.TLFCryptKeyServerHalf, error) {
 	ret := m.ctrl.Call(m, "GetTLFCryptKeyServerHalf", ctx, serverHalfID, cryptPublicKey)
 	ret0, _ := ret[0].(kbfscrypto.TLFCryptKeyServerHalf)
 	ret1, _ := ret[1].(error)
@@ -5049,7 +5049,7 @@ func (mr *MockKeyServerMockRecorder) PutTLFCryptKeyServerHalves(ctx, keyServerHa
 }
 
 // DeleteTLFCryptKeyServerHalf mocks base method
-func (m *MockKeyServer) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, key kbfscrypto.CryptPublicKey, serverHalfID TLFCryptKeyServerHalfID) error {
+func (m *MockKeyServer) DeleteTLFCryptKeyServerHalf(ctx context.Context, uid keybase1.UID, key kbfscrypto.CryptPublicKey, serverHalfID kbfscrypto.TLFCryptKeyServerHalfID) error {
 	ret := m.ctrl.Call(m, "DeleteTLFCryptKeyServerHalf", ctx, uid, key, serverHalfID)
 	ret0, _ := ret[0].(error)
 	return ret0

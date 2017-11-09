@@ -992,7 +992,7 @@ func (md *MDServerRemote) IsConnected() bool {
 
 // GetTLFCryptKeyServerHalf is an implementation of the KeyServer interface.
 func (md *MDServerRemote) GetTLFCryptKeyServerHalf(ctx context.Context,
-	serverHalfID TLFCryptKeyServerHalfID,
+	serverHalfID kbfscrypto.TLFCryptKeyServerHalfID,
 	cryptKey kbfscrypto.CryptPublicKey) (
 	serverHalf kbfscrypto.TLFCryptKeyServerHalf, err error) {
 	ctx = rpc.WithFireNow(ctx)
@@ -1063,7 +1063,7 @@ func (md *MDServerRemote) PutTLFCryptKeyServerHalves(ctx context.Context,
 // DeleteTLFCryptKeyServerHalf is an implementation of the KeyServer interface.
 func (md *MDServerRemote) DeleteTLFCryptKeyServerHalf(ctx context.Context,
 	uid keybase1.UID, key kbfscrypto.CryptPublicKey,
-	serverHalfID TLFCryptKeyServerHalfID) (err error) {
+	serverHalfID kbfscrypto.TLFCryptKeyServerHalfID) (err error) {
 	ctx = rpc.WithFireNow(ctx)
 	md.log.LazyTrace(ctx, "KeyServer: DeleteTLFCryptKeyServerHalf %s %s", uid, serverHalfID)
 	defer func() {

@@ -5,12 +5,8 @@
 package libkbfs
 
 import (
-	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfsmd"
 )
-
-// TLFCryptKeyServerHalfID is a temporary alias.
-type TLFCryptKeyServerHalfID = kbfscrypto.TLFCryptKeyServerHalfID
 
 // TLFCryptKeyInfo is a temporary alias.
 type TLFCryptKeyInfo = kbfsmd.TLFCryptKeyInfo

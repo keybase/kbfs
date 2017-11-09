@@ -212,7 +212,7 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 	keyGen kbfsmd.KeyGen, uid keybase1.UID, username libkb.NormalizedUsername,
 	flags getTLFCryptKeyFlags) (
 	clientHalf kbfscrypto.TLFCryptKeyClientHalf,
-	serverHalfID TLFCryptKeyServerHalfID,
+	serverHalfID kbfscrypto.TLFCryptKeyServerHalfID,
 	cryptPublicKey kbfscrypto.CryptPublicKey, err error) {
 	kbpki := km.config.KBPKI()
 	crypto := km.config.Crypto()
@@ -224,20 +224,20 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 		publicKeys, err := kbpki.GetCryptPublicKeys(ctx, uid)
 		if err != nil {
 			return kbfscrypto.TLFCryptKeyClientHalf{},
-				TLFCryptKeyServerHalfID{},
+				kbfscrypto.TLFCryptKeyServerHalfID{},
 				kbfscrypto.CryptPublicKey{}, err
 		}
 
 		keys := make([]EncryptedTLFCryptKeyClientAndEphemeral, 0,
 			len(publicKeys))
-		serverHalfIDs := make([]TLFCryptKeyServerHalfID, 0, len(publicKeys))
+		serverHalfIDs := make([]kbfscrypto.TLFCryptKeyServerHalfID, 0, len(publicKeys))
 		publicKeyLookup := make([]int, 0, len(publicKeys))
 
 		for i, k := range publicKeys {
 			ePublicKey, encryptedClientHalf, serverHalfID, found, err := kmd.GetTLFCryptKeyParams(keyGen, uid, k)
 			if _, notPerDeviceEncrypted := err.(kbfsmd.TLFCryptKeyNotPerDeviceEncrypted); notPerDeviceEncrypted {
 				return kbfscrypto.TLFCryptKeyClientHalf{},
-					TLFCryptKeyServerHalfID{},
+					kbfscrypto.TLFCryptKeyServerHalfID{},
 					kbfscrypto.CryptPublicKey{}, err
 			}
 			if err != nil {
@@ -260,7 +260,7 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 		if len(keys) == 0 {
 			err := errors.New("no valid public keys found")
 			return kbfscrypto.TLFCryptKeyClientHalf{},
-				TLFCryptKeyServerHalfID{},
+				kbfscrypto.TLFCryptKeyServerHalfID{},
 				kbfscrypto.CryptPublicKey{},
 				localMakeRekeyReadError(err)
 		}
@@ -273,12 +273,12 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 		if isDecryptError || isNoKeyError {
 			km.log.CDebugf(ctx, "Got decryption error from service: %+v", err)
 			return kbfscrypto.TLFCryptKeyClientHalf{},
-				TLFCryptKeyServerHalfID{},
+				kbfscrypto.TLFCryptKeyServerHalfID{},
 				kbfscrypto.CryptPublicKey{},
 				localMakeRekeyReadError(err)
 		} else if err != nil {
 			return kbfscrypto.TLFCryptKeyClientHalf{},
-				TLFCryptKeyServerHalfID{},
+				kbfscrypto.TLFCryptKeyServerHalfID{},
 				kbfscrypto.CryptPublicKey{}, err
 		}
 		serverHalfID = serverHalfIDs[index]
@@ -287,7 +287,7 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 		session, err := kbpki.GetCurrentSession(ctx)
 		if err != nil {
 			return kbfscrypto.TLFCryptKeyClientHalf{},
-				TLFCryptKeyServerHalfID{},
+				kbfscrypto.TLFCryptKeyServerHalfID{},
 				kbfscrypto.CryptPublicKey{}, err
 		}
 		cryptPublicKey = session.CryptPublicKey
@@ -296,16 +296,16 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 			kmd.GetTLFCryptKeyParams(keyGen, uid, cryptPublicKey)
 		if _, notPerDeviceEncrypted := err.(kbfsmd.TLFCryptKeyNotPerDeviceEncrypted); notPerDeviceEncrypted {
 			return kbfscrypto.TLFCryptKeyClientHalf{},
-				TLFCryptKeyServerHalfID{},
+				kbfscrypto.TLFCryptKeyServerHalfID{},
 				kbfscrypto.CryptPublicKey{}, err
 		}
 		if err != nil {
 			return kbfscrypto.TLFCryptKeyClientHalf{},
-				TLFCryptKeyServerHalfID{},
+				kbfscrypto.TLFCryptKeyServerHalfID{},
 				kbfscrypto.CryptPublicKey{}, err
 		} else if !found {
 			return kbfscrypto.TLFCryptKeyClientHalf{},
-				TLFCryptKeyServerHalfID{},
+				kbfscrypto.TLFCryptKeyServerHalfID{},
 				kbfscrypto.CryptPublicKey{},
 				localMakeRekeyReadError(errors.Errorf(
 					"could not find params for "+
@@ -317,7 +317,7 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 			ctx, ePublicKey, encryptedClientHalf)
 		if err != nil {
 			return kbfscrypto.TLFCryptKeyClientHalf{},
-				TLFCryptKeyServerHalfID{},
+				kbfscrypto.TLFCryptKeyServerHalfID{},
 				kbfscrypto.CryptPublicKey{}, err
 		}
 
@@ -326,7 +326,7 @@ func (km *KeyManagerStandard) getTLFCryptKeyParams(
 	return
 }
 
-func (km *KeyManagerStandard) unmaskTLFCryptKey(ctx context.Context, serverHalfID TLFCryptKeyServerHalfID,
+func (km *KeyManagerStandard) unmaskTLFCryptKey(ctx context.Context, serverHalfID kbfscrypto.TLFCryptKeyServerHalfID,
 	cryptPublicKey kbfscrypto.CryptPublicKey,
 	clientHalf kbfscrypto.TLFCryptKeyClientHalf) (
 	kbfscrypto.TLFCryptKey, error) {

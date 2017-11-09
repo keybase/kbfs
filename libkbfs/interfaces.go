@@ -660,7 +660,7 @@ type KeyMetadata interface {
 		key kbfscrypto.CryptPublicKey) (
 		kbfscrypto.TLFEphemeralPublicKey,
 		kbfscrypto.EncryptedTLFCryptKeyClientHalf,
-		TLFCryptKeyServerHalfID, bool, error)
+		kbfscrypto.TLFCryptKeyServerHalfID, bool, error)
 
 	// StoresHistoricTLFCryptKeys returns whether or not history keys are
 	// symmetrically encrypted; if not, they're encrypted per-device.
@@ -1178,7 +1178,7 @@ type KeyOps interface {
 	// GetTLFCryptKeyServerHalf gets a server-side key half for a
 	// device given the key half ID.
 	GetTLFCryptKeyServerHalf(ctx context.Context,
-		serverHalfID TLFCryptKeyServerHalfID,
+		serverHalfID kbfscrypto.TLFCryptKeyServerHalfID,
 		cryptPublicKey kbfscrypto.CryptPublicKey) (
 		kbfscrypto.TLFCryptKeyServerHalf, error)
 
@@ -1191,7 +1191,7 @@ type KeyOps interface {
 	// device given the key half ID.
 	DeleteTLFCryptKeyServerHalf(ctx context.Context,
 		uid keybase1.UID, key kbfscrypto.CryptPublicKey,
-		serverHalfID TLFCryptKeyServerHalfID) error
+		serverHalfID kbfscrypto.TLFCryptKeyServerHalfID) error
 }
 
 // Prefetcher is an interface to a block prefetcher.
@@ -1570,7 +1570,7 @@ type KeyServer interface {
 	// GetTLFCryptKeyServerHalf gets a server-side key half for a
 	// device given the key half ID.
 	GetTLFCryptKeyServerHalf(ctx context.Context,
-		serverHalfID TLFCryptKeyServerHalfID,
+		serverHalfID kbfscrypto.TLFCryptKeyServerHalfID,
 		cryptPublicKey kbfscrypto.CryptPublicKey) (
 		kbfscrypto.TLFCryptKeyServerHalf, error)
 
@@ -1583,7 +1583,7 @@ type KeyServer interface {
 	// device given the key half ID.
 	DeleteTLFCryptKeyServerHalf(ctx context.Context,
 		uid keybase1.UID, key kbfscrypto.CryptPublicKey,
-		serverHalfID TLFCryptKeyServerHalfID) error
+		serverHalfID kbfscrypto.TLFCryptKeyServerHalfID) error
 
 	// Shutdown is called to free any KeyServer resources.
 	Shutdown()
