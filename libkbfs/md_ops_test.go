@@ -567,20 +567,20 @@ type keyBundleMDServer struct {
 	nextGetRange []*RootMetadataSigned
 
 	lock sync.RWMutex
-	wkbs map[kbfsmd.TLFWriterKeyBundleID]TLFWriterKeyBundleV3
+	wkbs map[kbfsmd.TLFWriterKeyBundleID]kbfsmd.TLFWriterKeyBundleV3
 	rkbs map[kbfsmd.TLFReaderKeyBundleID]kbfsmd.TLFReaderKeyBundleV3
 }
 
 func makeKeyBundleMDServer(mdServer MDServer) *keyBundleMDServer {
 	return &keyBundleMDServer{
 		MDServer: mdServer,
-		wkbs:     make(map[kbfsmd.TLFWriterKeyBundleID]TLFWriterKeyBundleV3),
+		wkbs:     make(map[kbfsmd.TLFWriterKeyBundleID]kbfsmd.TLFWriterKeyBundleV3),
 		rkbs:     make(map[kbfsmd.TLFReaderKeyBundleID]kbfsmd.TLFReaderKeyBundleV3),
 	}
 }
 
 func (mds *keyBundleMDServer) putWKB(
-	id kbfsmd.TLFWriterKeyBundleID, wkb TLFWriterKeyBundleV3) {
+	id kbfsmd.TLFWriterKeyBundleID, wkb kbfsmd.TLFWriterKeyBundleV3) {
 	mds.lock.Lock()
 	defer mds.lock.Unlock()
 	mds.wkbs[id] = wkb
@@ -619,7 +619,7 @@ func (mds *keyBundleMDServer) GetRange(ctx context.Context, id tlf.ID,
 
 func (mds *keyBundleMDServer) GetKeyBundles(ctx context.Context, tlfID tlf.ID,
 	wkbID kbfsmd.TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (
-	*TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error) {
+	*kbfsmd.TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error) {
 	mds.lock.RLock()
 	defer mds.lock.RUnlock()
 	wkb := mds.wkbs[wkbID]

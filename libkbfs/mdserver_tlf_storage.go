@@ -508,13 +508,13 @@ func (s *mdServerTlfStorage) put(ctx context.Context,
 
 func (s *mdServerTlfStorage) getKeyBundlesReadLocked(tlfID tlf.ID,
 	wkbID kbfsmd.TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (
-	*TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error) {
+	*kbfsmd.TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error) {
 	err := s.checkShutdownReadLocked()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var wkb *TLFWriterKeyBundleV3
+	var wkb *kbfsmd.TLFWriterKeyBundleV3
 	if wkbID != (kbfsmd.TLFWriterKeyBundleID{}) {
 		foundWKB, err := kbfsmd.DeserializeTLFWriterKeyBundleV3(
 			s.codec, s.writerKeyBundleV3Path(wkbID))
@@ -549,7 +549,7 @@ func (s *mdServerTlfStorage) getKeyBundlesReadLocked(tlfID tlf.ID,
 
 func (s *mdServerTlfStorage) getKeyBundles(tlfID tlf.ID,
 	wkbID kbfsmd.TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (
-	*TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error) {
+	*kbfsmd.TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return s.getKeyBundlesReadLocked(tlfID, wkbID, rkbID)

@@ -210,7 +210,7 @@ func (m *mdServerLocalUpdateManager) cancel(id tlf.ID, server mdServerLocal) {
 }
 
 type keyBundleGetter func(tlf.ID, kbfsmd.TLFWriterKeyBundleID, kbfsmd.TLFReaderKeyBundleID) (
-	*TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error)
+	*kbfsmd.TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error)
 
 func getExtraMetadata(kbg keyBundleGetter, brmd kbfsmd.RootMetadata) (kbfsmd.ExtraMetadata, error) {
 	tlfID := brmd.TlfID()

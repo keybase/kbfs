@@ -79,7 +79,7 @@ type mdServerMemShared struct {
 	// (TLF ID, branch ID) -> list of MDs
 	mdDb map[mdBlockKey]mdBlockMemList
 	// Writer key bundle ID -> writer key bundles
-	writerKeyBundleDb map[mdExtraWriterKey]TLFWriterKeyBundleV3
+	writerKeyBundleDb map[mdExtraWriterKey]kbfsmd.TLFWriterKeyBundleV3
 	// Reader key bundle ID -> reader key bundles
 	readerKeyBundleDb map[mdExtraReaderKey]kbfsmd.TLFReaderKeyBundleV3
 	// (TLF ID, crypt public key) -> branch ID
@@ -108,7 +108,7 @@ func NewMDServerMemory(config mdServerLocalConfig) (*MDServerMemory, error) {
 	latestHandleDb := make(map[tlf.ID]tlf.Handle)
 	mdDb := make(map[mdBlockKey]mdBlockMemList)
 	branchDb := make(map[mdBranchKey]kbfsmd.BranchID)
-	writerKeyBundleDb := make(map[mdExtraWriterKey]TLFWriterKeyBundleV3)
+	writerKeyBundleDb := make(map[mdExtraWriterKey]kbfsmd.TLFWriterKeyBundleV3)
 	readerKeyBundleDb := make(map[mdExtraReaderKey]kbfsmd.TLFReaderKeyBundleV3)
 	log := config.MakeLogger("MDSM")
 	truncateLockManager := newMDServerLocalTruncatedLockManager()
@@ -993,13 +993,13 @@ func (md *MDServerMemory) putExtraMetadataLocked(rmds *RootMetadataSigned,
 
 func (md *MDServerMemory) getKeyBundlesRLocked(tlfID tlf.ID,
 	wkbID kbfsmd.TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (
-	*TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error) {
+	*kbfsmd.TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error) {
 	err := md.checkShutdownRLocked()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var wkb *TLFWriterKeyBundleV3
+	var wkb *kbfsmd.TLFWriterKeyBundleV3
 	if wkbID != (kbfsmd.TLFWriterKeyBundleID{}) {
 		foundWKB, ok := md.writerKeyBundleDb[mdExtraWriterKey{tlfID, wkbID}]
 		if !ok {
@@ -1037,7 +1037,7 @@ func (md *MDServerMemory) getKeyBundlesRLocked(tlfID tlf.ID,
 // GetKeyBundles implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetKeyBundles(ctx context.Context,
 	tlfID tlf.ID, wkbID kbfsmd.TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (
-	*TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error) {
+	*kbfsmd.TLFWriterKeyBundleV3, *kbfsmd.TLFReaderKeyBundleV3, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, nil, err
 	}

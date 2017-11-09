@@ -37,6 +37,3 @@ type DeviceKeyInfoMapV3 = kbfsmd.DeviceKeyInfoMapV3
 
 // UserDeviceKeyInfoMapV3 is a temporary alias.
 type UserDeviceKeyInfoMapV3 = kbfsmd.UserDeviceKeyInfoMapV3
-
-// TLFWriterKeyBundleV3 is a temporary alias.
-type TLFWriterKeyBundleV3 = kbfsmd.TLFWriterKeyBundleV3
