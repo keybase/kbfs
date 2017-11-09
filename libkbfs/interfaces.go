@@ -1412,7 +1412,7 @@ type MDServer interface {
 	// for the respective bundle. If a bundle cannot be found, an
 	// error is returned and nils are returned for both bundles.
 	GetKeyBundles(ctx context.Context, tlfID tlf.ID,
-		wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+		wkbID TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (
 		*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error)
 
 	// CheckReachability is called when the Keybase service sends a notification

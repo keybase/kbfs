@@ -798,10 +798,10 @@ func (md *RootMetadata) GetTLFWriterKeyBundleID() TLFWriterKeyBundleID {
 	return md.bareMd.GetTLFWriterKeyBundleID()
 }
 
-// GetTLFReaderKeyBundleID returns the ID of the externally-stored
+// Getkbfsmd.TLFReaderKeyBundleID returns the ID of the externally-stored
 // reader key bundle, or the zero value if this object stores it
 // internally.
-func (md *RootMetadata) GetTLFReaderKeyBundleID() TLFReaderKeyBundleID {
+func (md *RootMetadata) GetTLFReaderKeyBundleID() kbfsmd.TLFReaderKeyBundleID {
 	return md.bareMd.GetTLFReaderKeyBundleID()
 }
 

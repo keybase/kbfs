@@ -39,7 +39,7 @@ type mdExtraWriterKey struct {
 
 type mdExtraReaderKey struct {
 	tlfID          tlf.ID
-	readerBundleID TLFReaderKeyBundleID
+	readerBundleID kbfsmd.TLFReaderKeyBundleID
 }
 
 type mdBlockMem struct {
@@ -982,7 +982,7 @@ func (md *MDServerMemory) putExtraMetadataLocked(rmds *RootMetadataSigned,
 
 	if extraV3.IsReaderKeyBundleNew() {
 		rkbID := rmds.MD.GetTLFReaderKeyBundleID()
-		if rkbID == (TLFReaderKeyBundleID{}) {
+		if rkbID == (kbfsmd.TLFReaderKeyBundleID{}) {
 			panic("reader key bundle ID is empty")
 		}
 		md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}] =
@@ -992,7 +992,7 @@ func (md *MDServerMemory) putExtraMetadataLocked(rmds *RootMetadataSigned,
 }
 
 func (md *MDServerMemory) getKeyBundlesRLocked(tlfID tlf.ID,
-	wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+	wkbID TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	err := md.checkShutdownRLocked()
 	if err != nil {
@@ -1016,7 +1016,7 @@ func (md *MDServerMemory) getKeyBundlesRLocked(tlfID tlf.ID,
 	}
 
 	var rkb *TLFReaderKeyBundleV3
-	if rkbID != (TLFReaderKeyBundleID{}) {
+	if rkbID != (kbfsmd.TLFReaderKeyBundleID{}) {
 		foundRKB, ok := md.readerKeyBundleDb[mdExtraReaderKey{tlfID, rkbID}]
 		if !ok {
 			return nil, nil, errors.Errorf(
@@ -1036,7 +1036,7 @@ func (md *MDServerMemory) getKeyBundlesRLocked(tlfID tlf.ID,
 
 // GetKeyBundles implements the MDServer interface for MDServerMemory.
 func (md *MDServerMemory) GetKeyBundles(ctx context.Context,
-	tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (
+	tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	if err := checkContext(ctx); err != nil {
 		return nil, nil, err

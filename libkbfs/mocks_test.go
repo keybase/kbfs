@@ -4246,7 +4246,7 @@ func (mr *MockMDServerMockRecorder) OffsetFromServerTime() *gomock.Call {
 }
 
 // GetKeyBundles mocks base method
-func (m *MockMDServer) GetKeyBundles(ctx context.Context, tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
+func (m *MockMDServer) GetKeyBundles(ctx context.Context, tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	ret := m.ctrl.Call(m, "GetKeyBundles", ctx, tlfID, wkbID, rkbID)
 	ret0, _ := ret[0].(*TLFWriterKeyBundleV3)
 	ret1, _ := ret[1].(*TLFReaderKeyBundleV3)
@@ -4520,7 +4520,7 @@ func (mr *MockmdServerLocalMockRecorder) OffsetFromServerTime() *gomock.Call {
 }
 
 // GetKeyBundles mocks base method
-func (m *MockmdServerLocal) GetKeyBundles(ctx context.Context, tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID TLFReaderKeyBundleID) (*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
+func (m *MockmdServerLocal) GetKeyBundles(ctx context.Context, tlfID tlf.ID, wkbID TLFWriterKeyBundleID, rkbID kbfsmd.TLFReaderKeyBundleID) (*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
 	ret := m.ctrl.Call(m, "GetKeyBundles", ctx, tlfID, wkbID, rkbID)
 	ret0, _ := ret[0].(*TLFWriterKeyBundleV3)
 	ret1, _ := ret[1].(*TLFReaderKeyBundleV3)
