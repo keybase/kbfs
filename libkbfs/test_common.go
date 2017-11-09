@@ -326,9 +326,9 @@ func NewEmptyTLFWriterKeyBundle() TLFWriterKeyBundleV2 {
 	}
 }
 
-// NewEmptyTLFReaderKeyBundle creates a new empty TLFReaderKeyBundleV2
-func NewEmptyTLFReaderKeyBundle() TLFReaderKeyBundleV2 {
-	return TLFReaderKeyBundleV2{
+// NewEmptyTLFReaderKeyBundle creates a new empty kbfsmd.TLFReaderKeyBundleV2
+func NewEmptyTLFReaderKeyBundle() kbfsmd.TLFReaderKeyBundleV2 {
+	return kbfsmd.TLFReaderKeyBundleV2{
 		RKeys: make(UserDeviceKeyInfoMapV2, 0),
 	}
 }
