@@ -48,7 +48,7 @@ func EnableAdminFeature(ctx context.Context, runMode libkb.RunMode, config Confi
 	if err != nil {
 		return false
 	}
-	return adminFeatureList[session.UID]
+	return libkb.IsKeybaseAdmin(session.UID)
 }
 
 // serviceLoggedIn should be called when a new user logs in. It
