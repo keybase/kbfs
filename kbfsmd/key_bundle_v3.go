@@ -343,6 +343,11 @@ func (h TLFWriterKeyBundleID) String() string {
 	return h.h.String()
 }
 
+// Size implements the cache.Measurable interface.
+func (h TLFWriterKeyBundleID) Size() int {
+	return h.h.Size()
+}
+
 // MarshalBinary implements the encoding.BinaryMarshaler interface for
 // TLFWriterKeyBundleID. Returns an error if the TLFWriterKeyBundleID is invalid and not the
 // zero TLFWriterKeyBundleID.
@@ -518,4 +523,9 @@ func MakeTLFReaderKeyBundleID(codec kbfscodec.Codec, rkb TLFReaderKeyBundleV3) (
 		return TLFReaderKeyBundleID{}, err
 	}
 	return TLFReaderKeyBundleID{h}, nil
+}
+
+// Size implements the cache.Measurable interface.
+func (h TLFReaderKeyBundleID) Size() int {
+	return h.h.Size()
 }
