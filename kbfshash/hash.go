@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/keybase/kbfs/cache"
 	"github.com/pkg/errors"
 )
 
@@ -259,6 +260,8 @@ const ptrSize = 4 << (^uintptr(0) >> 63) // stolen from runtime/internal/sys
 func (h *Hash) Size() int {
 	return len(h.h) + ptrSize
 }
+
+var _ cache.Measurable = (*Hash)(nil)
 
 // HMAC is the type of a keybase hash that is an HMAC.
 //
