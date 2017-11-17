@@ -208,12 +208,12 @@ func (extra ExtraMetadataV3) IsReaderKeyBundleNew() bool {
 // must be done separately.
 func MakeInitialRootMetadataV3(tlfID tlf.ID, h tlf.Handle) (
 	*RootMetadataV3, error) {
-	if tlfID.Type() != h.Type() {
+	if !h.IsBackedByTeam() && tlfID.Type() != h.Type() {
 		return nil, errors.New("TlfID and TlfHandle disagree on TLF type")
 	}
 
 	var writers []keybase1.UserOrTeamID
-	if tlfID.Type() != tlf.Private {
+	if h.IsBackedByTeam() || tlfID.Type() == tlf.Public {
 		writers = make([]keybase1.UserOrTeamID, len(h.Writers))
 		copy(writers, h.Writers)
 	}
@@ -645,11 +645,35 @@ func (md *RootMetadataV3) CheckValidSuccessorForServer(
 	return nil
 }
 
+// IsBackedByTeam returns true if md is for a TLF backed by a team. It could be
+// either a SingleTeam TLF or a private/public TLF backed by an implicit team.
+func (md *RootMetadataV3) IsBackedByTeam(extra ExtraMetadata) bool {
+	if extra != nil {
+		return false
+	}
+	if len(md.WriterMetadata.UnresolvedWriters) != 0 {
+		return false
+	}
+	if len(md.WriterMetadata.Writers) != 1 {
+		return false
+	}
+	if _, err := md.WriterMetadata.Writers[0].AsTeam(); err != nil {
+		return false
+	}
+	return true
+}
+
 // MakeBareTlfHandle implements the RootMetadata interface for RootMetadataV3.
 func (md *RootMetadataV3) MakeBareTlfHandle(extra ExtraMetadata) (
 	tlf.Handle, error) {
+	if md.IsBackedByTeam(extra) {
+		return tlf.MakeHandle(md.WriterMetadata.Writers,
+			nil, nil, nil, md.TlfHandleExtensions())
+	}
+
 	var writers, readers []keybase1.UserOrTeamID
-	if md.TlfID().Type() == tlf.Private {
+	switch md.TlfID().Type() {
+	case tlf.Private:
 		wkb, rkb, err := md.getTLFKeyBundles(extra)
 		if err != nil {
 			return tlf.Handle{}, err
@@ -669,16 +693,20 @@ func (md *RootMetadataV3) MakeBareTlfHandle(extra ExtraMetadata) (
 				readers = append(readers, r.AsUserOrTeam())
 			}
 		}
-	} else {
-		err := md.checkNonPrivateExtra(extra)
-		if err != nil {
-			return tlf.Handle{}, err
+	case tlf.Public:
+		if extra != nil {
+			return tlf.Handle{}, errors.New(
+				"unexpected md for public TLF; got non-nil extra")
 		}
-
 		writers = md.WriterMetadata.Writers
-		if md.TlfID().Type() == tlf.Public {
-			readers = []keybase1.UserOrTeamID{keybase1.PublicUID.AsUserOrTeam()}
-		}
+		readers = []keybase1.UserOrTeamID{keybase1.PublicUID.AsUserOrTeam()}
+	case tlf.SingleTeam:
+		// We already cover the SingleTeam case at the beginnin with
+		// md.IsBackedByTeam, so if we reach here this must be an illegal MD
+		// for SingleTeam.
+		return tlf.Handle{}, errors.New("unexpected md for SingleTeam")
+	default:
+		return tlf.Handle{}, fmt.Errorf("unknown TLF type: %v", md.TlfID().Type())
 	}
 
 	return tlf.MakeHandle(
@@ -870,7 +898,12 @@ func (md *RootMetadataV3) IsValidAndSigned(
 	ctx context.Context, codec kbfscodec.Codec,
 	teamMemChecker TeamMembershipChecker, extra ExtraMetadata,
 	writerVerifyingKey kbfscrypto.VerifyingKey) error {
-	if md.TlfID().Type() == tlf.Private {
+	if md.IsBackedByTeam(extra) {
+		return nil
+	}
+
+	switch md.TlfID().Type() {
+	case tlf.Private:
 		wkb, rkb, err := md.getTLFKeyBundles(extra)
 		if err != nil {
 			return err
@@ -885,11 +918,16 @@ func (md *RootMetadataV3) IsValidAndSigned(
 		if err != nil {
 			return err
 		}
-	} else {
-		err := md.checkNonPrivateExtra(extra)
-		if err != nil {
-			return err
+	case tlf.Public:
+		if extra != nil {
+			return errors.New(
+				"unexpected md for public TLF; got non-nil extra")
 		}
+	case tlf.SingleTeam:
+		// We already cover the SingleTeam case at the beginnin with
+		// md.isBackedByTeam, so if we reach here this must be an illegal MD
+		// for SingleTeam.
+		return errors.New("unexpected md for SingleTeam")
 	}
 
 	if md.IsFinal() {

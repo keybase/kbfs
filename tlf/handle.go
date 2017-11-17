@@ -149,6 +149,22 @@ func MakeHandle(
 	}, nil
 }
 
+// IsBackedByTeam returns true if h represents a TLF backed by a team. It could
+// be either a SingleTeam TLF or a private/public TLF backed by an implicit
+// team.
+func (h Handle) IsBackedByTeam() bool {
+	if len(h.Writers) != 1 ||
+		len(h.Readers) != 0 ||
+		len(h.UnresolvedReaders) != 0 ||
+		len(h.UnresolvedWriters) != 0 {
+		return false
+	}
+	if _, err := h.Writers[0].AsTeam(); err != nil {
+		return false
+	}
+	return true
+}
+
 // Type returns the type of TLF this Handle represents.
 func (h Handle) Type() Type {
 	if len(h.Readers) == 1 &&
