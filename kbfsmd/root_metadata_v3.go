@@ -208,12 +208,12 @@ func (extra ExtraMetadataV3) IsReaderKeyBundleNew() bool {
 // must be done separately.
 func MakeInitialRootMetadataV3(tlfID tlf.ID, h tlf.Handle) (
 	*RootMetadataV3, error) {
-	if !h.IsBackedByTeam() && tlfID.Type() != h.Type() {
+	if h.TypeForKeying() != tlf.TeamKeying && tlfID.Type() != h.Type() {
 		return nil, errors.New("TlfID and TlfHandle disagree on TLF type")
 	}
 
 	var writers []keybase1.UserOrTeamID
-	if h.IsBackedByTeam() || tlfID.Type() == tlf.Public {
+	if h.TypeForKeying() != tlf.PrivateKeying {
 		writers = make([]keybase1.UserOrTeamID, len(h.Writers))
 		copy(writers, h.Writers)
 	}
@@ -359,7 +359,7 @@ func (md *RootMetadataV3) IsFinal() bool {
 }
 
 func (md *RootMetadataV3) checkNonPrivateExtra(extra ExtraMetadata) error {
-	if md.TlfID().Type() == tlf.Private {
+	if md.TypeForKeying() == tlf.PrivateKeying {
 		return errors.New("checkNonPrivateExtra called on private TLF")
 	}
 
@@ -372,7 +372,7 @@ func (md *RootMetadataV3) checkNonPrivateExtra(extra ExtraMetadata) error {
 
 func (md *RootMetadataV3) getTLFKeyBundles(extra ExtraMetadata) (
 	*TLFWriterKeyBundleV3, *TLFReaderKeyBundleV3, error) {
-	if md.TlfID().Type() != tlf.Private {
+	if md.TypeForKeying() != tlf.PrivateKeying {
 		return nil, nil, InvalidNonPrivateTLFOperation{
 			md.TlfID(), "getTLFKeyBundles", md.Version(),
 		}
@@ -430,8 +430,8 @@ func (md *RootMetadataV3) IsWriter(
 	ctx context.Context, user keybase1.UID,
 	cryptKey kbfscrypto.CryptPublicKey, verifyingKey kbfscrypto.VerifyingKey,
 	teamMemChecker TeamMembershipChecker, extra ExtraMetadata) (bool, error) {
-	switch md.TlfID().Type() {
-	case tlf.SingleTeam:
+	switch md.TypeForKeying() {
+	case tlf.TeamKeying:
 		err := md.checkNonPrivateExtra(extra)
 		if err != nil {
 			return false, err
@@ -460,14 +460,14 @@ func (md *RootMetadataV3) IsReader(
 	ctx context.Context, user keybase1.UID,
 	cryptKey kbfscrypto.CryptPublicKey, teamMemChecker TeamMembershipChecker,
 	extra ExtraMetadata) (bool, error) {
-	switch md.TlfID().Type() {
-	case tlf.Public:
+	switch md.TypeForKeying() {
+	case tlf.PublicKeying:
 		err := md.checkNonPrivateExtra(extra)
 		if err != nil {
 			return false, err
 		}
 		return true, nil
-	case tlf.Private:
+	case tlf.PrivateKeying:
 		// Writers are also readers.
 		isWriter, err := md.isNonTeamWriter(ctx, user, cryptKey, extra)
 		if err != nil {
@@ -482,7 +482,7 @@ func (md *RootMetadataV3) IsReader(
 			return false, err
 		}
 		return rkb.IsReader(user, cryptKey), nil
-	case tlf.SingleTeam:
+	case tlf.TeamKeying:
 		err := md.checkNonPrivateExtra(extra)
 		if err != nil {
 			return false, err
@@ -501,7 +501,7 @@ func (md *RootMetadataV3) IsReader(
 		}
 		return isReader, nil
 	default:
-		panic(fmt.Sprintf("Unknown TLF type: %s", md.TlfID().Type()))
+		panic(fmt.Sprintf("Unknown TLF keying type: %s", md.TypeForKeying()))
 	}
 }
 
@@ -645,35 +645,34 @@ func (md *RootMetadataV3) CheckValidSuccessorForServer(
 	return nil
 }
 
-// IsBackedByTeam returns true if md is for a TLF backed by a team. It could be
+// isBackedByTeam returns true if md is for a TLF backed by a team. It could be
 // either a SingleTeam TLF or a private/public TLF backed by an implicit team.
-func (md *RootMetadataV3) IsBackedByTeam(extra ExtraMetadata) bool {
-	if extra != nil {
-		return false
-	}
+func (md *RootMetadataV3) isBackedByTeam() bool {
 	if len(md.WriterMetadata.UnresolvedWriters) != 0 {
 		return false
 	}
 	if len(md.WriterMetadata.Writers) != 1 {
 		return false
 	}
-	if _, err := md.WriterMetadata.Writers[0].AsTeam(); err != nil {
+	if !md.WriterMetadata.Writers[0].IsTeamOrSubteam() {
 		return false
 	}
 	return true
 }
 
+// TypeForKeying returns the keying type for md.
+func (md *RootMetadataV3) TypeForKeying() tlf.KeyingType {
+	if md.isBackedByTeam() {
+		return tlf.TeamKeying
+	}
+	return md.TlfID().Type().ToKeyingType()
+}
+
 // MakeBareTlfHandle implements the RootMetadata interface for RootMetadataV3.
 func (md *RootMetadataV3) MakeBareTlfHandle(extra ExtraMetadata) (
 	tlf.Handle, error) {
-	if md.IsBackedByTeam(extra) {
-		return tlf.MakeHandle(md.WriterMetadata.Writers,
-			nil, nil, nil, md.TlfHandleExtensions())
-	}
-
 	var writers, readers []keybase1.UserOrTeamID
-	switch md.TlfID().Type() {
-	case tlf.Private:
+	if md.TypeForKeying() == tlf.PrivateKeying {
 		wkb, rkb, err := md.getTLFKeyBundles(extra)
 		if err != nil {
 			return tlf.Handle{}, err
@@ -693,20 +692,16 @@ func (md *RootMetadataV3) MakeBareTlfHandle(extra ExtraMetadata) (
 				readers = append(readers, r.AsUserOrTeam())
 			}
 		}
-	case tlf.Public:
-		if extra != nil {
-			return tlf.Handle{}, errors.New(
-				"unexpected md for public TLF; got non-nil extra")
+	} else {
+		err := md.checkNonPrivateExtra(extra)
+		if err != nil {
+			return tlf.Handle{}, err
 		}
+
 		writers = md.WriterMetadata.Writers
-		readers = []keybase1.UserOrTeamID{keybase1.PublicUID.AsUserOrTeam()}
-	case tlf.SingleTeam:
-		// We already cover the SingleTeam case at the beginnin with
-		// md.IsBackedByTeam, so if we reach here this must be an illegal MD
-		// for SingleTeam.
-		return tlf.Handle{}, errors.New("unexpected md for SingleTeam")
-	default:
-		return tlf.Handle{}, fmt.Errorf("unknown TLF type: %v", md.TlfID().Type())
+		if md.TypeForKeying() == tlf.PublicKeying {
+			readers = []keybase1.UserOrTeamID{keybase1.PublicUID.AsUserOrTeam()}
+		}
 	}
 
 	return tlf.MakeHandle(
@@ -731,7 +726,7 @@ func (md *RootMetadataV3) TlfHandleExtensions() (
 // RootMetadataV3.
 func (md *RootMetadataV3) PromoteReaders(
 	readersToPromote map[keybase1.UID]bool, extra ExtraMetadata) error {
-	if md.TlfID().Type() != tlf.Private {
+	if md.TypeForKeying() != tlf.PrivateKeying {
 		return InvalidNonPrivateTLFOperation{md.TlfID(), "PromoteReaders", md.Version()}
 	}
 
@@ -769,7 +764,7 @@ func (md *RootMetadataV3) PromoteReaders(
 func (md *RootMetadataV3) RevokeRemovedDevices(
 	updatedWriterKeys, updatedReaderKeys UserDevicePublicKeys,
 	extra ExtraMetadata) (ServerHalfRemovalInfo, error) {
-	if md.TlfID().Type() != tlf.Private {
+	if md.TypeForKeying() != tlf.PrivateKeying {
 		return nil, InvalidNonPrivateTLFOperation{
 			md.TlfID(), "RevokeRemovedDevices", md.Version()}
 	}
@@ -788,7 +783,7 @@ func (md *RootMetadataV3) RevokeRemovedDevices(
 // for RootMetadataV3.
 func (md *RootMetadataV3) GetUserDevicePublicKeys(extra ExtraMetadata) (
 	writerDeviceKeys, readerDeviceKeys UserDevicePublicKeys, err error) {
-	if md.TlfID().Type() != tlf.Private {
+	if md.TypeForKeying() != tlf.PrivateKeying {
 		return nil, nil, InvalidNonPrivateTLFOperation{
 			md.TlfID(), "GetUserDevicePublicKeys", md.Version()}
 	}
@@ -898,12 +893,7 @@ func (md *RootMetadataV3) IsValidAndSigned(
 	ctx context.Context, codec kbfscodec.Codec,
 	teamMemChecker TeamMembershipChecker, extra ExtraMetadata,
 	writerVerifyingKey kbfscrypto.VerifyingKey) error {
-	if md.IsBackedByTeam(extra) {
-		return nil
-	}
-
-	switch md.TlfID().Type() {
-	case tlf.Private:
+	if md.TypeForKeying() == tlf.PrivateKeying {
 		wkb, rkb, err := md.getTLFKeyBundles(extra)
 		if err != nil {
 			return err
@@ -918,16 +908,11 @@ func (md *RootMetadataV3) IsValidAndSigned(
 		if err != nil {
 			return err
 		}
-	case tlf.Public:
-		if extra != nil {
-			return errors.New(
-				"unexpected md for public TLF; got non-nil extra")
+	} else {
+		err := md.checkNonPrivateExtra(extra)
+		if err != nil {
+			return err
 		}
-	case tlf.SingleTeam:
-		// We already cover the SingleTeam case at the beginnin with
-		// md.isBackedByTeam, so if we reach here this must be an illegal MD
-		// for SingleTeam.
-		return errors.New("unexpected md for SingleTeam")
 	}
 
 	if md.IsFinal() {
@@ -978,7 +963,7 @@ func (md *RootMetadataV3) IsValidAndSigned(
 	user := md.LastModifyingUser
 	isWriter := false
 	isReader := false
-	if md.TlfID().Type() == tlf.SingleTeam {
+	if md.TypeForKeying() == tlf.TeamKeying {
 		tid, err := md.WriterMetadata.Writers[0].AsTeam()
 		if err != nil {
 			return err
@@ -1239,7 +1224,7 @@ func (md *RootMetadataV3) updateKeyBundles(codec kbfscodec.Codec,
 	ePubKey kbfscrypto.TLFEphemeralPublicKey,
 	ePrivKey kbfscrypto.TLFEphemeralPrivateKey,
 	tlfCryptKey kbfscrypto.TLFCryptKey) (UserDeviceKeyServerHalves, error) {
-	if md.TlfID().Type() != tlf.Private {
+	if md.TypeForKeying() != tlf.PrivateKeying {
 		return nil, InvalidNonPrivateTLFOperation{
 			md.TlfID(), "updateKeyBundles", md.Version()}
 	}
@@ -1299,7 +1284,7 @@ func (md *RootMetadataV3) AddKeyGeneration(
 	currCryptKey, nextCryptKey kbfscrypto.TLFCryptKey) (
 	nextExtra ExtraMetadata,
 	serverHalves UserDeviceKeyServerHalves, err error) {
-	if md.TlfID().Type() != tlf.Private {
+	if md.TypeForKeying() != tlf.PrivateKeying {
 		return nil, nil, InvalidNonPrivateTLFOperation{
 			md.TlfID(), "AddKeyGeneration", md.Version()}
 	}
@@ -1397,10 +1382,10 @@ func (md *RootMetadataV3) AddKeyGeneration(
 // SetLatestKeyGenerationForTeamTLF implements the
 // MutableRootMetadata interface for RootMetadataV3.
 func (md *RootMetadataV3) SetLatestKeyGenerationForTeamTLF(keyGen KeyGen) {
-	if md.TlfID().Type() != tlf.SingleTeam {
+	if md.TypeForKeying() != tlf.TeamKeying {
 		panic(fmt.Sprintf(
 			"Can't call SetLatestKeyGenerationForTeamTLF on a %s TLF",
-			md.TlfID().Type()))
+			md.TypeForKeying()))
 	}
 
 	md.WriterMetadata.LatestKeyGen = keyGen

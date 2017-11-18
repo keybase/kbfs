@@ -159,10 +159,7 @@ func (h Handle) IsBackedByTeam() bool {
 		len(h.UnresolvedWriters) != 0 {
 		return false
 	}
-	if _, err := h.Writers[0].AsTeam(); err != nil {
-		return false
-	}
-	return true
+	return h.Writers[0].IsTeamOrSubteam()
 }
 
 // Type returns the type of TLF this Handle represents.
@@ -174,6 +171,14 @@ func (h Handle) Type() Type {
 		return SingleTeam
 	}
 	return Private
+}
+
+// TypeForKeying returns the keying type for the handle h.
+func (h Handle) TypeForKeying() KeyingType {
+	if h.IsBackedByTeam() {
+		return TeamKeying
+	}
+	return h.Type().ToKeyingType()
 }
 
 func (h Handle) findUserInList(user keybase1.UserOrTeamID,
