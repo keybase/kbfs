@@ -208,8 +208,12 @@ func (extra ExtraMetadataV3) IsReaderKeyBundleNew() bool {
 // must be done separately.
 func MakeInitialRootMetadataV3(tlfID tlf.ID, h tlf.Handle) (
 	*RootMetadataV3, error) {
-	if h.TypeForKeying() != tlf.TeamKeying && tlfID.Type() != h.Type() {
+	switch {
+	case h.TypeForKeying() == tlf.TeamKeying && tlfID.Type() != tlf.SingleTeam:
+		fallthrough
+	case h.TypeForKeying() != tlf.TeamKeying && tlfID.Type() != h.Type():
 		return nil, errors.New("TlfID and TlfHandle disagree on TLF type")
+	default:
 	}
 
 	var writers []keybase1.UserOrTeamID

@@ -95,11 +95,9 @@ type KeyingType Type
 const (
 	// UnknownKeying is a placeholder type for when TLF keying mode is unknown.
 	UnknownKeying = KeyingType(Unknown)
-	// PrivateKeying specifies the  TLF keying mode used in classic private TLF
-	// folders.
+	// PrivateKeying specifies the TLF keying mode used in classic private TLFs.
 	PrivateKeying = KeyingType(Private)
-	// PublicKeying specifies the  TLF keying mode used in classic public TLF
-	// folders.
+	// PublicKeying specifies the  TLF keying mode used in classic public TLFs.
 	PublicKeying = KeyingType(Public)
 	// TeamKeying specifies the  TLF keying mode used for SingleTeam or
 	// implicit team backed TLFs.
