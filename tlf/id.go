@@ -97,9 +97,9 @@ const (
 	UnknownKeying = KeyingType(Unknown)
 	// PrivateKeying specifies the TLF keying mode used in classic private TLFs.
 	PrivateKeying = KeyingType(Private)
-	// PublicKeying specifies the  TLF keying mode used in classic public TLFs.
+	// PublicKeying specifies the TLF keying mode used in classic public TLFs.
 	PublicKeying = KeyingType(Public)
-	// TeamKeying specifies the  TLF keying mode used for SingleTeam or
+	// TeamKeying specifies the TLF keying mode used for SingleTeam or
 	// implicit team backed TLFs.
 	TeamKeying = KeyingType(SingleTeam)
 )
