@@ -320,7 +320,11 @@ func (md *MDServerRemote) RefreshAuthToken(ctx context.Context) {
 	default:
 		md.log.CInfof(ctx,
 			"MDServerRemote: error refreshing auth token: %v", err)
-		md.reconnect()
+		err = md.reconnect()
+		if err != nil {
+			md.log.CWarningf(ctx,
+				"MDServerRemote: error calling md.reconnect(): %v", err)
+		}
 	}
 }
 
