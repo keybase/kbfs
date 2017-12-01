@@ -345,7 +345,7 @@ func (md *MDServerRemote) pingOnce(ctx context.Context) {
 	afterPing := clock.Now()
 	pingLatency := afterPing.Sub(beforePing)
 	if md.serverOffset > 0 && pingLatency > 5*time.Second {
-		md.log.CInfof(ctx, "Ignoring large ping time: %s",
+		md.log.CDebugf(ctx, "Ignoring large ping time: %s",
 			pingLatency)
 		return
 	}
