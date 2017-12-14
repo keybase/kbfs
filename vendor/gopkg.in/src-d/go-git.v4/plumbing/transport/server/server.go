@@ -43,7 +43,7 @@ func NewClient(loader Loader) transport.Transport {
 	}
 }
 
-func (s *server) NewUploadPackSession(ep *transport.Endpoint, auth transport.AuthMethod) (transport.UploadPackSession, error) {
+func (s *server) NewUploadPackSession(ep transport.Endpoint, auth transport.AuthMethod) (transport.UploadPackSession, error) {
 	sto, err := s.loader.Load(ep)
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (s *server) NewUploadPackSession(ep *transport.Endpoint, auth transport.Aut
 	return s.handler.NewUploadPackSession(sto)
 }
 
-func (s *server) NewReceivePackSession(ep *transport.Endpoint, auth transport.AuthMethod) (transport.ReceivePackSession, error) {
+func (s *server) NewReceivePackSession(ep transport.Endpoint, auth transport.AuthMethod) (transport.ReceivePackSession, error) {
 	sto, err := s.loader.Load(ep)
 	if err != nil {
 		return nil, err
@@ -165,8 +165,7 @@ func (s *upSession) UploadPack(ctx context.Context, req *packp.UploadPackRequest
 	pr, pw := io.Pipe()
 	e := packfile.NewEncoder(pw, s.storer, false)
 	go func() {
-		// TODO: plumb through a pack window.
-		_, err := e.Encode(objs, 10, nil)
+		_, err := e.Encode(objs)
 		pw.CloseWithError(err)
 	}()
 
@@ -176,12 +175,12 @@ func (s *upSession) UploadPack(ctx context.Context, req *packp.UploadPackRequest
 }
 
 func (s *upSession) objectsToUpload(req *packp.UploadPackRequest) ([]plumbing.Hash, error) {
-	haves, err := revlist.Objects(s.storer, req.Haves, nil, nil)
+	haves, err := revlist.Objects(s.storer, req.Haves, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return revlist.Objects(s.storer, req.Wants, haves, nil)
+	return revlist.Objects(s.storer, req.Wants, haves)
 }
 
 func (*upSession) setSupportedCapabilities(c *capability.List) error {
@@ -314,7 +313,7 @@ func (s *rpSession) writePackfile(r io.ReadCloser) error {
 		return nil
 	}
 
-	if err := packfile.UpdateObjectStorage(s.storer, r, nil); err != nil {
+	if err := packfile.UpdateObjectStorage(s.storer, r); err != nil {
 		_ = r.Close()
 		return err
 	}

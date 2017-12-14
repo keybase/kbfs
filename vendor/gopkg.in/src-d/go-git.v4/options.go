@@ -95,9 +95,6 @@ type PullOptions struct {
 	// stored, if nil nothing is stored and the capability (if supported)
 	// no-progress, is sent to the server to avoid send this information.
 	Progress sideband.Progress
-	// Force allows the pull to update a local branch even when the remote
-	// branch does not descend from it.
-	Force bool
 }
 
 // Validate validates the fields and sets the default values.
@@ -144,17 +141,7 @@ type FetchOptions struct {
 	Progress sideband.Progress
 	// Tags describe how the tags will be fetched from the remote repository,
 	// by default is TagFollowing.
-	Tags       TagMode
-	StatusChan plumbing.StatusChan
-	// Force allows the fetch to update a local branch even when the remote
-	// branch does not descend from it.
-	Force bool
-	// PackRefs, if true, causes the fetch to write out a packed-refs
-	// file, rather that setting individual references.  If this is
-	// used, the caller MUST be assured that none of the references
-	// exist yet.  If packed-refs already exists, the fetch will
-	// return an error.
-	PackRefs bool
+	Tags TagMode
 }
 
 // Validate validates the fields and sets the default values.
@@ -187,8 +174,7 @@ type PushOptions struct {
 	Auth transport.AuthMethod
 	// Progress is where the human readable information sent by the server is
 	// stored, if nil nothing is stored.
-	Progress   sideband.Progress
-	StatusChan plumbing.StatusChan
+	Progress sideband.Progress
 }
 
 // Validate validates the fields and sets the default values.
@@ -361,10 +347,4 @@ func (o *CommitOptions) Validate(r *Repository) error {
 	}
 
 	return nil
-}
-
-// ListOptions describes how a remote list should be performed.
-type ListOptions struct {
-	// Auth credentials, if required, to use with the remote repository.
-	Auth transport.AuthMethod
 }

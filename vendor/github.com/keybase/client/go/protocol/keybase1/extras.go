@@ -1036,14 +1036,6 @@ func (t TLFID) String() string {
 	return string(t)
 }
 
-func (t TLFID) IsNil() bool {
-	return len(t) == 0
-}
-
-func (t TLFID) Exists() bool {
-	return !t.IsNil()
-}
-
 func (t TLFID) ToBytes() []byte {
 	b, err := hex.DecodeString(string(t))
 	if err != nil {
@@ -2004,10 +1996,6 @@ func (n ImplicitTeamDisplayName) String() string {
 	}
 
 	return name
-}
-
-func (c ImplicitTeamConflictInfo) IsConflict() bool {
-	return c.Generation > ConflictGeneration(0)
 }
 
 const (

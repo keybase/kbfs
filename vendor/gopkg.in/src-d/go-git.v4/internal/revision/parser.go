@@ -254,7 +254,7 @@ func (p *Parser) parseAt() (Revisioner, error) {
 	var lit, nextLit string
 	var err error
 
-	tok, _, err = p.scan()
+	tok, lit, err = p.scan()
 
 	if err != nil {
 		return nil, err

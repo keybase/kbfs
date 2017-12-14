@@ -136,9 +136,9 @@ func (t *Tree) dir(baseName string) (*Tree, error) {
 	}
 
 	tree := &Tree{s: t.s}
-	err = tree.Decode(obj)
+	tree.Decode(obj)
 
-	return tree, err
+	return tree, nil
 }
 
 var errEntryNotFound = errors.New("entry not found")

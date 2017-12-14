@@ -8,32 +8,29 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/internal/revision"
 	"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/plumbing/format/packfile"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/plumbing/storer"
 	"gopkg.in/src-d/go-git.v4/storage"
 	"gopkg.in/src-d/go-git.v4/storage/filesystem"
 	"gopkg.in/src-d/go-git.v4/utils/ioutil"
 
-	"gopkg.in/src-d/go-billy.v4"
-	"gopkg.in/src-d/go-billy.v4/osfs"
+	"gopkg.in/src-d/go-billy.v3"
+	"gopkg.in/src-d/go-billy.v3/osfs"
 )
 
 var (
-	ErrInvalidReference          = errors.New("invalid reference, should be a tag or a branch")
-	ErrRepositoryNotExists       = errors.New("repository does not exist")
-	ErrRepositoryAlreadyExists   = errors.New("repository already exists")
-	ErrRemoteNotFound            = errors.New("remote not found")
-	ErrRemoteExists              = errors.New("remote already exists	")
-	ErrWorktreeNotProvided       = errors.New("worktree should be provided")
-	ErrIsBareRepository          = errors.New("worktree not available in a bare repository")
-	ErrUnableToResolveCommit     = errors.New("unable to resolve commit")
-	ErrPackedObjectsNotSupported = errors.New("Packed objects not supported")
+	ErrInvalidReference        = errors.New("invalid reference, should be a tag or a branch")
+	ErrRepositoryNotExists     = errors.New("repository not exists")
+	ErrRepositoryAlreadyExists = errors.New("repository already exists")
+	ErrRemoteNotFound          = errors.New("remote not found")
+	ErrRemoteExists            = errors.New("remote already exists	")
+	ErrWorktreeNotProvided     = errors.New("worktree should be provided")
+	ErrIsBareRepository        = errors.New("worktree not available in a bare repository")
+	ErrUnableToResolveCommit   = errors.New("unable to resolve commit")
 )
 
 // Repository represents a git repository
@@ -326,7 +323,7 @@ func newRepository(s storage.Storer, worktree billy.Filesystem) *Repository {
 	return &Repository{
 		Storer: s,
 		wt:     worktree,
-		r:      make(map[string]*Remote),
+		r:      make(map[string]*Remote, 0),
 	}
 }
 
@@ -628,9 +625,9 @@ func (r *Repository) calculateRemoteHeadReference(spec []config.RefSpec,
 	return refs
 }
 
-func checkAndUpdateReferenceStorerIfNeeded(
-	s storer.ReferenceStorer, r, old *plumbing.Reference) (
-	updated bool, err error) {
+func updateReferenceStorerIfNeeded(
+	s storer.ReferenceStorer, r *plumbing.Reference) (updated bool, err error) {
+
 	p, err := s.Reference(r.Name())
 	if err != nil && err != plumbing.ErrReferenceNotFound {
 		return false, err
@@ -638,7 +635,7 @@ func checkAndUpdateReferenceStorerIfNeeded(
 
 	// we use the string method to compare references, is the easiest way
 	if err == plumbing.ErrReferenceNotFound || r.String() != p.String() {
-		if err := s.CheckAndSetReference(r, old); err != nil {
+		if err := s.SetReference(r); err != nil {
 			return false, err
 		}
 
@@ -646,11 +643,6 @@ func checkAndUpdateReferenceStorerIfNeeded(
 	}
 
 	return false, nil
-}
-
-func updateReferenceStorerIfNeeded(
-	s storer.ReferenceStorer, r *plumbing.Reference) (updated bool, err error) {
-	return checkAndUpdateReferenceStorerIfNeeded(s, r, nil)
 }
 
 // Fetch fetches references along with the objects necessary to complete
@@ -728,7 +720,7 @@ func (r *Repository) Log(o *LogOptions) (object.CommitIter, error) {
 		return nil, err
 	}
 
-	return object.NewCommitPreorderIter(commit, nil, nil), nil
+	return object.NewCommitPreorderIter(commit, nil), nil
 }
 
 // Tags returns all the References from Tags. This method returns all the tag
@@ -957,7 +949,7 @@ func (r *Repository) ResolveRevision(rev plumbing.Revision) (*plumbing.Hash, err
 				commit = c
 			}
 		case revision.CaretReg:
-			history := object.NewCommitPreorderIter(commit, nil, nil)
+			history := object.NewCommitPreorderIter(commit, nil)
 
 			re := item.(revision.CaretReg).Regexp
 			negate := item.(revision.CaretReg).Negate
@@ -987,7 +979,7 @@ func (r *Repository) ResolveRevision(rev plumbing.Revision) (*plumbing.Hash, err
 
 			commit = c
 		case revision.AtDate:
-			history := object.NewCommitPreorderIter(commit, nil, nil)
+			history := object.NewCommitPreorderIter(commit, nil)
 
 			date := item.(revision.AtDate).Date
 
@@ -1013,99 +1005,4 @@ func (r *Repository) ResolveRevision(rev plumbing.Revision) (*plumbing.Hash, err
 	}
 
 	return &commit.Hash, nil
-}
-
-type RepackConfig struct {
-	// StatusChan for status updates, may be nil.
-	StatusChan plumbing.StatusChan
-	// UseRefDeltas configures whether packfile encoder will use reference deltas.
-	// By default OFSDeltaObject is used.
-	UseRefDeltas bool
-	// OnlyDeletePacksOlderThan if set to non-zero value
-	// selects only objects older than the time provided.
-	OnlyDeletePacksOlderThan time.Time
-}
-
-func (r *Repository) RepackObjects(cfg *RepackConfig) (err error) {
-	pos, ok := r.Storer.(storer.PackedObjectStorer)
-	if !ok {
-		return ErrPackedObjectsNotSupported
-	}
-
-	// Get the existing object packs.
-	hs, err := pos.ObjectPacks()
-	if err != nil {
-		return err
-	}
-
-	// Create a new pack.
-	nh, err := r.createNewObjectPack(cfg)
-	if err != nil {
-		return err
-	}
-
-	// Delete old packs.
-	for _, h := range hs {
-		// Skip if new hash is the same as an old one.
-		if h == nh {
-			continue
-		}
-		err = pos.DeleteOldObjectPackAndIndex(h, cfg.OnlyDeletePacksOlderThan)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// createNewObjectPack is a helper for RepackObjects taking care
-// of creating a new pack. It is used so the the PackfileWriter
-// deferred close has the right scope.
-func (r *Repository) createNewObjectPack(cfg *RepackConfig) (h plumbing.Hash, err error) {
-	ow := newObjectWalker(r.Storer)
-	err = ow.walkAllRefs()
-	if err != nil {
-		return h, err
-	}
-	objs := make([]plumbing.Hash, 0, len(ow.seen))
-	for h := range ow.seen {
-		objs = append(objs, h)
-	}
-	pfw, ok := r.Storer.(storer.PackfileWriter)
-	if !ok {
-		return h, fmt.Errorf("Repository storer is not a storer.PackfileWriter")
-	}
-	wc, err := pfw.PackfileWriter(cfg.StatusChan)
-	if err != nil {
-		return h, err
-	}
-	defer ioutil.CheckClose(wc, &err)
-	scfg, err := r.Storer.Config()
-	if err != nil {
-		return h, err
-	}
-	enc := packfile.NewEncoder(wc, r.Storer, cfg.UseRefDeltas)
-	h, err = enc.Encode(objs, scfg.Pack.Window, cfg.StatusChan)
-	if err != nil {
-		return h, err
-	}
-
-	// Delete the packed, loose objects.
-	if los, ok := r.Storer.(storer.LooseObjectStorer); ok {
-		err = los.ForEachObjectHash(func(hash plumbing.Hash) error {
-			if ow.isSeen(hash) {
-				err := los.DeleteLooseObject(hash)
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return h, err
-		}
-	}
-
-	return h, err
 }

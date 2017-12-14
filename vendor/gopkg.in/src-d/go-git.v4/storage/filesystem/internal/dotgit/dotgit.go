@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io"
 	stdioutil "io/ioutil"
 	"os"
 	"strings"
@@ -14,7 +13,7 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/utils/ioutil"
 
-	"gopkg.in/src-d/go-billy.v4"
+	"gopkg.in/src-d/go-billy.v3"
 )
 
 const (
@@ -58,14 +57,16 @@ var (
 // The DotGit type represents a local git repository on disk. This
 // type is not zero-value-safe, use the New function to initialize it.
 type DotGit struct {
-	fs billy.Filesystem
+	fs                billy.Filesystem
+	cachedPackedRefs  refCache
+	packedRefsLastMod time.Time
 }
 
 // New returns a DotGit value ready to be used. The path argument must
 // be the absolute path of a git repository directory (e.g.
 // "/foo/bar/.git").
 func New(fs billy.Filesystem) *DotGit {
-	return &DotGit{fs: fs}
+	return &DotGit{fs: fs, cachedPackedRefs: make(refCache)}
 }
 
 // Initialize creates all the folder scaffolding.
@@ -136,8 +137,8 @@ func (d *DotGit) Shallow() (billy.File, error) {
 
 // NewObjectPack return a writer for a new packfile, it saves the packfile to
 // disk and also generates and save the index for the given packfile.
-func (d *DotGit) NewObjectPack(statusChan plumbing.StatusChan) (*PackWriter, error) {
-	return newPackWrite(d.fs, statusChan)
+func (d *DotGit) NewObjectPack() (*PackWriter, error) {
+	return newPackWrite(d.fs)
 }
 
 // ObjectPacks returns the list of availables packfiles
@@ -167,12 +168,11 @@ func (d *DotGit) ObjectPacks() ([]plumbing.Hash, error) {
 	return packs, nil
 }
 
-func (d *DotGit) objectPackPath(hash plumbing.Hash, extension string) string {
-	return d.fs.Join(objectsPath, packPath, fmt.Sprintf("pack-%s.%s", hash.String(), extension))
-}
+// ObjectPack returns a fs.File of the given packfile
+func (d *DotGit) ObjectPack(hash plumbing.Hash) (billy.File, error) {
+	file := d.fs.Join(objectsPath, packPath, fmt.Sprintf("pack-%s.pack", hash.String()))
 
-func (d *DotGit) objectPackOpen(hash plumbing.Hash, extension string) (billy.File, error) {
-	pack, err := d.fs.Open(d.objectPackPath(hash, extension))
+	pack, err := d.fs.Open(file)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, ErrPackfileNotFound
@@ -184,37 +184,19 @@ func (d *DotGit) objectPackOpen(hash plumbing.Hash, extension string) (billy.Fil
 	return pack, nil
 }
 
-// ObjectPack returns a fs.File of the given packfile
-func (d *DotGit) ObjectPack(hash plumbing.Hash) (billy.File, error) {
-	return d.objectPackOpen(hash, `pack`)
-}
-
 // ObjectPackIdx returns a fs.File of the index file for a given packfile
 func (d *DotGit) ObjectPackIdx(hash plumbing.Hash) (billy.File, error) {
-	return d.objectPackOpen(hash, `idx`)
-}
+	file := d.fs.Join(objectsPath, packPath, fmt.Sprintf("pack-%s.idx", hash.String()))
+	idx, err := d.fs.Open(file)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrPackfileNotFound
+		}
 
-func (d *DotGit) DeleteOldObjectPackAndIndex(hash plumbing.Hash, t time.Time) error {
-	path := d.objectPackPath(hash, `pack`)
-	if !t.IsZero() {
-		fi, err := d.fs.Stat(path)
-		if err != nil {
-			return err
-		}
-		// too new, skip deletion.
-		if !fi.ModTime().Before(t) {
-			return nil
-		}
+		return nil, err
 	}
-	err := d.fs.Remove(path)
-	if err != nil {
-		return err
-	}
-	err = d.fs.Remove(d.objectPackPath(hash, `idx`))
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return idx, nil
 }
 
 // NewObject return a writer for a new object file.
@@ -225,105 +207,42 @@ func (d *DotGit) NewObject() (*ObjectWriter, error) {
 // Objects returns a slice with the hashes of objects found under the
 // .git/objects/ directory.
 func (d *DotGit) Objects() ([]plumbing.Hash, error) {
-	var objects []plumbing.Hash
-	err := d.ForEachObjectHash(func(hash plumbing.Hash) error {
-		objects = append(objects, hash)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return objects, nil
-}
-
-// Objects returns a slice with the hashes of objects found under the
-// .git/objects/ directory.
-func (d *DotGit) ForEachObjectHash(fun func(plumbing.Hash) error) error {
 	files, err := d.fs.ReadDir(objectsPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil
+			return nil, nil
 		}
 
-		return err
+		return nil, err
 	}
 
+	var objects []plumbing.Hash
 	for _, f := range files {
 		if f.IsDir() && len(f.Name()) == 2 && isHex(f.Name()) {
 			base := f.Name()
 			d, err := d.fs.ReadDir(d.fs.Join(objectsPath, base))
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			for _, o := range d {
-				err = fun(plumbing.NewHash(base + o.Name()))
-				if err != nil {
-					return err
-				}
+				objects = append(objects, plumbing.NewHash(base+o.Name()))
 			}
 		}
 	}
 
-	return nil
+	return objects, nil
 }
 
-func (d *DotGit) objectPath(h plumbing.Hash) string {
-	hash := h.String()
-	return d.fs.Join(objectsPath, hash[0:2], hash[2:40])
-}
-
-// Object returns a fs.File pointing the object file, if exists
+// Object return a fs.File pointing the object file, if exists
 func (d *DotGit) Object(h plumbing.Hash) (billy.File, error) {
-	return d.fs.Open(d.objectPath(h))
+	hash := h.String()
+	file := d.fs.Join(objectsPath, hash[0:2], hash[2:40])
+
+	return d.fs.Open(file)
 }
 
-// ObjectStat returns a os.FileInfo pointing the object file, if exists
-func (d *DotGit) ObjectStat(h plumbing.Hash) (os.FileInfo, error) {
-	return d.fs.Stat(d.objectPath(h))
-}
-
-// ObjectDelete removes the object file, if exists
-func (d *DotGit) ObjectDelete(h plumbing.Hash) error {
-	return d.fs.Remove(d.objectPath(h))
-}
-
-func (d *DotGit) readReferenceFrom(rd io.Reader, name string) (ref *plumbing.Reference, err error) {
-	b, err := stdioutil.ReadAll(rd)
-	if err != nil {
-		return nil, err
-	}
-
-	line := strings.TrimSpace(string(b))
-	return plumbing.NewReferenceFromStrings(name, line), nil
-}
-
-func (d *DotGit) checkReferenceAndTruncate(f billy.File, old *plumbing.Reference) error {
-	if old == nil {
-		return nil
-	}
-	ref, err := d.readReferenceFrom(f, old.Name().String())
-	if err != nil {
-		return err
-	}
-	if ref.Hash().IsZero() {
-		ref, err = d.packedRef(old.Name())
-		if err != nil {
-			return err
-		}
-	}
-
-	if ref.Hash() != old.Hash() {
-		return fmt.Errorf("reference has changed concurrently")
-	}
-	_, err = f.Seek(0, io.SeekStart)
-	if err != nil {
-		return err
-	}
-	return f.Truncate(0)
-}
-
-func (d *DotGit) SetRef(r, old *plumbing.Reference) (err error) {
+func (d *DotGit) SetRef(r *plumbing.Reference) error {
 	var content string
 	switch r.Type() {
 	case plumbing.SymbolicReference:
@@ -332,33 +251,12 @@ func (d *DotGit) SetRef(r, old *plumbing.Reference) (err error) {
 		content = fmt.Sprintln(r.Hash().String())
 	}
 
-	// If we are not checking an old ref, just truncate the file.
-	mode := os.O_RDWR | os.O_CREATE
-	if old == nil {
-		mode |= os.O_TRUNC
-	}
-
-	f, err := d.fs.OpenFile(r.Name().String(), mode, 0666)
+	f, err := d.fs.Create(r.Name().String())
 	if err != nil {
 		return err
 	}
 
 	defer ioutil.CheckClose(f, &err)
-
-	// Lock is unlocked by the deferred Close above. This is because Unlock
-	// does not imply a fsync and thus there would be a race between
-	// Unlock+Close and other concurrent writers. Adding Sync to go-billy
-	// could work, but this is better (and avoids superfluous syncs).
-	err = f.Lock()
-	if err != nil {
-		return err
-	}
-
-	// this is a no-op to call even when old is nil.
-	err = d.checkReferenceAndTruncate(f, old)
-	if err != nil {
-		return err
-	}
 
 	_, err = f.Write([]byte(content))
 	return err
@@ -394,46 +292,54 @@ func (d *DotGit) Ref(name plumbing.ReferenceName) (*plumbing.Reference, error) {
 	return d.packedRef(name)
 }
 
-func (d *DotGit) findPackedRefsInFile(f billy.File) ([]*plumbing.Reference, error) {
-	s := bufio.NewScanner(f)
-	var refs []*plumbing.Reference
-	for s.Scan() {
-		ref, err := d.processLine(s.Text())
-		if err != nil {
-			return nil, err
-		}
-
-		if ref != nil {
-			refs = append(refs, ref)
-		}
+func (d *DotGit) syncPackedRefs() error {
+	fi, err := d.fs.Stat(packedRefsPath)
+	if os.IsNotExist(err) {
+		return nil
 	}
 
-	return refs, s.Err()
-}
-
-func (d *DotGit) findPackedRefs() ([]*plumbing.Reference, error) {
-	f, err := d.fs.Open(packedRefsPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
+		return err
 	}
 
-	defer ioutil.CheckClose(f, &err)
-	return d.findPackedRefsInFile(f)
+	if d.packedRefsLastMod.Before(fi.ModTime()) {
+		d.cachedPackedRefs = make(refCache)
+		f, err := d.fs.Open(packedRefsPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+		defer ioutil.CheckClose(f, &err)
+
+		s := bufio.NewScanner(f)
+		for s.Scan() {
+			ref, err := d.processLine(s.Text())
+			if err != nil {
+				return err
+			}
+
+			if ref != nil {
+				d.cachedPackedRefs[ref.Name()] = ref
+			}
+		}
+
+		d.packedRefsLastMod = fi.ModTime()
+
+		return s.Err()
+	}
+
+	return nil
 }
 
 func (d *DotGit) packedRef(name plumbing.ReferenceName) (*plumbing.Reference, error) {
-	refs, err := d.findPackedRefs()
-	if err != nil {
+	if err := d.syncPackedRefs(); err != nil {
 		return nil, err
 	}
 
-	for _, ref := range refs {
-		if ref.Name() == name {
-			return ref, nil
-		}
+	if ref, ok := d.cachedPackedRefs[name]; ok {
+		return ref, nil
 	}
 
 	return nil, plumbing.ErrReferenceNotFound
@@ -444,8 +350,7 @@ func (d *DotGit) RemoveRef(name plumbing.ReferenceName) error {
 	path := d.fs.Join(".", name.String())
 	_, err := d.fs.Stat(path)
 	if err == nil {
-		err = d.fs.Remove(path)
-		// Drop down to remove it from the packed refs file, too.
+		return d.fs.Remove(path)
 	}
 
 	if err != nil && !os.IsNotExist(err) {
@@ -456,96 +361,29 @@ func (d *DotGit) RemoveRef(name plumbing.ReferenceName) error {
 }
 
 func (d *DotGit) addRefsFromPackedRefs(refs *[]*plumbing.Reference, seen map[plumbing.ReferenceName]bool) (err error) {
-	packedRefs, err := d.findPackedRefs()
-	if err != nil {
+	if err := d.syncPackedRefs(); err != nil {
 		return err
 	}
 
-	for _, ref := range packedRefs {
-		if !seen[ref.Name()] {
+	for name, ref := range d.cachedPackedRefs {
+		if !seen[name] {
 			*refs = append(*refs, ref)
-			seen[ref.Name()] = true
+			seen[name] = true
 		}
 	}
+
 	return nil
-}
-
-func (d *DotGit) addRefsFromPackedRefsFile(refs *[]*plumbing.Reference, f billy.File, seen map[plumbing.ReferenceName]bool) (err error) {
-	packedRefs, err := d.findPackedRefsInFile(f)
-	if err != nil {
-		return err
-	}
-
-	for _, ref := range packedRefs {
-		if !seen[ref.Name()] {
-			*refs = append(*refs, ref)
-			seen[ref.Name()] = true
-		}
-	}
-	return nil
-}
-
-func (d *DotGit) openAndLockPackedRefs(doCreate bool) (
-	pr billy.File, err error) {
-	var f billy.File
-	defer func() {
-		if err != nil && f != nil {
-			ioutil.CheckClose(f, &err)
-		}
-	}()
-
-	openFlags := os.O_RDWR
-	if doCreate {
-		openFlags |= os.O_CREATE
-	}
-
-	// Keep trying to open and lock the file until we're sure the file
-	// didn't change between the open and the lock.
-	for {
-		f, err = d.fs.OpenFile(packedRefsPath, openFlags, 0600)
-		if err != nil {
-			if os.IsNotExist(err) && !doCreate {
-				return nil, nil
-			}
-
-			return nil, err
-		}
-		fi, err := d.fs.Stat(packedRefsPath)
-		if err != nil {
-			return nil, err
-		}
-		mtime := fi.ModTime()
-
-		err = f.Lock()
-		if err != nil {
-			return nil, err
-		}
-
-		fi, err = d.fs.Stat(packedRefsPath)
-		if err != nil {
-			return nil, err
-		}
-		if mtime == fi.ModTime() {
-			break
-		}
-		// The file has changed since we opened it.  Close and retry.
-		err = f.Close()
-		if err != nil {
-			return nil, err
-		}
-	}
-	return f, nil
 }
 
 func (d *DotGit) rewritePackedRefsWithoutRef(name plumbing.ReferenceName) (err error) {
-	pr, err := d.openAndLockPackedRefs(false)
+	f, err := d.fs.Open(packedRefsPath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+
 		return err
 	}
-	if pr == nil {
-		return nil
-	}
-	defer ioutil.CheckClose(pr, &err)
 
 	// Creating the temp file in the same directory as the target file
 	// improves our chances for rename operation to be atomic.
@@ -553,13 +391,8 @@ func (d *DotGit) rewritePackedRefsWithoutRef(name plumbing.ReferenceName) (err e
 	if err != nil {
 		return err
 	}
-	tmpName := tmp.Name()
-	defer func() {
-		ioutil.CheckClose(tmp, &err)
-		_ = d.fs.Remove(tmpName) // don't check err, we might have renamed it
-	}()
 
-	s := bufio.NewScanner(pr)
+	s := bufio.NewScanner(f)
 	found := false
 	for s.Scan() {
 		line := s.Text()
@@ -586,7 +419,16 @@ func (d *DotGit) rewritePackedRefsWithoutRef(name plumbing.ReferenceName) (err e
 		return nil
 	}
 
-	return d.rewritePackedRefsWhileLocked(tmp, pr)
+	if err := f.Close(); err != nil {
+		ioutil.CheckClose(tmp, &err)
+		return err
+	}
+
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+
+	return d.fs.Rename(tmp.Name(), packedRefsPath)
 }
 
 // process lines from a packed-refs file
@@ -670,137 +512,13 @@ func (d *DotGit) readReferenceFile(path, name string) (ref *plumbing.Reference, 
 	}
 	defer ioutil.CheckClose(f, &err)
 
-	return d.readReferenceFrom(f, name)
-}
-
-func (d *DotGit) SetPackedRefs(refs []plumbing.Reference) (err error) {
-	// Lock it using a temp file.  TODO: clean this up?
-	lockFile, err := d.fs.Create(tmpPackedRefsPrefix)
+	b, err := stdioutil.ReadAll(f)
 	if err != nil {
-		return err
-	}
-	defer ioutil.CheckClose(lockFile, &err)
-
-	err = lockFile.Lock()
-	if err != nil {
-		return err
+		return nil, err
 	}
 
-	f, err := d.fs.Create(packedRefsPath)
-	if err != nil {
-		return err
-	}
-	defer ioutil.CheckClose(f, &err)
-
-	// Check that the file is empty. Technically the locked create
-	// above should fail if the file exists yet, but let's just be
-	// safe and check.
-	buf, err := stdioutil.ReadAll(f)
-	if err != nil {
-		return err
-	}
-	if len(buf) != 0 {
-		return errors.New("packed-refs file already initialized")
-	}
-
-	w := bufio.NewWriter(f)
-	for _, ref := range refs {
-		_, err := w.WriteString(ref.String() + "\n")
-		if err != nil {
-			return err
-		}
-	}
-	return w.Flush()
-}
-
-func (d *DotGit) CountLooseRefs() (int, error) {
-	var refs []*plumbing.Reference
-	var seen = make(map[plumbing.ReferenceName]bool)
-	if err := d.addRefsFromRefDir(&refs, seen); err != nil {
-		return 0, err
-	}
-
-	return len(refs), nil
-}
-
-// PackRefs packs all loose refs into the packed-refs file.
-//
-// This implementation only works under the assumption that the view
-// of the file system won't be updated during this operation.  This
-// strategy would not work on a general file system though, without
-// locking each loose reference and checking it again before deleting
-// the file, because otherwise an updated reference could sneak in and
-// then be deleted by the packed-refs process.  Alternatively, every
-// ref update could also lock packed-refs, so only one lock is
-// required during ref-packing.  But that would worsen performance in
-// the common case.
-//
-// TODO: add an "all" boolean like the `git pack-refs --all` flag.
-// When `all` is false, it would only pack refs that have already been
-// packed, plus all tags.
-func (d *DotGit) PackRefs() (err error) {
-	// Lock packed-refs, and create it if it doesn't exist yet.
-	f, err := d.openAndLockPackedRefs(true)
-	if err != nil {
-		return err
-	}
-	defer ioutil.CheckClose(f, &err)
-
-	// Gather all refs using addRefsFromRefDir and addRefsFromPackedRefs.
-	var refs []*plumbing.Reference
-	seen := make(map[plumbing.ReferenceName]bool)
-	if err := d.addRefsFromRefDir(&refs, seen); err != nil {
-		return err
-	}
-	if len(refs) == 0 {
-		// Nothing to do!
-		return nil
-	}
-	numLooseRefs := len(refs)
-	if err := d.addRefsFromPackedRefsFile(&refs, f, seen); err != nil {
-		return err
-	}
-
-	// Write them all to a new temp packed-refs file.
-	tmp, err := d.fs.TempFile("", tmpPackedRefsPrefix)
-	if err != nil {
-		return err
-	}
-	tmpName := tmp.Name()
-	defer func() {
-		ioutil.CheckClose(tmp, &err)
-		_ = d.fs.Remove(tmpName) // don't check err, we might have renamed it
-	}()
-
-	w := bufio.NewWriter(tmp)
-	for _, ref := range refs {
-		_, err := w.WriteString(ref.String() + "\n")
-		if err != nil {
-			return err
-		}
-	}
-	err = w.Flush()
-	if err != nil {
-		return err
-	}
-
-	// Rename the temp packed-refs file.
-	err = d.rewritePackedRefsWhileLocked(tmp, f)
-	if err != nil {
-		return err
-	}
-
-	// Delete all the loose refs, while still holding the packed-refs
-	// lock.
-	for _, ref := range refs[:numLooseRefs] {
-		path := d.fs.Join(".", ref.Name().String())
-		err = d.fs.Remove(path)
-		if err != nil && !os.IsNotExist(err) {
-			return err
-		}
-	}
-
-	return nil
+	line := strings.TrimSpace(string(b))
+	return plumbing.NewReferenceFromStrings(name, line), nil
 }
 
 // Module return a billy.Filesystem poiting to the module folder

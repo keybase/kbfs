@@ -133,7 +133,7 @@ func encodeRefs(e *advRefsEncoder) encoderStateFn {
 			continue
 		}
 
-		hash := e.data.References[r]
+		hash, _ := e.data.References[r]
 		if e.err = e.pe.Encodef("%s %s\n", hash.String(), r); e.err != nil {
 			return nil
 		}

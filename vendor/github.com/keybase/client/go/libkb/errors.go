@@ -2206,13 +2206,3 @@ type NoOpError struct {
 func (e NoOpError) Error() string {
 	return e.Desc
 }
-
-//=============================================================================
-
-type NoSpaceOnDeviceError struct {
-	Desc string
-}
-
-func (e NoSpaceOnDeviceError) Error() string {
-	return e.Desc
-}

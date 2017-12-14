@@ -105,7 +105,7 @@ func NewDecoderForType(s *Scanner, o storer.EncodedObjectStorer,
 		o: o,
 
 		idx:          NewIndex(0),
-		offsetToType: make(map[int64]plumbing.ObjectType),
+		offsetToType: make(map[int64]plumbing.ObjectType, 0),
 		decoderType:  t,
 	}, nil
 }
@@ -116,38 +116,25 @@ func canResolveDeltas(s *Scanner, o storer.EncodedObjectStorer) bool {
 
 // Decode reads a packfile and stores it in the value pointed to by s. The
 // offsets and the CRCs are calculated by this method
-func (d *Decoder) Decode(statusChan plumbing.StatusChan) (checksum plumbing.Hash, err error) {
+func (d *Decoder) Decode() (checksum plumbing.Hash, err error) {
 	defer func() { d.isDecoded = true }()
 
 	if d.isDecoded {
 		return plumbing.ZeroHash, ErrAlreadyDecoded
 	}
 
-	if err := d.doDecode(statusChan); err != nil {
+	if err := d.doDecode(); err != nil {
 		return plumbing.ZeroHash, err
 	}
 
 	return d.s.Checksum()
 }
 
-func (d *Decoder) doDecode(statusChan plumbing.StatusChan) error {
-	statusChan.SendUpdate(plumbing.StatusUpdate{
-		Stage: plumbing.StatusCount,
-	})
-
+func (d *Decoder) doDecode() error {
 	_, count, err := d.s.Header()
 	if err != nil {
 		return err
 	}
-
-	statusChan.SendUpdate(plumbing.StatusUpdate{
-		Stage:        plumbing.StatusCount,
-		ObjectsTotal: int(count),
-	})
-	statusChan.SendUpdate(plumbing.StatusUpdate{
-		Stage:        plumbing.StatusFetch,
-		ObjectsTotal: int(count),
-	})
 
 	if !d.hasBuiltIndex {
 		d.idx = NewIndex(int(count))
@@ -157,35 +144,25 @@ func (d *Decoder) doDecode(statusChan plumbing.StatusChan) error {
 	_, isTxStorer := d.o.(storer.Transactioner)
 	switch {
 	case d.o == nil:
-		return d.decodeObjects(int(count), statusChan)
+		return d.decodeObjects(int(count))
 	case isTxStorer:
-		return d.decodeObjectsWithObjectStorerTx(int(count), statusChan)
+		return d.decodeObjectsWithObjectStorerTx(int(count))
 	default:
-		return d.decodeObjectsWithObjectStorer(int(count), statusChan)
+		return d.decodeObjectsWithObjectStorer(int(count))
 	}
 }
 
-func (d *Decoder) decodeObjects(count int, statusChan plumbing.StatusChan) error {
-	update := plumbing.StatusUpdate{
-		Stage:        plumbing.StatusFetch,
-		ObjectsTotal: count,
-	}
+func (d *Decoder) decodeObjects(count int) error {
 	for i := 0; i < count; i++ {
 		if _, err := d.DecodeObject(); err != nil {
 			return err
 		}
-		update.ObjectsDone++
-		statusChan.SendUpdateIfPossible(update)
 	}
 
 	return nil
 }
 
-func (d *Decoder) decodeObjectsWithObjectStorer(count int, statusChan plumbing.StatusChan) error {
-	update := plumbing.StatusUpdate{
-		Stage:        plumbing.StatusFetch,
-		ObjectsTotal: count,
-	}
+func (d *Decoder) decodeObjectsWithObjectStorer(count int) error {
 	for i := 0; i < count; i++ {
 		obj, err := d.DecodeObject()
 		if err != nil {
@@ -195,19 +172,12 @@ func (d *Decoder) decodeObjectsWithObjectStorer(count int, statusChan plumbing.S
 		if _, err := d.o.SetEncodedObject(obj); err != nil {
 			return err
 		}
-		update.ObjectsDone++
-		statusChan.SendUpdateIfPossible(update)
 	}
 
 	return nil
 }
 
-func (d *Decoder) decodeObjectsWithObjectStorerTx(count int, statusChan plumbing.StatusChan) error {
-	update := plumbing.StatusUpdate{
-		Stage:        plumbing.StatusFetch,
-		ObjectsTotal: count,
-	}
-
+func (d *Decoder) decodeObjectsWithObjectStorerTx(count int) error {
 	d.tx = d.o.(storer.Transactioner).Begin()
 
 	for i := 0; i < count; i++ {
@@ -226,8 +196,6 @@ func (d *Decoder) decodeObjectsWithObjectStorerTx(count int, statusChan plumbing
 			return err
 		}
 
-		update.ObjectsDone++
-		statusChan.SendUpdateIfPossible(update)
 	}
 
 	return d.tx.Commit()
@@ -239,16 +207,12 @@ func (d *Decoder) decodeObjectsWithObjectStorerTx(count int, statusChan plumbing
 // constructor, if the object decoded is not equals to the specified one, nil will
 // be returned
 func (d *Decoder) DecodeObject() (plumbing.EncodedObject, error) {
-	return d.doDecodeObject(d.decoderType)
-}
-
-func (d *Decoder) doDecodeObject(t plumbing.ObjectType) (plumbing.EncodedObject, error) {
 	h, err := d.s.NextObjectHeader()
 	if err != nil {
 		return nil, err
 	}
 
-	if t == plumbing.AnyObject {
+	if d.decoderType == plumbing.AnyObject {
 		return d.decodeByHeader(h)
 	}
 
@@ -315,7 +279,6 @@ func (d *Decoder) decodeByHeader(h *ObjectHeader) (plumbing.EncodedObject, error
 	obj := d.newObject()
 	obj.SetSize(h.Length)
 	obj.SetType(h.Type)
-
 	var crc uint32
 	var err error
 	switch h.Type {
@@ -352,8 +315,7 @@ func (d *Decoder) newObject() plumbing.EncodedObject {
 // returned is added into a internal index. This is intended to be able to regenerate
 // objects from deltas (offset deltas or reference deltas) without an package index
 // (.idx file). If Decode wasn't called previously objects offset should provided
-// using the SetOffsets method. It decodes the object regardless of the Decoder
-// type.
+// using the SetOffsets method.
 func (d *Decoder) DecodeObjectAt(offset int64) (plumbing.EncodedObject, error) {
 	if !d.s.IsSeekable {
 		return nil, ErrNonSeekable
@@ -371,7 +333,7 @@ func (d *Decoder) DecodeObjectAt(offset int64) (plumbing.EncodedObject, error) {
 		}
 	}()
 
-	return d.doDecodeObject(plumbing.AnyObject)
+	return d.DecodeObject()
 }
 
 func (d *Decoder) fillRegularObjectContent(obj plumbing.EncodedObject) (uint32, error) {

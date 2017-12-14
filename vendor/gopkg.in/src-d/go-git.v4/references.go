@@ -26,7 +26,7 @@ import (
 // to fix this).
 func references(c *object.Commit, path string) ([]*object.Commit, error) {
 	var result []*object.Commit
-	seen := make(map[plumbing.Hash]struct{})
+	seen := make(map[plumbing.Hash]struct{}, 0)
 	if err := walkGraph(&result, &seen, c, path); err != nil {
 		return nil, err
 	}

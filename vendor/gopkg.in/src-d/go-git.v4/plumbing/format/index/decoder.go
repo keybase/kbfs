@@ -200,8 +200,11 @@ func (d *Decoder) padEntry(idx *Index, e *Entry, read int) error {
 
 	entrySize := read + len(e.Name)
 	padLen := 8 - entrySize%8
-	_, err := io.CopyN(ioutil.Discard, d.r, int64(padLen))
-	return err
+	if _, err := io.CopyN(ioutil.Discard, d.r, int64(padLen)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (d *Decoder) readExtensions(idx *Index) error {
@@ -285,7 +288,7 @@ func (d *Decoder) readChecksum(expected []byte, alreadyRead [4]byte) error {
 		return err
 	}
 
-	if !bytes.Equal(h[:], expected) {
+	if bytes.Compare(h[:], expected) != 0 {
 		return ErrInvalidChecksum
 	}
 
@@ -404,7 +407,7 @@ func (d *resolveUndoDecoder) Decode(ru *ResolveUndo) error {
 
 func (d *resolveUndoDecoder) readEntry() (*ResolveUndoEntry, error) {
 	e := &ResolveUndoEntry{
-		Stages: make(map[Stage]plumbing.Hash),
+		Stages: make(map[Stage]plumbing.Hash, 0),
 	}
 
 	path, err := binary.ReadUntil(d.r, '\x00')

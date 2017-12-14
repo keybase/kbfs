@@ -27,9 +27,7 @@ type levelDBOps interface {
 	Write(b *leveldb.Batch, wo *opt.WriteOptions) error
 }
 
-func levelDbPut(ops levelDBOps, id DbKey, aliases []DbKey, value []byte) (err error) {
-	defer convertNoSpaceError(err)
-
+func levelDbPut(ops levelDBOps, id DbKey, aliases []DbKey, value []byte) error {
 	idb := id.ToBytes(levelDbTableKv)
 	if len(aliases) == 0 {
 		// if no aliases, just do a put
@@ -76,8 +74,7 @@ func levelDbLookup(ops levelDBOps, id DbKey) (val []byte, found bool, err error)
 	return val, found, err
 }
 
-func levelDbDelete(ops levelDBOps, id DbKey) (err error) {
-	defer convertNoSpaceError(err)
+func levelDbDelete(ops levelDBOps, id DbKey) error {
 	return ops.Delete(id.ToBytes(levelDbTableKv), nil)
 }
 
@@ -326,20 +323,10 @@ func (l LevelDbTransaction) Delete(id DbKey) error {
 	return levelDbDelete(l.tr, id)
 }
 
-func (l LevelDbTransaction) Commit() (err error) {
-	defer convertNoSpaceError(err)
+func (l LevelDbTransaction) Commit() error {
 	return l.tr.Commit()
 }
 
 func (l LevelDbTransaction) Discard() {
 	l.tr.Discard()
-}
-
-func convertNoSpaceError(err error) error {
-	if IsNoSpaceOnDeviceError(err) {
-		// embed in exportable error type
-		err = NoSpaceOnDeviceError{Desc: err.Error()}
-	}
-
-	return err
 }

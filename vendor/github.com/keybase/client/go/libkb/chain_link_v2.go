@@ -50,9 +50,8 @@ const (
 	SigchainV2TypeTeamDeleteRoot       SigchainV2Type = 42
 	SigchainV2TypeTeamDeleteSubteam    SigchainV2Type = 43
 	SigchainV2TypeTeamDeleteUpPointer  SigchainV2Type = 44
-	// Note that 45 is skipped, since it's retired; used to be LegacyTLFUpgrade
-	SigchainV2TypeTeamSettings     SigchainV2Type = 46
-	SigchainV2TypeTeamKBFSSettings SigchainV2Type = 47
+	SigchainV2TypeTeamLegacyTLFUpgrade SigchainV2Type = 45
+	SigchainV2TypeTeamSettings         SigchainV2Type = 46
 )
 
 func (t SigchainV2Type) NeedsSignature() bool {
@@ -80,7 +79,7 @@ func (t SigchainV2Type) IsSupportedTeamType() bool {
 		SigchainV2TypeTeamDeleteRoot,
 		SigchainV2TypeTeamDeleteSubteam,
 		SigchainV2TypeTeamDeleteUpPointer,
-		SigchainV2TypeTeamKBFSSettings,
+		SigchainV2TypeTeamLegacyTLFUpgrade,
 		SigchainV2TypeTeamSettings:
 		return true
 	default:
@@ -95,7 +94,8 @@ func (t SigchainV2Type) RequiresAdminPermission() bool {
 	switch t {
 	case SigchainV2TypeTeamRoot,
 		SigchainV2TypeTeamRotateKey,
-		SigchainV2TypeTeamLeave:
+		SigchainV2TypeTeamLeave,
+		SigchainV2TypeTeamLegacyTLFUpgrade:
 		return false
 	default:
 		return true
@@ -295,8 +295,8 @@ func SigchainV2TypeFromV1TypeTeams(s string) (ret SigchainV2Type, err error) {
 		ret = SigchainV2TypeTeamDeleteSubteam
 	case LinkTypeDeleteUpPointer:
 		ret = SigchainV2TypeTeamDeleteUpPointer
-	case LinkTypeKBFSSettings:
-		ret = SigchainV2TypeTeamKBFSSettings
+	case LinkTypeLegacyTLFUpgrade:
+		ret = SigchainV2TypeTeamLegacyTLFUpgrade
 	case LinkTypeSettings:
 		ret = SigchainV2TypeTeamSettings
 	default:

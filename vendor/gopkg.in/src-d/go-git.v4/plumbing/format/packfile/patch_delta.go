@@ -38,8 +38,11 @@ func ApplyDelta(target, base plumbing.EncodedObject, delta []byte) error {
 
 	target.SetSize(int64(len(dst)))
 
-	_, err = w.Write(dst)
-	return err
+	if _, err := w.Write(dst); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 var (

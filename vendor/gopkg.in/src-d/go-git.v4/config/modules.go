@@ -24,7 +24,7 @@ type Modules struct {
 // NewModules returns a new empty Modules
 func NewModules() *Modules {
 	return &Modules{
-		Submodules: make(map[string]*Submodule),
+		Submodules: make(map[string]*Submodule, 0),
 		raw:        format.New(),
 	}
 }

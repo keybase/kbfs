@@ -109,9 +109,8 @@ const (
 	LinkCacheSize     = 0x10000
 	LinkCacheCleanDur = 1 * time.Minute
 
-	UPAKCacheSize                     = 2000
-	UIDMapFullNameCacheSize           = 100000
-	ImplicitTeamConflictInfoCacheSize = 10000
+	UPAKCacheSize           = 2000
+	UIDMapFullNameCacheSize = 100000
 
 	SigShortIDBytes  = 27
 	LocalTrackMaxAge = 48 * time.Hour
@@ -280,7 +279,6 @@ const (
 	SCGitRepoDoesntExist       = int(keybase1.StatusCode_SCGitRepoDoesntExist)
 	SCTeamBanned               = int(keybase1.StatusCode_SCTeamBanned)
 	SCTeamInvalidBan           = int(keybase1.StatusCode_SCTeamInvalidBan)
-	SCNoSpaceOnDevice          = int(keybase1.StatusCode_SCNoSpaceOnDevice)
 )
 
 const (
@@ -319,7 +317,7 @@ const (
 	LinkTypeDeleteRoot       LinkType = "team.delete_root"
 	LinkTypeDeleteSubteam    LinkType = "team.delete_subteam"
 	LinkTypeDeleteUpPointer  LinkType = "team.delete_up_pointer"
-	LinkTypeKBFSSettings     LinkType = "team.kbfs"
+	LinkTypeLegacyTLFUpgrade LinkType = "team.legacy_tlf_upgrade"
 	LinkTypeSettings         LinkType = "team.settings"
 
 	DelegationTypeEldest    DelegationType = "eldest"

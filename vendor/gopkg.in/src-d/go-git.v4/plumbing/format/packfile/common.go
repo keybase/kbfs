@@ -5,7 +5,6 @@ import (
 	"io"
 	"sync"
 
-	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/storer"
 	"gopkg.in/src-d/go-git.v4/utils/ioutil"
 )
@@ -26,12 +25,9 @@ const (
 
 // UpdateObjectStorage updates the given storer.EncodedObjectStorer with the contents of the
 // packfile.
-func UpdateObjectStorage(
-	s storer.EncodedObjectStorer,
-	packfile io.Reader,
-	statusChan plumbing.StatusChan) error {
+func UpdateObjectStorage(s storer.EncodedObjectStorer, packfile io.Reader) error {
 	if sw, ok := s.(storer.PackfileWriter); ok {
-		return writePackfileToObjectStorage(sw, packfile, statusChan)
+		return writePackfileToObjectStorage(sw, packfile)
 	}
 
 	stream := NewScanner(packfile)
@@ -40,16 +36,13 @@ func UpdateObjectStorage(
 		return err
 	}
 
-	_, err = d.Decode(statusChan)
+	_, err = d.Decode()
 	return err
 }
 
-func writePackfileToObjectStorage(
-	sw storer.PackfileWriter,
-	packfile io.Reader,
-	statusChan plumbing.StatusChan) error {
+func writePackfileToObjectStorage(sw storer.PackfileWriter, packfile io.Reader) error {
 	var err error
-	w, err := sw.PackfileWriter(statusChan)
+	w, err := sw.PackfileWriter()
 	if err != nil {
 		return err
 	}

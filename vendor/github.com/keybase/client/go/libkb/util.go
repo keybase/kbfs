@@ -23,7 +23,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 	"unicode"
 
@@ -757,11 +756,11 @@ func CanExec(p string) error {
 }
 
 func CurrentBinaryRealpath() (string, error) {
-	executable, err := os.Executable()
+	absolute, err := filepath.Abs(os.Args[0])
 	if err != nil {
 		return "", err
 	}
-	return filepath.EvalSymlinks(executable)
+	return filepath.EvalSymlinks(absolute)
 }
 
 var adminFeatureList = map[keybase1.UID]bool{
@@ -789,39 +788,4 @@ var adminFeatureList = map[keybase1.UID]bool{
 // IsKeybaseAdmin returns true if uid is a keybase admin.
 func IsKeybaseAdmin(uid keybase1.UID) bool {
 	return adminFeatureList[uid]
-}
-
-// MobilePermissionDeniedCheck panics if err is a permission denied error
-// and if app is a mobile app. This has caused issues opening config.json
-// and secretkeys files, where it seems to be stuck in a permission
-// denied state and force-killing the app is the only option.
-func MobilePermissionDeniedCheck(g *GlobalContext, err error, msg string) {
-	if !os.IsPermission(err) {
-		return
-	}
-	if g.GetAppType() != MobileAppType {
-		return
-	}
-	g.Log.Warning("file open permission denied on mobile (%s): %s", msg, err)
-	panic(fmt.Sprintf("panic due to file open permission denied on mobile (%s)", msg))
-}
-
-// IsNoSpaceOnDeviceError will return true if err is an `os` error
-// for "no space left on device".
-func IsNoSpaceOnDeviceError(err error) bool {
-	if err == nil {
-		return false
-	}
-	switch err := err.(type) {
-	case NoSpaceOnDeviceError:
-		return true
-	case *os.PathError:
-		return err.Err == syscall.ENOSPC
-	case *os.LinkError:
-		return err.Err == syscall.ENOSPC
-	case *os.SyscallError:
-		return err.Err == syscall.ENOSPC
-	}
-
-	return false
 }

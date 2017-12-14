@@ -76,17 +76,18 @@ Info("git log")
 ref, err := r.Head()
 CheckIfError(err)
 
+// ... retrieves the commit object
+commit, err := r.CommitObject(ref.Hash())
+CheckIfError(err)
 
 // ... retrieves the commit history
-cIter, err := r.Log(&git.LogOptions{From: ref.Hash()})
+history, err := commit.History()
 CheckIfError(err)
 
 // ... just iterates over the commits, printing it
-err = cIter.ForEach(func(c *object.Commit) error {
-	fmt.Println(c)
-	return nil
-})
-CheckIfError(err)
+for _, c := range history {
+    fmt.Println(c)
+}
 ```
 
 Outputs:
@@ -119,7 +120,7 @@ table of git with go-git.
 Contribute
 ----------
 
-If you are interested in contributing to go-git, open an [issue](https://github.com/src-d/go-git/issues) explaining which missing functionality you want to work on, and we will guide you through the implementation.
+If you are interested on contributing to go-git, open an [issue](https://github.com/src-d/go-git/issues) explaining which missing functionality you want to work in, and we will guide you through the implementation.
 
 License
 -------
