@@ -430,6 +430,13 @@
 			"revisionTime": "2017-03-22T06:49:16Z"
 		},
 		{
+			"checksumSHA1": "vCbb0vMh0GcGoYk33LRxReyLZlM=",
+			"origin": "github.com/keybase/kbfs/vendor/github.com/minio/sha256-simd",
+			"path": "github.com/minio/sha256-simd",
+			"revision": "ad98a36ba0da87206e3378c556abbfeaeaa98668",
+			"revisionTime": "2017-12-13T22:06:25Z"
+		},
+		{
 			"checksumSHA1": "V/quM7+em2ByJbWBLOsEwnY3j/Q=",
 			"path": "github.com/mitchellh/go-homedir",
 			"revision": "b8bc1bf767474819792c23f32d8286a45736f1c6",
