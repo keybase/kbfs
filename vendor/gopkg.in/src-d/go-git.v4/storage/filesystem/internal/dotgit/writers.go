@@ -10,7 +10,7 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/format/objfile"
 	"gopkg.in/src-d/go-git.v4/plumbing/format/packfile"
 
-	"gopkg.in/src-d/go-billy.v4"
+	"gopkg.in/src-d/go-billy.v3"
 )
 
 // PackWriter is a io.Writer that generates the packfile index simultaneously,
@@ -22,16 +22,15 @@ import (
 type PackWriter struct {
 	Notify func(plumbing.Hash, *packfile.Index)
 
-	fs         billy.Filesystem
-	fr, fw     billy.File
-	synced     *syncedReader
-	checksum   plumbing.Hash
-	index      *packfile.Index
-	result     chan error
-	statusChan plumbing.StatusChan
+	fs       billy.Filesystem
+	fr, fw   billy.File
+	synced   *syncedReader
+	checksum plumbing.Hash
+	index    *packfile.Index
+	result   chan error
 }
 
-func newPackWrite(fs billy.Filesystem, statusChan plumbing.StatusChan) (*PackWriter, error) {
+func newPackWrite(fs billy.Filesystem) (*PackWriter, error) {
 	fw, err := fs.TempFile(fs.Join(objectsPath, packPath), "tmp_pack_")
 	if err != nil {
 		return nil, err
@@ -43,12 +42,11 @@ func newPackWrite(fs billy.Filesystem, statusChan plumbing.StatusChan) (*PackWri
 	}
 
 	writer := &PackWriter{
-		fs:         fs,
-		fw:         fw,
-		fr:         fr,
-		synced:     newSyncedReader(fw, fr),
-		result:     make(chan error),
-		statusChan: statusChan,
+		fs:     fs,
+		fw:     fw,
+		fr:     fr,
+		synced: newSyncedReader(fw, fr),
+		result: make(chan error),
 	}
 
 	go writer.buildIndex()
@@ -63,7 +61,7 @@ func (w *PackWriter) buildIndex() {
 		return
 	}
 
-	checksum, err := d.Decode(w.statusChan)
+	checksum, err := d.Decode()
 	if err != nil {
 		w.result <- err
 		return
@@ -151,7 +149,7 @@ func (w *PackWriter) encodeIdx(writer io.Writer) error {
 	idx.PackfileChecksum = w.checksum
 	idx.Version = idxfile.VersionSupported
 	e := idxfile.NewEncoder(writer)
-	_, err := e.Encode(idx, w.statusChan)
+	_, err := e.Encode(idx)
 	return err
 }
 

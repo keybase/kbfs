@@ -157,13 +157,10 @@ func (a *Account) LoginSession() *LoginSession {
 }
 
 func (a *Account) Logout() error {
-	a.G().Log.Debug("+ Account.Logout()")
 	a.ClearStreamCache()
 
-	err := a.localSession.Logout()
-	if err != nil {
-		a.G().Log.Debug("error in localSession.Logout(): %s", err)
-		a.G().Log.Debug("(continuing with the rest of the logout process, but this error will be returned)")
+	if err := a.localSession.Logout(); err != nil {
+		return err
 	}
 
 	a.UnloadLocalSession()
@@ -176,9 +173,8 @@ func (a *Account) Logout() error {
 	a.ClearCachedSecretKeys()
 
 	a.lksec = nil
-	a.G().Log.Debug("- Account.Logout() - all clears complete, localSession.Logout() -> %s", ErrToOk(err))
 
-	return err
+	return nil
 }
 
 func (a *Account) CreateStreamCache(tsec Triplesec, pps *PassphraseStream) {

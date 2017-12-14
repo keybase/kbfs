@@ -110,5 +110,9 @@ func (r *Reader) Hash() plumbing.Hash {
 // Close releases any resources consumed by the Reader. Calling Close does not
 // close the wrapped io.Reader originally passed to NewReader.
 func (r *Reader) Close() error {
-	return r.zlib.Close()
+	if err := r.zlib.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }

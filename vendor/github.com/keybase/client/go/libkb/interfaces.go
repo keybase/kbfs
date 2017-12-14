@@ -599,36 +599,13 @@ type TeamLoader interface {
 	Load(context.Context, keybase1.LoadTeamArg) (*keybase1.TeamData, error)
 	// Delete the cache entry. Does not error if there is no cache entry.
 	Delete(ctx context.Context, teamID keybase1.TeamID) error
-	// Untrusted hint of what a team's latest seqno is
-	HintLatestSeqno(ctx context.Context, id keybase1.TeamID, seqno keybase1.Seqno) error
 	OnLogout()
 	// Clear the in-memory cache. Does not affect the disk cache.
 	ClearMem()
 }
 
-type ImplicitTeamConflictInfoCacher interface {
-	Get(context.Context, bool, keybase1.TeamID) *keybase1.ImplicitTeamConflictInfo
-	Put(context.Context, bool, keybase1.TeamID, keybase1.ImplicitTeamConflictInfo) error
-}
-
 type KVStoreContext interface {
 	GetKVStore() KVStorer
-}
-
-type LRUContext interface {
-	VLogContext
-	KVStoreContext
-	ClockContext
-}
-
-type LRUKeyer interface {
-	MemKey() string
-	DbKey() DbKey
-}
-
-type LRUer interface {
-	Get(context.Context, LRUContext, LRUKeyer) (interface{}, error)
-	Put(context.Context, LRUContext, LRUKeyer, interface{}) error
 }
 
 type ClockContext interface {

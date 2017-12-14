@@ -186,9 +186,7 @@ func (m *CachedFullSelf) WithUser(arg LoadUserArg, f func(u *User) error) (err e
 			m.G().Log.CDebugf(ctx, "| CachedFullSelf#WithUser: cache populate")
 			m.cacheMe(u)
 			if ldr := m.G().GetUPAKLoader(); ldr != nil {
-				if err := ldr.PutUserToCache(ctx, u); err != nil {
-					m.G().Log.CDebugf(ctx, "| CachedFullSelf#WithUser: continuing past error putting user to cache: %s", err)
-				}
+				ldr.PutUserToCache(ctx, u)
 			}
 		} else {
 			m.G().Log.CDebugf(ctx, "| CachedFullSelf#WithUser: other user")

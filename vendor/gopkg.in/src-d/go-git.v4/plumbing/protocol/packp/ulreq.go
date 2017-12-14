@@ -28,7 +28,7 @@ type Depth interface {
 
 // DepthCommits values stores the maximum number of requested commits in
 // the packfile.  Zero means infinite.  A negative value will have
-// undefined consequences.
+// undefined consecuences.
 type DepthCommits int
 
 func (d DepthCommits) isDepth() {}

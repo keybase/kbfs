@@ -3,7 +3,6 @@ package filesystem
 import (
 	"io"
 	"os"
-	"time"
 
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/cache"
@@ -15,7 +14,7 @@ import (
 	"gopkg.in/src-d/go-git.v4/storage/memory"
 	"gopkg.in/src-d/go-git.v4/utils/ioutil"
 
-	"gopkg.in/src-d/go-billy.v4"
+	"gopkg.in/src-d/go-billy.v3"
 )
 
 const DefaultMaxDeltaBaseCacheSize = 92 * cache.MiByte
@@ -42,7 +41,7 @@ func (s *ObjectStorage) requireIndex() error {
 		return nil
 	}
 
-	s.index = make(map[plumbing.Hash]*packfile.Index)
+	s.index = make(map[plumbing.Hash]*packfile.Index, 0)
 	packs, err := s.dir.ObjectPacks()
 	if err != nil {
 		return err
@@ -78,12 +77,12 @@ func (s *ObjectStorage) NewEncodedObject() plumbing.EncodedObject {
 	return &plumbing.MemoryObject{}
 }
 
-func (s *ObjectStorage) PackfileWriter(statusChan plumbing.StatusChan) (io.WriteCloser, error) {
+func (s *ObjectStorage) PackfileWriter() (io.WriteCloser, error) {
 	if err := s.requireIndex(); err != nil {
 		return nil, err
 	}
 
-	w, err := s.dir.NewObjectPack(statusChan)
+	w, err := s.dir.NewObjectPack()
 	if err != nil {
 		return nil, err
 	}
@@ -124,32 +123,6 @@ func (s *ObjectStorage) SetEncodedObject(o plumbing.EncodedObject) (plumbing.Has
 	}
 
 	return o.Hash(), err
-}
-
-// HasEncodedObject returns nil if the object exists, without actually
-// reading the object data from storage.
-func (s *ObjectStorage) HasEncodedObject(h plumbing.Hash) (err error) {
-	// Check unpacked objects
-	f, err := s.dir.Object(h)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-		// Fall through to check packed objects.
-	} else {
-		defer ioutil.CheckClose(f, &err)
-		return nil
-	}
-
-	// Check packed objects.
-	if err := s.requireIndex(); err != nil {
-		return err
-	}
-	_, _, offset := s.findObjectInPackfile(h)
-	if offset == -1 {
-		return plumbing.ErrObjectNotFound
-	}
-	return nil
 }
 
 // EncodedObject returns the object with the given hash, by searching for it in
@@ -346,7 +319,7 @@ func (s *ObjectStorage) IterEncodedObjects(t plumbing.ObjectType) (storer.Encode
 		return nil, err
 	}
 
-	seen := make(map[plumbing.Hash]bool)
+	seen := make(map[plumbing.Hash]bool, 0)
 	var iters []storer.EncodedObjectIter
 	if len(objects) != 0 {
 		iters = append(iters, &objectsIter{s: s, t: t, h: objects})
@@ -505,32 +478,4 @@ func hashListAsMap(l []plumbing.Hash) map[plumbing.Hash]bool {
 	}
 
 	return m
-}
-
-func (s *ObjectStorage) ForEachObjectHash(fun func(plumbing.Hash) error) error {
-	err := s.dir.ForEachObjectHash(fun)
-	if err == storer.ErrStop {
-		return nil
-	}
-	return err
-}
-
-func (s *ObjectStorage) LooseObjectTime(hash plumbing.Hash) (time.Time, error) {
-	fi, err := s.dir.ObjectStat(hash)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return fi.ModTime(), nil
-}
-
-func (s *ObjectStorage) DeleteLooseObject(hash plumbing.Hash) error {
-	return s.dir.ObjectDelete(hash)
-}
-
-func (s *ObjectStorage) ObjectPacks() ([]plumbing.Hash, error) {
-	return s.dir.ObjectPacks()
-}
-
-func (s *ObjectStorage) DeleteOldObjectPackAndIndex(h plumbing.Hash, t time.Time) error {
-	return s.dir.DeleteOldObjectPackAndIndex(h, t)
 }
