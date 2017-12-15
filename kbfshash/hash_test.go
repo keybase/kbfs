@@ -226,3 +226,24 @@ func TestVerify(t *testing.T) {
 	err = corruptHMAC.Verify(key, data)
 	require.IsType(t, HashMismatchError{}, errors.Cause(err))
 }
+
+var defaultHashBenchmarkResult bool
+var defaultHashBenchmarkError error
+
+func BenchmarkDefaultHash(b *testing.B) {
+	data := make([]byte, b.N)
+	for i := 0; i < b.N; i++ {
+		data[i] = byte(i % 256)
+	}
+
+	isValid := false
+	var err error
+
+	for i := 0; i < b.N; i++ {
+		h, _ := DefaultHash(data)
+		isValid = h.IsValid()
+		err = h.Verify(data)
+	}
+	defaultHashBenchmarkResult = isValid
+	defaultHashBenchmarkError = err
+}
