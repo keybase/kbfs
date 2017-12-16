@@ -284,11 +284,11 @@ func BenchmarkCryptoSha8k(b *testing.B) {
 	defaultHashBenchmarkResult = benchmarkCryptoSha256(1<<13, b)
 }
 
-func BenchmarkCryptoSha65k(b *testing.B) {
+func BenchmarkCryptoSha64k(b *testing.B) {
 	defaultHashBenchmarkResult = benchmarkCryptoSha256(1<<16, b)
 }
 
-func BenchmarkCryptoSha768k(b *testing.B) {
+func BenchmarkCryptoSha512k(b *testing.B) {
 	defaultHashBenchmarkResult = benchmarkCryptoSha256(1<<19, b)
 }
 
@@ -300,10 +300,10 @@ func BenchmarkMinioSha8k(b *testing.B) {
 	defaultHashBenchmarkResult = benchmarkMinioSha256(1<<13, b)
 }
 
-func BenchmarkMinioSha65k(b *testing.B) {
+func BenchmarkMinioSha64k(b *testing.B) {
 	defaultHashBenchmarkResult = benchmarkMinioSha256(1<<16, b)
 }
 
-func BenchmarkMinioSha768k(b *testing.B) {
+func BenchmarkMinioSha512k(b *testing.B) {
 	defaultHashBenchmarkResult = benchmarkMinioSha256(1<<19, b)
 }
