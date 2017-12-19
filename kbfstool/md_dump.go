@@ -36,6 +36,8 @@ func mdDumpGetReplacements(ctx context.Context, codec kbfscodec.Codec,
 		return nil, err
 	}
 
+	// TODO: Add caching for the service calls.
+
 	replacements := make(map[string]string)
 	for _, userKeys := range []kbfsmd.UserDevicePublicKeys{writers, readers} {
 		for u, deviceKeys := range userKeys {
