@@ -103,59 +103,47 @@ func getRevision(ctx context.Context, config libkbfs.Config,
 	return kbfsmd.Revision(u), nil
 }
 
-func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
-	branchID kbfsmd.BranchID, rev kbfsmd.Revision) (
-	libkbfs.ImmutableRootMetadata, error) {
-	var irmds []libkbfs.ImmutableRootMetadata
-	var err error
-	if branchID == kbfsmd.NullBranchID {
-		irmds, err = config.MDOps().GetRange(ctx, tlfID, rev, rev, nil)
-		if err != nil {
-			return libkbfs.ImmutableRootMetadata{}, err
-		}
-	} else {
-		irmds, err = config.MDOps().GetUnmergedRange(
-			ctx, tlfID, branchID, rev, rev)
-		if err != nil {
-			return libkbfs.ImmutableRootMetadata{}, err
-		}
-	}
-
-	if len(irmds) >= 1 {
-		return irmds[0], nil
-	}
-
-	return libkbfs.ImmutableRootMetadata{}, nil
-}
-
 func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
-	libkbfs.ImmutableRootMetadata, error) {
+	[]libkbfs.ImmutableRootMetadata, error) {
 	matches := mdGetRegexp.FindStringSubmatch(input)
 	if matches == nil {
-		return libkbfs.ImmutableRootMetadata{},
-			fmt.Errorf("Could not parse %q", input)
+		return nil, fmt.Errorf("Could not parse %q", input)
 	}
 
 	tlfStr := matches[1]
 	branchStr := matches[2]
-	revisionStr := matches[3]
+	startStr := matches[3]
+	stopStr := matches[4]
 
 	tlfID, err := getTlfID(ctx, config, tlfStr)
 	if err != nil {
-		return libkbfs.ImmutableRootMetadata{}, err
+		return nil, err
 	}
 
 	branchID, err := getBranchID(ctx, config, tlfID, branchStr)
 	if err != nil {
-		return libkbfs.ImmutableRootMetadata{}, err
+		return nil, err
 	}
 
-	rev, err := getRevision(ctx, config, tlfID, branchID, revisionStr)
+	start, err := getRevision(ctx, config, tlfID, branchID, startStr)
 	if err != nil {
-		return libkbfs.ImmutableRootMetadata{}, err
+		return nil, err
 	}
 
-	return mdGet(ctx, config, tlfID, branchID, rev)
+	stop := start
+	if stopStr != "" {
+		stop, err = getRevision(ctx, config, tlfID, branchID, stopStr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if branchID == kbfsmd.NullBranchID {
+		return config.MDOps().GetRange(ctx, tlfID, start, stop, nil)
+	} else {
+		return config.MDOps().GetUnmergedRange(
+			ctx, tlfID, branchID, start, stop)
+	}
 }
 
 func mdGetMergedHeadForWriter(ctx context.Context, config libkbfs.Config,

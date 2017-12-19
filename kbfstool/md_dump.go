@@ -180,23 +180,26 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 	}
 
 	for _, input := range inputs {
-		irmd, err := mdParseAndGet(ctx, config, input)
+		irmds, err := mdParseAndGet(ctx, config, input)
 		if err != nil {
 			printError("md dump", err)
 			return 1
 		}
 
-		if irmd == (libkbfs.ImmutableRootMetadata{}) {
+		if len(irmds) == 0 {
 			fmt.Printf("No result found for %q\n\n", input)
 			continue
 		}
 
-		fmt.Printf("Result for %q:\n\n", input)
+		// TODO: clean up.
+		for _, irmd := range irmds {
+			fmt.Printf("Result for %q:\n\n", input)
 
-		err = mdDumpImmutableRMD(ctx, config, irmd)
-		if err != nil {
-			printError("md dump", err)
-			return 1
+			err = mdDumpImmutableRMD(ctx, config, irmd)
+			if err != nil {
+				printError("md dump", err)
+				return 1
+			}
 		}
 
 		fmt.Print("\n")

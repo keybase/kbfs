@@ -162,12 +162,15 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 		}
 
 		// TODO: Getting in chunks would be faster.
-		irmdPrev, err := mdGet(ctx, config, irmd.TlfID(),
-			irmd.BID(), irmd.Revision()-1)
+		irmds, err := mdGet(ctx, config, irmd.TlfID(),
+			irmd.BID(), irmd.Revision()-1, irmd.Revision()-1)
 		if err != nil {
 			fmt.Printf("Got error while fetching rev %d: %v\n", irmd.Revision()-1, err)
 			break
 		}
+
+		// TODO: cleanup.
+		irmdPrev := irmds[0]
 
 		if irmdPrev == (libkbfs.ImmutableRootMetadata{}) {
 			fmt.Printf("Rev %d missing\n", irmd.Revision()-1)
@@ -245,21 +248,23 @@ func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (
 	for _, input := range inputs {
 		// The returned RMD is already verified, so we don't
 		// have to do anything else.
-		irmd, err := mdParseAndGet(ctx, config, input)
+		irmds, err := mdParseAndGet(ctx, config, input)
 		if err != nil {
 			printError("md check", err)
 			return 1
 		}
 
-		if irmd == (libkbfs.ImmutableRootMetadata{}) {
+		if len(irmds) == 0 {
 			fmt.Printf("No result found for %q\n\n", input)
 			continue
 		}
 
-		err = mdCheckOne(ctx, config, input, irmd, *mdLimit, *verbose)
-		if err != nil {
-			printError("md check", err)
-			return 1
+		for _, irmd := range irmds {
+			err = mdCheckOne(ctx, config, input, irmd, *mdLimit, *verbose)
+			if err != nil {
+				printError("md check", err)
+				return 1
+			}
 		}
 
 		fmt.Print("\n")
