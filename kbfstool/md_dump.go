@@ -200,9 +200,9 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 				printError("md dump", err)
 				return 1
 			}
-		}
 
-		fmt.Print("\n")
+			fmt.Print("\n")
+		}
 	}
 
 	return 0
