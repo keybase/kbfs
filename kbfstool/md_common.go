@@ -36,6 +36,11 @@ func parseTLFPath(ctx context.Context, kbpki libkbfs.KBPKI,
 func getTlfID(
 	ctx context.Context, config libkbfs.Config, tlfStr string) (
 	tlf.ID, error) {
+	_, err := kbfsmd.ParseID(tlfStr)
+	if err == nil {
+		return tlf.ID{}, errors.New("Cannot handle metadata IDs")
+	}
+
 	tlfID, err := tlf.ParseID(tlfStr)
 	if err == nil {
 		return tlfID, nil
