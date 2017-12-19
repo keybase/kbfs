@@ -182,6 +182,8 @@ func getSingleMD(ctx context.Context, config Config, id tlf.ID, bid kbfsmd.Branc
 	return rmds[0], nil
 }
 
+// MakeCopyWithDecryptedPrivateData makes a copy of the given rmd,
+// decrypting it with the given latest RMD.
 func MakeCopyWithDecryptedPrivateData(
 	ctx context.Context, config Config,
 	rmd, latestRMD ImmutableRootMetadata, uid keybase1.UID) (
