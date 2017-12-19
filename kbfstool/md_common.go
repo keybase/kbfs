@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/fsrpc"
 	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/libkbfs"
@@ -103,6 +104,54 @@ func getRevision(ctx context.Context, config libkbfs.Config,
 	return kbfsmd.Revision(u), nil
 }
 
+func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
+	branchID kbfsmd.BranchID, start, stop kbfsmd.Revision) (
+	irmds []libkbfs.ImmutableRootMetadata, err error) {
+	if branchID == kbfsmd.NullBranchID {
+		irmds, err = config.MDOps().GetRange(ctx, tlfID, start, stop, nil)
+	} else {
+		irmds, err = config.MDOps().GetUnmergedRange(
+			ctx, tlfID, branchID, start, stop)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var latestIRMD libkbfs.ImmutableRootMetadata
+	var uid keybase1.UID
+	for i, rmd := range irmds {
+		if !rmd.IsReadable() {
+			if latestIRMD == (libkbfs.ImmutableRootMetadata{}) {
+				if branchID == kbfsmd.NullBranchID {
+					latestIRMD, err = config.MDOps().GetForTLF(ctx, tlfID, nil)
+				} else {
+					latestIRMD, err = config.MDOps().GetUnmergedForTLF(ctx, tlfID, branchID)
+				}
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			if uid == keybase1.UID("") {
+				session, err := config.KBPKI().GetCurrentSession(ctx)
+				if err != nil {
+					return nil, err
+				}
+				uid = session.UID
+			}
+
+			irmdCopy, err := libkbfs.MakeCopyWithDecryptedPrivateData(
+				ctx, config, rmd, latestIRMD, uid)
+			if err != nil {
+				return nil, err
+			}
+			irmds[i] = irmdCopy
+		}
+	}
+
+	return irmds, nil
+}
+
 func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
 	[]libkbfs.ImmutableRootMetadata, error) {
 	matches := mdGetRegexp.FindStringSubmatch(input)
@@ -138,12 +187,7 @@ func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
 		}
 	}
 
-	if branchID == kbfsmd.NullBranchID {
-		return config.MDOps().GetRange(ctx, tlfID, start, stop, nil)
-	} else {
-		return config.MDOps().GetUnmergedRange(
-			ctx, tlfID, branchID, start, stop)
-	}
+	return mdGet(ctx, config, tlfID, branchID, start, stop)
 }
 
 func mdGetMergedHeadForWriter(ctx context.Context, config libkbfs.Config,

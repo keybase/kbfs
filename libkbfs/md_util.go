@@ -182,6 +182,30 @@ func getSingleMD(ctx context.Context, config Config, id tlf.ID, bid kbfsmd.Branc
 	return rmds[0], nil
 }
 
+func MakeCopyWithDecryptedPrivateData(
+	ctx context.Context, config Config,
+	rmd, latestRMD ImmutableRootMetadata, uid keybase1.UID) (
+	rmdDecrypted ImmutableRootMetadata, err error) {
+	pmd, err := decryptMDPrivateData(
+		ctx, config.Codec(), config.Crypto(),
+		config.BlockCache(), config.BlockOps(),
+		config.KeyManager(), config.Mode(), uid,
+		rmd.GetSerializedPrivateMetadata(),
+		rmd, latestRMD, config.MakeLogger(""))
+	if err != nil {
+		return ImmutableRootMetadata{}, err
+	}
+
+	rmdCopy, err := rmd.deepCopy(config.Codec())
+	if err != nil {
+		return ImmutableRootMetadata{}, err
+	}
+	rmdCopy.data = pmd
+	return MakeImmutableRootMetadata(rmdCopy,
+		rmd.LastModifyingWriterVerifyingKey(), rmd.MdID(),
+		rmd.LocalTimestamp(), rmd.putToServer), nil
+}
+
 // getMergedMDUpdates returns a slice of all the merged MDs for a TLF,
 // starting from the given startRev.  The returned MDs are the same
 // instances that are stored in the MD cache, so they should be
@@ -237,30 +261,16 @@ func getMergedMDUpdates(ctx context.Context, config Config, id tlf.ID,
 				uid = session.UID
 			}
 
-			pmd, err := decryptMDPrivateData(
-				ctx, config.Codec(), config.Crypto(),
-				config.BlockCache(), config.BlockOps(),
-				config.KeyManager(), config.Mode(), uid,
-				rmd.GetSerializedPrivateMetadata(),
-				rmd, latestRmd, config.MakeLogger(""))
+			irmdCopy, err := MakeCopyWithDecryptedPrivateData(
+				ctx, config, rmd, latestRmd, uid)
 			if err != nil {
 				return nil, err
 			}
-
-			rmdCopy, err := rmd.deepCopy(config.Codec())
-			if err != nil {
-				return nil, err
-			}
-			rmdCopy.data = pmd
-
 			// Overwrite the cached copy with the new copy.  Unlike in
 			// `getMDRange`, it's safe to put this into the cache
 			// blindly, since updates coming from our local journal
 			// would always be readable, and thus not subject to this
 			// rewrite.
-			irmdCopy := MakeImmutableRootMetadata(rmdCopy,
-				rmd.LastModifyingWriterVerifyingKey(), rmd.MdID(),
-				rmd.LocalTimestamp(), rmd.putToServer)
 			if err := config.MDCache().Put(irmdCopy); err != nil {
 				return nil, err
 			}
