@@ -14,7 +14,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-var mdGetRegexp = regexp.MustCompile("^(.+?)(?::(.*?))?(?:\\^(.*?))?$")
+var mdGetRegexp = regexp.MustCompile("^(.+?)(?::(.*?))?(?:\\^(.*?)(?:-(.*?))?)?$")
 
 func parseTLFPath(ctx context.Context, kbpki libkbfs.KBPKI,
 	mdOps libkbfs.MDOps, tlfStr string) (*libkbfs.TlfHandle, error) {
