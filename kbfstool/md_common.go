@@ -78,8 +78,7 @@ func getRevision(ctx context.Context, config libkbfs.Config,
 		if branchID == kbfsmd.NullBranchID {
 			irmd, err := config.MDOps().GetForTLF(ctx, tlfID, nil)
 			if err != nil {
-				return kbfsmd.RevisionUninitialized,
-					err
+				return kbfsmd.RevisionUninitialized, err
 			}
 			return irmd.Revision(), nil
 		}
