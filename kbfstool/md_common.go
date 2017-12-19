@@ -38,6 +38,8 @@ func getTlfID(
 	tlfID, err := tlf.ParseID(tlfStr)
 	if err == nil {
 		return tlfID, nil
+	} else if _, ok := err.(tlf.InvalidIDError); !ok {
+		return tlf.ID{}, err
 	}
 
 	handle, err := parseTLFPath(ctx, config.KBPKI(), config.MDOps(), tlfStr)
