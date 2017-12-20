@@ -82,6 +82,11 @@ func mdDumpOne(ctx context.Context, config libkbfs.Config,
 		return err
 	}
 
+	// TODO: Ideally we'd fetch MDs concurrently with dumping
+	// them, but this works well enough for now.
+	//
+	// TODO: Make maxChunkSize configurable.
+
 	const maxChunkSize = 100
 
 	if start <= stop {
