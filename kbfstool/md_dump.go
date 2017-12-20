@@ -4,7 +4,9 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/libkbfs"
+	"github.com/keybase/kbfs/tlf"
 	"golang.org/x/net/context"
 )
 
@@ -29,6 +31,36 @@ func mdDumpImmutableRMD(ctx context.Context, config libkbfs.Config,
 
 	return mdDumpReadOnlyRMDWithReplacements(
 		ctx, config.Codec(), irmd.ReadOnly(), replacements)
+}
+
+func mdDumpChunk(ctx context.Context, config libkbfs.Config,
+	tlfID tlf.ID, branchID kbfsmd.BranchID,
+	start, stop kbfsmd.Revision) error {
+	min := start
+	max := stop
+	reversed := false
+	if start > stop {
+		min = stop
+		max = start
+		reversed = true
+	}
+
+	irmds, err := mdGet(ctx, config, tlfID, branchID, min, max)
+	if err != nil {
+		return err
+	}
+
+	if reversed {
+		irmds = reverseIRMDList(irmds)
+	}
+
+	for _, irmd := range irmds {
+		err = mdDumpImmutableRMD(ctx, config, irmd, replacements)
+		if err != nil {
+			return err
+		}
+		fmt.Print("\n")
+	}
 }
 
 const mdDumpUsageStr = `Usage:
@@ -101,36 +133,12 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 			return 1
 		}
 
-		min := start
-		max := stop
-		reversed := false
-		if start > stop {
-			min = stop
-			max = start
-			reversed = true
-		}
+		fmt.Printf("%d results for %q:\n\n", len(irmds), input)
 
-		// TODO: Chunk the range between start and stop.
-		irmds, err := mdGet(ctx, config, tlfID, branchID, min, max)
+		err := mdDumpChunk(ctx, config, tlfID, branchID, start, stop)
 		if err != nil {
 			printError("md dump", err)
 			return 1
-		}
-
-		if reversed {
-			irmds = reverseIRMDList(irmds)
-		}
-
-		fmt.Printf("%d results for %q:\n\n", len(irmds), input)
-
-		for _, irmd := range irmds {
-			err = mdDumpImmutableRMD(ctx, config, irmd, replacements)
-			if err != nil {
-				printError("md dump", err)
-				return 1
-			}
-
-			fmt.Print("\n")
 		}
 	}
 
