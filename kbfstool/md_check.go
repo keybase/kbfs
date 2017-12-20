@@ -224,6 +224,9 @@ func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (
 			return 1
 		}
 
+		// The returned RMDs are already verified, so we don't
+		// have to do anything else.
+		//
 		// TODO: Chunk the range between start and stop.
 		irmds, reversed, err :=
 			mdGet(ctx, config, tlfID, branchID, start, stop)
