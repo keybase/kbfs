@@ -41,14 +41,9 @@ func mdJoinInput(tlfStr, branchStr, startStr, stopStr string) string {
 	return s
 }
 
-func mdParseInput(ctx context.Context, config libkbfs.Config, input string) (
+func mdParseInput(ctx context.Context, config libkbfs.Config,
+	tlfStr, branchStr, startStr, stopStr string) (
 	tlfID tlf.ID, branchID kbfsmd.BranchID, start, stop kbfsmd.Revision, err error) {
-	tlfStr, branchStr, startStr, stopStr, err := mdSplitInput(input)
-	if err != nil {
-		return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
-			kbfsmd.RevisionUninitialized, fmt.Errorf("Could not parse %q", input)
-	}
-
 	tlfID, err = getTlfID(ctx, config, tlfStr)
 	if err != nil {
 		return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
