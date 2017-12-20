@@ -17,6 +17,9 @@ func mdDumpImmutableRMD(ctx context.Context, config libkbfs.Config,
 		printError("md dump", err)
 	}
 
+	fmt.Print("Immutable metadata\n")
+	fmt.Print("------------------\n")
+
 	fmt.Printf("MD ID: %s\n", irmd.MdID())
 	fmt.Printf("Local timestamp: %s\n", irmd.LocalTimestamp())
 	fmt.Printf("Last modifying writer verifying key: %s\n",

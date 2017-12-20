@@ -128,6 +128,9 @@ func mdDumpReadOnlyRMDWithReplacements(
 	c.DisableCapacities = true
 	c.SortKeys = true
 
+	fmt.Print("Root metadata\n")
+	fmt.Print("-------------\n")
+
 	brmdDump, err := kbfsmd.DumpRootMetadata(codec, rmd.GetBareRootMetadata())
 	if err != nil {
 		return err
