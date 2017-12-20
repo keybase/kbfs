@@ -101,11 +101,24 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 			return 1
 		}
 
+		min := start
+		max := stop
+		reversed := false
+		if start > stop {
+			min = stop
+			max = start
+			reversed = true
+		}
+
 		// TODO: Chunk the range between start and stop.
-		irmds, _, err := mdGet(ctx, config, tlfID, branchID, start, stop)
+		irmds, err := mdGet(ctx, config, tlfID, branchID, min, max)
 		if err != nil {
 			printError("md dump", err)
 			return 1
+		}
+
+		if reversed {
+			irmds = reverseIRMDList(irmds)
 		}
 
 		fmt.Printf("%d results for %q:\n\n", len(irmds), input)

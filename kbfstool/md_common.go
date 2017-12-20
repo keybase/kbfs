@@ -178,27 +178,19 @@ func reverseIRMDList(irmds []libkbfs.ImmutableRootMetadata) []libkbfs.ImmutableR
 
 func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
 	branchID kbfsmd.BranchID, start, stop kbfsmd.Revision) (
-	irmds []libkbfs.ImmutableRootMetadata, reversed bool, err error) {
-	min := start
-	max := stop
+	irmds []libkbfs.ImmutableRootMetadata, err error) {
 	if start > stop {
-		min = stop
-		max = start
-		reversed = true
+		panic("start unexpectedly greater than stop")
 	}
 
 	if branchID == kbfsmd.NullBranchID {
-		irmds, err = config.MDOps().GetRange(ctx, tlfID, min, max, nil)
+		irmds, err = config.MDOps().GetRange(ctx, tlfID, start, stop, nil)
 	} else {
 		irmds, err = config.MDOps().GetUnmergedRange(
-			ctx, tlfID, branchID, min, max)
+			ctx, tlfID, branchID, start, stop)
 	}
 	if err != nil {
-		return nil, false, err
-	}
-
-	if reversed {
-		irmds = reverseIRMDList(irmds)
+		return nil, err
 	}
 
 	var latestIRMD libkbfs.ImmutableRootMetadata
@@ -212,14 +204,14 @@ func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
 					latestIRMD, err = config.MDOps().GetUnmergedForTLF(ctx, tlfID, branchID)
 				}
 				if err != nil {
-					return nil, false, err
+					return nil, err
 				}
 			}
 
 			if uid == keybase1.UID("") {
 				session, err := config.KBPKI().GetCurrentSession(ctx)
 				if err != nil {
-					return nil, false, err
+					return nil, err
 				}
 				uid = session.UID
 			}
@@ -227,13 +219,13 @@ func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
 			irmdCopy, err := libkbfs.MakeCopyWithDecryptedPrivateData(
 				ctx, config, irmd, latestIRMD, uid)
 			if err != nil {
-				return nil, false, err
+				return nil, err
 			}
 			irmds[i] = irmdCopy
 		}
 	}
 
-	return irmds, reversed, nil
+	return irmds, nil
 }
 
 func mdGetMergedHeadForWriter(ctx context.Context, config libkbfs.Config,
