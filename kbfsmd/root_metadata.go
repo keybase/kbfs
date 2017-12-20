@@ -396,12 +396,11 @@ func DumpRootMetadata(
 	}
 
 	rmdCopy.SetSerializedPrivateMetadata(nil)
-	fmt.Printf("MD revision: %s\n", rmd.RevisionNumber())
 	s := fmt.Sprintf("MD revision: %s\n"+
 		"MD size: %d bytes\n"+
 		"Private MD size: %d bytes\n"+
 		"MD version: %s\n\n",
-		rmd.Version(),
+		rmd.RevisionNumber(),
 		len(serializedRMD),
 		len(rmd.GetSerializedPrivateMetadata()),
 		rmd.Version())
