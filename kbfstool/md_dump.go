@@ -197,7 +197,7 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 			return 1
 		}
 
-		fmt.Printf("%s results for %q:\n\n", len(irmds), input)
+		fmt.Printf("%d results for %q:\n\n", len(irmds), input)
 
 		for _, irmd := range irmds {
 			err = mdDumpImmutableRMD(ctx, config, irmd)
