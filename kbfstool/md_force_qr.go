@@ -35,7 +35,7 @@ func mdForceQROne(
 
 	fmt.Printf(
 		"Will put a forced QR op up to revision %d:\n", irmd.Revision())
-	err = mdDumpReadOnlyRMD(ctx, config, rmdNext.ReadOnly())
+	err = mdDumpReadOnlyRMD(ctx, "md forceQR", config, rmdNext.ReadOnly())
 	if err != nil {
 		return err
 	}

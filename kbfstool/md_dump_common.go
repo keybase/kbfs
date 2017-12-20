@@ -157,38 +157,13 @@ func mdDumpReadOnlyRMDWithReplacements(
 
 func mdDumpReadOnlyRMD(ctx context.Context, prefix string,
 	config libkbfs.Config, rmd libkbfs.ReadOnlyRootMetadata) error {
-	brmd := rmd.GetBareRootMetadata()
-	extra := rmd.Extra()
 	replacements, err := mdDumpGetReplacements(
 		ctx, prefix, config.Codec(), config.KeybaseService(),
-		brmd, extra)
+		rmd.GetBareRootMetadata(), rmd.Extra())
 	if err != nil {
 		printError(prefix, err)
 	}
 
-	brmdDump, err := kbfsmd.DumpRootMetadata(config.Codec(), brmd)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("%s\n", mdDumpReplaceAll(brmdDump, replacements))
-
-	fmt.Print("Extra metadata\n")
-	fmt.Print("--------------\n")
-	extraDump, err := kbfsmd.DumpExtraMetadata(config.Codec(), extra)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%s\n", mdDumpReplaceAll(extraDump, replacements))
-
-	fmt.Print("Private metadata\n")
-	fmt.Print("----------------\n")
-	pmdDump, err := libkbfs.DumpPrivateMetadata(
-		config.Codec(), rmd.GetSerializedPrivateMetadata(), *rmd.Data())
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%s", mdDumpReplaceAll(pmdDump, replacements))
-
-	return nil
+	return mdDumpReadOnlyRMDWithReplacements(
+		ctx, config.Codec(), rmd, replacements)
 }
