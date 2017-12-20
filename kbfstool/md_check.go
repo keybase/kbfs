@@ -109,13 +109,12 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 // the same root (which are assumed to all be adjacent), the most
 // recent one is returned.
 func mdCheckChain(ctx context.Context, config libkbfs.Config,
-	irmds []libkbfs.ImmutableRootMetadata, verbose bool) (
+	reversedIRMDs []libkbfs.ImmutableRootMetadata, verbose bool) (
 	irmdsWithRoots []libkbfs.ImmutableRootMetadata, err error) {
 	fmt.Printf("Checking chain from rev %d to %d...\n",
-		irmds[len(irmds)-1].Revision(), irmds[0].Revision())
+		reversedIRMDs[0].Revision(), reversedIRMDs[len(reversedIRMDs)-1].Revision())
 	gcUnrefs := make(map[libkbfs.BlockRef]bool)
-	for i := len(irmds) - 1; i >= 0; i-- {
-		irmd := irmds[i]
+	for i, irmd := range reversedIRMDs {
 		currRev := irmd.Revision()
 		data := irmd.Data()
 		rootPtr := data.Dir.BlockPointer
@@ -154,17 +153,12 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 			}
 		}
 
-		if i == 0 {
+		if i == len(reversedIRMDs)-1 {
 			break
 		}
 
-		predRev := currRev - 1
-
-		if verbose {
-			fmt.Printf("Fetching rev %d...\n", predRev)
-		}
-
-		irmdPrev := irmds[i-1]
+		irmdPrev := reversedIRMDs[i+1]
+		predRev := irmdPrev.Revision()
 
 		if verbose {
 			fmt.Printf("Checking %d -> %d link...\n",
@@ -183,9 +177,9 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 }
 
 func mdCheckOne(ctx context.Context, config libkbfs.Config,
-	input string, irmds []libkbfs.ImmutableRootMetadata,
+	input string, reversedIRMDs []libkbfs.ImmutableRootMetadata,
 	verbose bool) error {
-	irmdsWithRoots, _ := mdCheckChain(ctx, config, irmds, verbose)
+	irmdsWithRoots, _ := mdCheckChain(ctx, config, reversedIRMDs, verbose)
 
 	fmt.Printf("Retrieved %d MD objects with roots\n", len(irmdsWithRoots))
 
@@ -218,8 +212,6 @@ func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (
 	}
 
 	for _, input := range inputs {
-		// The returned RMD is already verified, so we don't
-		// have to do anything else.
 		irmds, reversed, err := mdParseAndGet(ctx, config, input)
 		if err != nil {
 			printError("md check", err)
@@ -231,11 +223,12 @@ func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (
 			continue
 		}
 
-		if reversed {
-			irmds = reverseIRMDList(irmds)
+		reversedIRMDs := irmds
+		if !reversed {
+			reversedIRMDs = reverseIRMDList(irmds)
 		}
 
-		err = mdCheckOne(ctx, config, input, irmds, *verbose)
+		err = mdCheckOne(ctx, config, input, reversedIRMDs, *verbose)
 		if err != nil {
 			printError("md check", err)
 			return 1
