@@ -27,6 +27,20 @@ func mdSplitInput(input string) (
 	return matches[1], matches[2], matches[3], matches[4], nil
 }
 
+func mdJoinInput(tlfStr, branchStr, startStr, stopStr string) string {
+	s := tlfStr
+	if branchStr != "" {
+		s += ":" + branchStr
+	}
+	if startStr != "" || stopStr != "" {
+		s += "^" + startStr
+		if stopStr != "" {
+			s += "-" + stopStr
+		}
+	}
+	return s
+}
+
 func mdParseInput(ctx context.Context, config libkbfs.Config, input string) (
 	tlfID tlf.ID, branchID kbfsmd.BranchID, start, stop kbfsmd.Revision, err error) {
 	tlfStr, branchStr, startStr, stopStr, err := mdSplitInput(input)
