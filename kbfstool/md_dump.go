@@ -23,7 +23,7 @@ func mdDumpImmutableRMD(ctx context.Context, config libkbfs.Config,
 
 	fmt.Printf("MD ID: %s\n", irmd.MdID())
 	fmt.Printf("Local timestamp: %s\n", irmd.LocalTimestamp())
-	fmt.Printf("Last modifying writer verifying key: %s\n",
+	fmt.Printf("Last modifying device (verifying key): %s\n",
 		mdDumpReplaceAll(irmd.LastModifyingWriterVerifyingKey().String(), replacements))
 	fmt.Print("\n")
 
