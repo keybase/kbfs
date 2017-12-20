@@ -34,8 +34,8 @@ func mdDumpImmutableRMD(ctx context.Context, config libkbfs.Config,
 }
 
 func mdDumpChunk(ctx context.Context, config libkbfs.Config,
-	tlfID tlf.ID, branchID kbfsmd.BranchID,
-	start, stop kbfsmd.Revision) error {
+	tlfStr, branchStr string, tlfID tlf.ID, branchID kbfsmd.BranchID,
+	start, stop kbfsmd.Revision, replacements map[string]string) error {
 	min := start
 	max := stop
 	reversed := false
@@ -54,6 +54,9 @@ func mdDumpChunk(ctx context.Context, config libkbfs.Config,
 		irmds = reverseIRMDList(irmds)
 	}
 
+	fmt.Printf("%d results for %q:\n\n", len(irmds),
+		mdJoinInput(tlfStr, branchStr, start.String(), stop.String()))
+
 	for _, irmd := range irmds {
 		err = mdDumpImmutableRMD(ctx, config, irmd, replacements)
 		if err != nil {
@@ -61,6 +64,28 @@ func mdDumpChunk(ctx context.Context, config libkbfs.Config,
 		}
 		fmt.Print("\n")
 	}
+
+	return nil
+}
+
+func mdDumpOne(ctx context.Context, config libkbfs.Config, input string, replacements map[string]string) error {
+	tlfStr, branchStr, startStr, stopStr, err := mdSplitInput(input)
+	if err != nil {
+		return err
+	}
+
+	tlfID, branchID, start, stop, err :=
+		mdParseInput(ctx, config, tlfStr, branchStr, startStr, stopStr)
+	if err != nil {
+		return err
+	}
+
+	err = mdDumpChunk(ctx, config, tlfStr, branchStr, tlfID, branchID, start, stop, replacements)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 const mdDumpUsageStr = `Usage:
@@ -120,22 +145,7 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 	replacements := make(map[string]string)
 
 	for _, input := range inputs {
-		tlfStr, branchStr, startStr, stopStr, err := mdSplitInput(input)
-		if err != nil {
-			printError("md dump", err)
-			return 1
-		}
-
-		tlfID, branchID, start, stop, err :=
-			mdParseInput(ctx, config, tlfStr, branchStr, startStr, stopStr)
-		if err != nil {
-			printError("md dump", err)
-			return 1
-		}
-
-		fmt.Printf("%d results for %q:\n\n", len(irmds), input)
-
-		err := mdDumpChunk(ctx, config, tlfID, branchID, start, stop)
+		err := mdDumpOne(ctx, config, input, replacements)
 		if err != nil {
 			printError("md dump", err)
 			return 1
