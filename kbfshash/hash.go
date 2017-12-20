@@ -6,12 +6,12 @@ package kbfshash
 
 import (
 	"crypto/hmac"
-	"crypto/sha256"
 	"encoding"
 	"encoding/hex"
 	"fmt"
 
 	"github.com/keybase/kbfs/cache"
+	sha256 "github.com/minio/sha256-simd"
 	"github.com/pkg/errors"
 )
 

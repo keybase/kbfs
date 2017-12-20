@@ -5,9 +5,12 @@
 package kbfshash
 
 import (
+	"crypto/sha256"
+	"math/rand"
 	"testing"
 
 	"github.com/keybase/kbfs/kbfscodec"
+	miniosha256 "github.com/minio/sha256-simd"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
@@ -225,4 +228,82 @@ func TestVerify(t *testing.T) {
 	corruptHMAC := hmacFromRawNoCheck(validHMAC.hashType(), hashData)
 	err = corruptHMAC.Verify(key, data)
 	require.IsType(t, HashMismatchError{}, errors.Cause(err))
+}
+
+var defaultHashBenchmarkResult [sha256.Size]byte
+
+func benchmarkGenerateRandomBytes(dataSize int, b *testing.B) []byte {
+	data := make([]byte, dataSize)
+	n, err := rand.Read(data)
+	if err != nil {
+		b.Errorf("Error reading from random: %+v", err)
+	}
+	if n != dataSize {
+		b.Errorf("Wrong size for random read. Expected: %d, actual: %d",
+			dataSize, n)
+	}
+	b.ResetTimer()
+	return data
+}
+
+func benchmarkCryptoSha256(dataSize int, b *testing.B) (s [sha256.Size]byte) {
+	data := benchmarkGenerateRandomBytes(dataSize, b)
+
+	for i := 0; i < b.N; i++ {
+		s1 := sha256.Sum256(data)
+		if s == s1 {
+			b.Errorf("Hashes are equal but they shouldn't be: %+v, %+v", s, s1)
+		}
+		s = s1
+		// rotate `data` to get a different hash each time
+		data = append(data[1:], data[:1]...)
+	}
+	return s
+}
+
+func benchmarkMinioSha256(dataSize int, b *testing.B) (s [sha256.Size]byte) {
+	data := benchmarkGenerateRandomBytes(dataSize, b)
+
+	for i := 0; i < b.N; i++ {
+		s1 := miniosha256.Sum256(data)
+		if s == s1 {
+			b.Errorf("Hashes are equal but they shouldn't be: %+v, %+v", s, s1)
+		}
+		s = s1
+		// rotate `data` to get a different hash each time
+		data = append(data[1:], data[:1]...)
+	}
+	return s
+}
+
+func BenchmarkCryptoSha1k(b *testing.B) {
+	defaultHashBenchmarkResult = benchmarkCryptoSha256(1<<10, b)
+}
+
+func BenchmarkCryptoSha8k(b *testing.B) {
+	defaultHashBenchmarkResult = benchmarkCryptoSha256(1<<13, b)
+}
+
+func BenchmarkCryptoSha64k(b *testing.B) {
+	defaultHashBenchmarkResult = benchmarkCryptoSha256(1<<16, b)
+}
+
+func BenchmarkCryptoSha512k(b *testing.B) {
+	defaultHashBenchmarkResult = benchmarkCryptoSha256(1<<19, b)
+}
+
+func BenchmarkMinioSha1k(b *testing.B) {
+	defaultHashBenchmarkResult = benchmarkMinioSha256(1<<10, b)
+}
+
+func BenchmarkMinioSha8k(b *testing.B) {
+	defaultHashBenchmarkResult = benchmarkMinioSha256(1<<13, b)
+}
+
+func BenchmarkMinioSha64k(b *testing.B) {
+	defaultHashBenchmarkResult = benchmarkMinioSha256(1<<16, b)
+}
+
+func BenchmarkMinioSha512k(b *testing.B) {
+	defaultHashBenchmarkResult = benchmarkMinioSha256(1<<19, b)
 }
