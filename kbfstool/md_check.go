@@ -117,28 +117,29 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 		minRevision, irmd.Revision())
 	gcUnrefs := make(map[libkbfs.BlockRef]bool)
 	for {
+		currRev := irmd.Revision()
 		rootPtr := irmd.Data().Dir.BlockPointer
 		if !rootPtr.Ref().IsValid() {
 			// This happens in the wild, but only for
 			// folders used for journal-related testing
 			// early on.
 			fmt.Printf("Skipping checking root for rev %d (is invalid)\n",
-				irmd.Revision())
+				currRev)
 		} else if gcUnrefs[rootPtr.Ref()] {
 			if verbose {
 				fmt.Printf("Skipping checking root for rev %d (GCed)\n",
-					irmd.Revision())
+					currRev)
 			}
 		} else {
 			fmt.Printf("Checking root for rev %d (%s)...\n",
-				irmd.Revision(), rootPtr.Ref())
+				currRev, rootPtr.Ref())
 			var dirBlock libkbfs.DirBlock
 			err := config.BlockOps().Get(
 				ctx, irmd, rootPtr, &dirBlock, libkbfs.NoCacheEntry)
 			if err != nil {
 				fmt.Printf("Got error while checking root "+
 					"for rev %d: %v\n",
-					irmd.Revision(), err)
+					currRev, err)
 			} else if len(irmdsWithRoots) == 0 ||
 				irmdsWithRoots[len(irmdsWithRoots)-1].Data().Dir.BlockPointer != rootPtr {
 				irmdsWithRoots = append(irmdsWithRoots, irmd)
@@ -153,39 +154,40 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 			}
 		}
 
-		if irmd.Revision() <= minRevision {
+		if currRev <= minRevision {
 			break
 		}
 
+		predRev := currRev - 1
+
 		if verbose {
-			fmt.Printf("Fetching rev %d...\n", irmd.Revision()-1)
+			fmt.Printf("Fetching rev %d...\n", predRev)
 		}
 
 		// TODO: Getting in chunks would be faster.
-		irmds, err := mdGet(ctx, config, irmd.TlfID(),
-			irmd.BID(), irmd.Revision()-1, irmd.Revision()-1)
+		irmdPrevArr, err := mdGet(ctx, config, irmd.TlfID(),
+			irmd.BID(), predRev, predRev)
 		if err != nil {
-			fmt.Printf("Got error while fetching rev %d: %v\n", irmd.Revision()-1, err)
+			fmt.Printf("Got error while fetching rev %d: %v\n", predRev, err)
 			break
 		}
 
-		// TODO: cleanup.
-		irmdPrev := irmds[0]
-
-		if irmdPrev == (libkbfs.ImmutableRootMetadata{}) {
-			fmt.Printf("Rev %d missing\n", irmd.Revision()-1)
+		if len(irmdPrevArr) == 0 {
+			fmt.Printf("Rev %d missing\n", predRev)
 			break
 		}
+
+		irmdPrev := irmdPrevArr[0]
 
 		if verbose {
 			fmt.Printf("Checking %d -> %d link...\n",
-				irmd.Revision()-1, irmd.Revision())
+				predRev, currRev)
 		}
 		err = irmdPrev.CheckValidSuccessor(
 			irmdPrev.MdID(), irmd.ReadOnly())
 		if err != nil {
 			fmt.Printf("Got error while checking %d -> %d link: %v\n",
-				irmd.Revision()-1, irmd.Revision(), err)
+				predRev, currRev, err)
 		}
 
 		irmd = irmdPrev
