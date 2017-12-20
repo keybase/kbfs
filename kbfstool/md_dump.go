@@ -28,6 +28,21 @@ func mdDumpGetDeviceStringForCryptPublicKey(k kbfscrypto.CryptPublicKey, ui libk
 	return fmt.Sprintf("%s (kid:%s)", deviceName, k), true
 }
 
+func mdDumpGetDeviceStringForVerifyingKey(k kbfscrypto.VerifyingKey, ui libkbfs.UserInfo) (
+	string, bool) {
+	deviceName, ok := ui.KIDNames[k.KID()]
+	if !ok {
+		return "", false
+	}
+
+	if revokedTime, ok := ui.RevokedVerifyingKeys[k]; ok {
+		return fmt.Sprintf("%s (revoked %s) (kid:%s)",
+			deviceName, revokedTime.Unix.Time(), k), true
+	}
+
+	return fmt.Sprintf("%s (kid:%s)", deviceName, k), true
+}
+
 func mdDumpGetReplacements(ctx context.Context, codec kbfscodec.Codec,
 	service libkbfs.KeybaseService, rmd kbfsmd.RootMetadata,
 	extra kbfsmd.ExtraMetadata) (map[string]string, error) {
@@ -65,6 +80,29 @@ func mdDumpGetReplacements(ctx context.Context, codec kbfscodec.Codec,
 				}
 
 				if deviceStr, ok := mdDumpGetDeviceStringForCryptPublicKey(k, ui); ok {
+					replacements[k.String()] = deviceStr
+				}
+			}
+
+			// The MD doesn't know about verifying keys,
+			// so just go through all of them.
+
+			for _, k := range ui.VerifyingKeys {
+				if _, ok := replacements[k.String()]; ok {
+					continue
+				}
+
+				if deviceStr, ok := mdDumpGetDeviceStringForVerifyingKey(k, ui); ok {
+					replacements[k.String()] = deviceStr
+				}
+			}
+
+			for k := range ui.RevokedVerifyingKeys {
+				if _, ok := replacements[k.String()]; ok {
+					continue
+				}
+
+				if deviceStr, ok := mdDumpGetDeviceStringForVerifyingKey(k, ui); ok {
 					replacements[k.String()] = deviceStr
 				}
 			}
