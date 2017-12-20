@@ -38,7 +38,7 @@ Each input must be in the following format:
 
   TLF
   TLF:Branch
-  TLF^Revisions
+  TLF^RevisionRange
   TLF:Branch^RevisionRange
 
 where TLF can be:
