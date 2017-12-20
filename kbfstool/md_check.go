@@ -177,7 +177,7 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 }
 
 func mdCheckOne(ctx context.Context, config libkbfs.Config,
-	input string, reversedIRMDs []libkbfs.ImmutableRootMetadata,
+	tlfStr, branchStr string, reversedIRMDs []libkbfs.ImmutableRootMetadata,
 	verbose bool) error {
 	reversedIRMDsWithRoots :=
 		mdCheckChain(ctx, config, reversedIRMDs, verbose)
@@ -185,12 +185,10 @@ func mdCheckOne(ctx context.Context, config libkbfs.Config,
 	fmt.Printf("Retrieved %d MD objects with roots\n", len(reversedIRMDsWithRoots))
 
 	for _, irmd := range reversedIRMDsWithRoots {
-		fmt.Printf("Checking revision %d...\n", irmd.Revision())
-
 		// No need to check the blocks for unembedded changes,
 		// since they're already checked upon retrieval.
-
-		_ = checkDirBlock(ctx, config, input, irmd,
+		name := mdJoinInput(tlfStr, branchStr, irmd.Revision().String(), "")
+		_ = checkDirBlock(ctx, config, name, irmd,
 			irmd.Data().Dir.BlockInfo, verbose)
 	}
 	return nil
@@ -244,7 +242,7 @@ func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (
 			reversedIRMDs = reverseIRMDList(irmds)
 		}
 
-		err = mdCheckOne(ctx, config, input, reversedIRMDs, *verbose)
+		err = mdCheckOne(ctx, config, tlfStr, branchStr, reversedIRMDs, *verbose)
 		if err != nil {
 			printError("md check", err)
 			return 1
