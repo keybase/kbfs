@@ -131,7 +131,7 @@ func mdDumpReplaceAll(s string, replacements map[string]string) string {
 
 func mdDumpReadOnlyRMDWithReplacements(
 	ctx context.Context, codec kbfscodec.Codec,
-	rmd libkbfs.ReadOnlyRootMetadata, replacements map[string]string) error {
+	replacements map[string]string, rmd libkbfs.ReadOnlyRootMetadata) error {
 	c := spew.NewDefaultConfig()
 	c.Indent = "  "
 	c.DisablePointerAddresses = true
@@ -169,8 +169,8 @@ func mdDumpReadOnlyRMDWithReplacements(
 }
 
 func mdDumpReadOnlyRMD(ctx context.Context, prefix string,
-	config libkbfs.Config, rmd libkbfs.ReadOnlyRootMetadata,
-	replacements map[string]string) error {
+	config libkbfs.Config, replacements map[string]string,
+	rmd libkbfs.ReadOnlyRootMetadata) error {
 	err := mdDumpFillReplacements(
 		ctx, prefix, config.Codec(), config.KeybaseService(),
 		rmd.GetBareRootMetadata(), rmd.Extra(), replacements)
@@ -179,5 +179,5 @@ func mdDumpReadOnlyRMD(ctx context.Context, prefix string,
 	}
 
 	return mdDumpReadOnlyRMDWithReplacements(
-		ctx, config.Codec(), rmd, replacements)
+		ctx, config.Codec(), replacements, rmd)
 }

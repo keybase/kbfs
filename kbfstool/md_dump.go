@@ -11,8 +11,8 @@ import (
 )
 
 func mdDumpImmutableRMD(ctx context.Context, config libkbfs.Config,
-	irmd libkbfs.ImmutableRootMetadata,
-	replacements map[string]string) error {
+	replacements map[string]string,
+	irmd libkbfs.ImmutableRootMetadata) error {
 	err := mdDumpFillReplacements(
 		ctx, "md dump", config.Codec(), config.KeybaseService(),
 		irmd.GetBareRootMetadata(), irmd.Extra(), replacements)
@@ -30,12 +30,13 @@ func mdDumpImmutableRMD(ctx context.Context, config libkbfs.Config,
 	fmt.Print("\n")
 
 	return mdDumpReadOnlyRMDWithReplacements(
-		ctx, config.Codec(), irmd.ReadOnly(), replacements)
+		ctx, config.Codec(), replacements, irmd.ReadOnly())
 }
 
 func mdDumpChunk(ctx context.Context, config libkbfs.Config,
-	tlfStr, branchStr string, tlfID tlf.ID, branchID kbfsmd.BranchID,
-	start, stop kbfsmd.Revision, replacements map[string]string) error {
+	replacements map[string]string, tlfStr, branchStr string,
+	tlfID tlf.ID, branchID kbfsmd.BranchID,
+	start, stop kbfsmd.Revision) error {
 	min := start
 	max := stop
 	reversed := false
@@ -58,7 +59,7 @@ func mdDumpChunk(ctx context.Context, config libkbfs.Config,
 		mdJoinInput(tlfStr, branchStr, start.String(), stop.String()))
 
 	for _, irmd := range irmds {
-		err = mdDumpImmutableRMD(ctx, config, irmd, replacements)
+		err = mdDumpImmutableRMD(ctx, config, replacements, irmd)
 		if err != nil {
 			return err
 		}
@@ -68,7 +69,8 @@ func mdDumpChunk(ctx context.Context, config libkbfs.Config,
 	return nil
 }
 
-func mdDumpOne(ctx context.Context, config libkbfs.Config, input string, replacements map[string]string) error {
+func mdDumpOne(ctx context.Context, config libkbfs.Config,
+	replacements map[string]string, input string) error {
 	tlfStr, branchStr, startStr, stopStr, err := mdSplitInput(input)
 	if err != nil {
 		return err
@@ -80,7 +82,7 @@ func mdDumpOne(ctx context.Context, config libkbfs.Config, input string, replace
 		return err
 	}
 
-	err = mdDumpChunk(ctx, config, tlfStr, branchStr, tlfID, branchID, start, stop, replacements)
+	err = mdDumpChunk(ctx, config, replacements, tlfStr, branchStr, tlfID, branchID, start, stop)
 	if err != nil {
 		return err
 	}
@@ -145,7 +147,7 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 	replacements := make(map[string]string)
 
 	for _, input := range inputs {
-		err := mdDumpOne(ctx, config, input, replacements)
+		err := mdDumpOne(ctx, config, replacements, input)
 		if err != nil {
 			printError("md dump", err)
 			return 1
