@@ -128,6 +128,10 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 func mdDumpImmutableRMD(ctx context.Context, config libkbfs.Config,
 	irmd libkbfs.ImmutableRootMetadata) error {
 	fmt.Printf("MD ID: %s\n", irmd.MdID())
+	fmt.Printf("Local timestamp: %s\n", irmd.LocalTimestamp())
+	// TODO: Make this human-readable.
+	fmt.Printf("Last modifying writer verifying key: %s\n",
+		irmd.LastModifyingWriterVerifyingKey())
 
 	return mdDumpReadOnlyRMD(ctx, config, irmd.ReadOnly())
 }
