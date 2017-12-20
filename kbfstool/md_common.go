@@ -112,14 +112,31 @@ func getRevision(ctx context.Context, config libkbfs.Config,
 func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
 	branchID kbfsmd.BranchID, start, stop kbfsmd.Revision) (
 	irmds []libkbfs.ImmutableRootMetadata, err error) {
+	min := start
+	max := stop
+	reversed := false
+	if start > stop {
+		min = stop
+		max = start
+		reversed = true
+	}
+
 	if branchID == kbfsmd.NullBranchID {
-		irmds, err = config.MDOps().GetRange(ctx, tlfID, start, stop, nil)
+		irmds, err = config.MDOps().GetRange(ctx, tlfID, min, max, nil)
 	} else {
 		irmds, err = config.MDOps().GetUnmergedRange(
-			ctx, tlfID, branchID, start, stop)
+			ctx, tlfID, branchID, min, max)
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	if reversed {
+		irmdsReversed := make([]libkbfs.ImmutableRootMetadata, len(irmds))
+		for i := range irmds {
+			irmdsReversed[i] = irmds[len(irmds)-1-i]
+		}
+		irmds = irmdsReversed
 	}
 
 	var latestIRMD libkbfs.ImmutableRootMetadata
@@ -190,10 +207,6 @@ func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	if start > stop {
-		return nil, fmt.Errorf("start=%s > stop=%s", start, stop)
 	}
 
 	return mdGet(ctx, config, tlfID, branchID, start, stop)
