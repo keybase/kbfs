@@ -124,8 +124,8 @@ func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
 
 	var latestIRMD libkbfs.ImmutableRootMetadata
 	var uid keybase1.UID
-	for i, rmd := range irmds {
-		if !rmd.IsReadable() {
+	for i, irmd := range irmds {
+		if !irmd.IsReadable() {
 			if latestIRMD == (libkbfs.ImmutableRootMetadata{}) {
 				if branchID == kbfsmd.NullBranchID {
 					latestIRMD, err = config.MDOps().GetForTLF(ctx, tlfID, nil)
@@ -146,7 +146,7 @@ func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
 			}
 
 			irmdCopy, err := libkbfs.MakeCopyWithDecryptedPrivateData(
-				ctx, config, rmd, latestIRMD, uid)
+				ctx, config, irmd, latestIRMD, uid)
 			if err != nil {
 				return nil, err
 			}
