@@ -182,30 +182,32 @@ func getSingleMD(ctx context.Context, config Config, id tlf.ID, bid kbfsmd.Branc
 	return rmds[0], nil
 }
 
-// MakeCopyWithDecryptedPrivateData makes a copy of the given rmd,
-// decrypting it with the given latest RMD.
+// MakeCopyWithDecryptedPrivateData makes a copy of the given IRMD,
+// decrypting it with the given IRMD with keys.
 func MakeCopyWithDecryptedPrivateData(
 	ctx context.Context, config Config,
-	rmd, latestRMD ImmutableRootMetadata, uid keybase1.UID) (
+	irmdToDecrypt, irmdWithKeys ImmutableRootMetadata, uid keybase1.UID) (
 	rmdDecrypted ImmutableRootMetadata, err error) {
 	pmd, err := decryptMDPrivateData(
 		ctx, config.Codec(), config.Crypto(),
 		config.BlockCache(), config.BlockOps(),
 		config.KeyManager(), config.Mode(), uid,
-		rmd.GetSerializedPrivateMetadata(),
-		rmd, latestRMD, config.MakeLogger(""))
+		irmdToDecrypt.GetSerializedPrivateMetadata(),
+		irmdToDecrypt, irmdWithKeys, config.MakeLogger(""))
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
 
-	rmdCopy, err := rmd.deepCopy(config.Codec())
+	rmdCopy, err := irmdToDecrypt.deepCopy(config.Codec())
 	if err != nil {
 		return ImmutableRootMetadata{}, err
 	}
 	rmdCopy.data = pmd
 	return MakeImmutableRootMetadata(rmdCopy,
-		rmd.LastModifyingWriterVerifyingKey(), rmd.MdID(),
-		rmd.LocalTimestamp(), rmd.putToServer), nil
+		irmdToDecrypt.LastModifyingWriterVerifyingKey(),
+		irmdToDecrypt.MdID(),
+		irmdToDecrypt.LocalTimestamp(),
+		irmdToDecrypt.putToServer), nil
 }
 
 // getMergedMDUpdates returns a slice of all the merged MDs for a TLF,
