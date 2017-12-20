@@ -192,6 +192,10 @@ func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
 		}
 	}
 
+	if start > stop {
+		return nil, fmt.Errorf("start=%s > stop=%s", start, stop)
+	}
+
 	return mdGet(ctx, config, tlfID, branchID, start, stop)
 }
 

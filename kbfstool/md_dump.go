@@ -139,8 +139,8 @@ Each input must be in the following format:
 
   TLF
   TLF:Branch
-  TLF^Revision
-  TLF:Branch^Revision
+  TLF^Revisions
+  TLF:Branch^RevisionRange
 
 where TLF can be:
 
@@ -157,7 +157,12 @@ Branch can be:
     the ID of the master branch "00000000000000000000000000000000", or
   - omitted, in which case it is treated as if it were the string "device";
 
-and Revision can be:
+and RevisionRange can be in the following format:
+
+  Revision
+  Revision-Revision
+
+where Revision can be:
 
   - a hex number prefixed with "0x",
   - a decimal number with no prefix,

@@ -230,6 +230,7 @@ func mdCheckOne(ctx context.Context, config libkbfs.Config,
 func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (
 	exitStatus int) {
 	flags := flag.NewFlagSet("kbfs md check", flag.ContinueOnError)
+	// TODO: Remove in favor of revision ranges.
 	mdLimit := flags.Int("fetch-limit", 100,
 		"Maximum number of MD objects to fetch (per argument).")
 	verbose := flags.Bool("v", false, "Print verbose output.")
