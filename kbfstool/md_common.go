@@ -15,7 +15,57 @@ import (
 	"golang.org/x/net/context"
 )
 
-var mdGetRegexp = regexp.MustCompile("^(.+?)(?::(.*?))?(?:\\^(.*?)(?:-(.*?))?)?$")
+var mdInputRegexp = regexp.MustCompile("^(.+?)(?::(.*?))?(?:\\^(.*?)(?:-(.*?))?)?$")
+
+func mdSplitInput(input string) (
+	tlfStr, branchStr, startStr, stopStr string, err error) {
+	matches := mdInputRegexp.FindStringSubmatch(input)
+	if matches == nil {
+		return "", "", "", "", fmt.Errorf("Could not parse %q", input)
+	}
+
+	return matches[1], matches[2], matches[3], matches[4], nil
+}
+
+func mdParseInput(ctx context.Context, config libkbfs.Config, input string) (
+	tlfID tlf.ID, branchID kbfsmd.BranchID, start, stop kbfsmd.Revision, err error) {
+	tlfStr, branchStr, startStr, stopStr, err := mdSplitInput(input)
+	if err != nil {
+		return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
+			kbfsmd.RevisionUninitialized, fmt.Errorf("Could not parse %q", input)
+	}
+
+	tlfID, err = getTlfID(ctx, config, tlfStr)
+	if err != nil {
+		return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
+			kbfsmd.RevisionUninitialized, err
+	}
+
+	branchID, err = getBranchID(ctx, config, tlfID, branchStr)
+	if err != nil {
+		return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
+			kbfsmd.RevisionUninitialized, err
+	}
+
+	start, err = getRevision(ctx, config, tlfID, branchID, startStr)
+	if err != nil {
+		return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
+			kbfsmd.RevisionUninitialized, err
+	}
+
+	// TODO: Chunk the range between start and stop.
+
+	stop = start
+	if stopStr != "" {
+		stop, err = getRevision(ctx, config, tlfID, branchID, stopStr)
+		if err != nil {
+			return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
+				kbfsmd.RevisionUninitialized, err
+		}
+	}
+
+	return tlfID, branchID, start, stop, nil
+}
 
 func parseTLFPath(ctx context.Context, kbpki libkbfs.KBPKI,
 	mdOps libkbfs.MDOps, tlfStr string) (*libkbfs.TlfHandle, error) {
@@ -175,51 +225,6 @@ func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
 	}
 
 	return irmds, reversed, nil
-}
-
-func mdParse(ctx context.Context, config libkbfs.Config, input string) (
-	tlfID tlf.ID, branchID kbfsmd.BranchID, start, stop kbfsmd.Revision, err error) {
-	matches := mdGetRegexp.FindStringSubmatch(input)
-	if matches == nil {
-		return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
-			kbfsmd.RevisionUninitialized, fmt.Errorf("Could not parse %q", input)
-	}
-
-	tlfStr := matches[1]
-	branchStr := matches[2]
-	startStr := matches[3]
-	stopStr := matches[4]
-
-	tlfID, err = getTlfID(ctx, config, tlfStr)
-	if err != nil {
-		return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
-			kbfsmd.RevisionUninitialized, err
-	}
-
-	branchID, err = getBranchID(ctx, config, tlfID, branchStr)
-	if err != nil {
-		return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
-			kbfsmd.RevisionUninitialized, err
-	}
-
-	start, err = getRevision(ctx, config, tlfID, branchID, startStr)
-	if err != nil {
-		return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
-			kbfsmd.RevisionUninitialized, err
-	}
-
-	// TODO: Chunk the range between start and stop.
-
-	stop = start
-	if stopStr != "" {
-		stop, err = getRevision(ctx, config, tlfID, branchID, stopStr)
-		if err != nil {
-			return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
-				kbfsmd.RevisionUninitialized, err
-		}
-	}
-
-	return tlfID, branchID, start, stop, nil
 }
 
 func mdGetMergedHeadForWriter(ctx context.Context, config libkbfs.Config,

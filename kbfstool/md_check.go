@@ -213,7 +213,8 @@ func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (
 	}
 
 	for _, input := range inputs {
-		tlfID, branchID, start, stop, err := mdParse(ctx, config, input)
+		tlfID, branchID, start, stop, err :=
+			mdParseInput(ctx, config, input)
 		if err != nil {
 			printError("md check", err)
 			return 1
