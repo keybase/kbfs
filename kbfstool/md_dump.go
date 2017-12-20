@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func mdDumpGetDeviceString(k kbfscrypto.CryptPublicKey, ui libkbfs.UserInfo) (
+func mdDumpGetDeviceStringForCryptPublicKey(k kbfscrypto.CryptPublicKey, ui libkbfs.UserInfo) (
 	string, bool) {
 	deviceName, ok := ui.KIDNames[k.KID()]
 	if !ok {
@@ -64,7 +64,7 @@ func mdDumpGetReplacements(ctx context.Context, codec kbfscodec.Codec,
 					continue
 				}
 
-				if deviceStr, ok := mdDumpGetDeviceString(k, ui); ok {
+				if deviceStr, ok := mdDumpGetDeviceStringForCryptPublicKey(k, ui); ok {
 					replacements[k.String()] = deviceStr
 				}
 			}
