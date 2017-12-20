@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/libkbfs"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -44,7 +44,7 @@ func getTlfID(
 	tlfID, err := tlf.ParseID(tlfStr)
 	if err == nil {
 		return tlfID, nil
-	} else if _, ok := err.(tlf.InvalidIDError); !ok {
+	} else if _, ok := errors.Cause(err).(tlf.InvalidIDError); !ok {
 		return tlf.ID{}, err
 	}
 
