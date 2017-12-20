@@ -159,7 +159,7 @@ func mdDumpReadOnlyRMDWithReplacements(
 	fmt.Print("Private metadata\n")
 	fmt.Print("----------------\n")
 	pmdDump, err := libkbfs.DumpPrivateMetadata(
-		codec, rmd.GetSerializedPrivateMetadata(), *rmd.Data())
+		codec, len(rmd.GetSerializedPrivateMetadata()), *rmd.Data())
 	if err != nil {
 		return err
 	}

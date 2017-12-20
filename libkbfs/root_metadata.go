@@ -46,8 +46,8 @@ type PrivateMetadata struct {
 // DumpPrivateMetadata returns a detailed dump of the given
 // PrivateMetadata's contents.
 func DumpPrivateMetadata(
-	codec kbfscodec.Codec, serializedPMD []byte, pmd PrivateMetadata) (string, error) {
-	s := fmt.Sprintf("Size: %d bytes\n", len(serializedPMD))
+	codec kbfscodec.Codec, serializedPMDLength int, pmd PrivateMetadata) (string, error) {
+	s := fmt.Sprintf("Size: %d bytes\n", serializedPMDLength)
 
 	eq, err := kbfscodec.Equal(codec, pmd, PrivateMetadata{})
 	if err != nil {
