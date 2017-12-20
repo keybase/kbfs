@@ -193,15 +193,9 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 			return 1
 		}
 
-		if len(irmds) == 0 {
-			fmt.Printf("No result found for %q\n\n", input)
-			continue
-		}
+		fmt.Printf("%s results for %q:\n\n", len(irmds), input)
 
-		// TODO: clean up.
 		for _, irmd := range irmds {
-			fmt.Printf("Result for %q:\n\n", input)
-
 			err = mdDumpImmutableRMD(ctx, config, irmd)
 			if err != nil {
 				printError("md dump", err)
