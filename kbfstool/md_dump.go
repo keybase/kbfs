@@ -82,9 +82,31 @@ func mdDumpOne(ctx context.Context, config libkbfs.Config,
 		return err
 	}
 
-	err = mdDumpChunk(ctx, config, replacements, tlfStr, branchStr, tlfID, branchID, start, stop)
-	if err != nil {
-		return err
+	const maxChunkSize = 100
+
+	if start <= stop {
+		for chunkStart := start; chunkStart <= stop; chunkStart += maxChunkSize {
+			chunkStop := chunkStart + maxChunkSize - 1
+			if chunkStop > stop {
+				chunkStop = stop
+			}
+			err = mdDumpChunk(ctx, config, replacements, tlfStr, branchStr, tlfID, branchID, chunkStart, chunkStop)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		for chunkStart := start; chunkStart >= stop; chunkStart -= maxChunkSize {
+			chunkStop := chunkStart - maxChunkSize + 1
+			if chunkStop < stop {
+				chunkStop = stop
+			}
+
+			err = mdDumpChunk(ctx, config, replacements, tlfStr, branchStr, tlfID, branchID, chunkStart, chunkStop)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
