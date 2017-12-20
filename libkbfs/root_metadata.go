@@ -43,6 +43,14 @@ type PrivateMetadata struct {
 	cachedChanges BlockChanges
 }
 
+type verboseOp struct {
+	op
+}
+
+func (o verboseOp) String() string {
+	return o.op.StringWithRefs(0)
+}
+
 // DumpPrivateMetadata returns a detailed dump of the given
 // PrivateMetadata's contents.
 func DumpPrivateMetadata(
@@ -57,7 +65,13 @@ func DumpPrivateMetadata(
 	if eq {
 		s += "<Undecryptable>\n"
 	} else {
-		s += kbfsmd.DumpConfig().Sdump(pmd)
+		var pmdCopy PrivateMetadata
+		kbfscodec.Update(codec, &pmdCopy, pmd)
+		ops := pmdCopy.Changes.Ops
+		for i, op := range ops {
+			ops[i] = verboseOp{op}
+		}
+		s += kbfsmd.DumpConfig().Sdump(pmdCopy)
 	}
 	return s, nil
 }
