@@ -109,12 +109,19 @@ func getRevision(ctx context.Context, config libkbfs.Config,
 	return kbfsmd.Revision(u), nil
 }
 
+func reverseIRMDList(irmds []libkbfs.ImmutableRootMetadata) []libkbfs.ImmutableRootMetadata {
+	irmdsReversed := make([]libkbfs.ImmutableRootMetadata, len(irmds))
+	for i := range irmds {
+		irmdsReversed[i] = irmds[len(irmds)-1-i]
+	}
+	return irmdsReversed
+}
+
 func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
 	branchID kbfsmd.BranchID, start, stop kbfsmd.Revision) (
-	irmds []libkbfs.ImmutableRootMetadata, err error) {
+	irmds []libkbfs.ImmutableRootMetadata, reversed bool, err error) {
 	min := start
 	max := stop
-	reversed := false
 	if start > stop {
 		min = stop
 		max = start
@@ -128,15 +135,11 @@ func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
 			ctx, tlfID, branchID, min, max)
 	}
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	if reversed {
-		irmdsReversed := make([]libkbfs.ImmutableRootMetadata, len(irmds))
-		for i := range irmds {
-			irmdsReversed[i] = irmds[len(irmds)-1-i]
-		}
-		irmds = irmdsReversed
+		irmds = reverseIRMDList(irmds)
 	}
 
 	var latestIRMD libkbfs.ImmutableRootMetadata
@@ -150,14 +153,14 @@ func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
 					latestIRMD, err = config.MDOps().GetUnmergedForTLF(ctx, tlfID, branchID)
 				}
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 			}
 
 			if uid == keybase1.UID("") {
 				session, err := config.KBPKI().GetCurrentSession(ctx)
 				if err != nil {
-					return nil, err
+					return nil, false, err
 				}
 				uid = session.UID
 			}
@@ -165,20 +168,20 @@ func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
 			irmdCopy, err := libkbfs.MakeCopyWithDecryptedPrivateData(
 				ctx, config, irmd, latestIRMD, uid)
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 			irmds[i] = irmdCopy
 		}
 	}
 
-	return irmds, nil
+	return irmds, reversed, nil
 }
 
 func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
-	[]libkbfs.ImmutableRootMetadata, error) {
+	irmds []libkbfs.ImmutableRootMetadata, reversed bool, err error) {
 	matches := mdGetRegexp.FindStringSubmatch(input)
 	if matches == nil {
-		return nil, fmt.Errorf("Could not parse %q", input)
+		return nil, false, fmt.Errorf("Could not parse %q", input)
 	}
 
 	tlfStr := matches[1]
@@ -188,17 +191,17 @@ func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
 
 	tlfID, err := getTlfID(ctx, config, tlfStr)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	branchID, err := getBranchID(ctx, config, tlfID, branchStr)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	start, err := getRevision(ctx, config, tlfID, branchID, startStr)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	// TODO: Chunk the range between start and stop.
@@ -207,7 +210,7 @@ func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
 	if stopStr != "" {
 		stop, err = getRevision(ctx, config, tlfID, branchID, stopStr)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 
