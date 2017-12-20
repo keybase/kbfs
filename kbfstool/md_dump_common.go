@@ -53,7 +53,10 @@ func mdDumpFillReplacements(ctx context.Context, prefix string,
 
 	for _, userKeys := range []kbfsmd.UserDevicePublicKeys{writers, readers} {
 		for u := range userKeys {
-			if _, ok := replacements[u.String()]; !ok {
+			// Make sure to only make one Resolve and one
+			// LoadUserPlusKeys call per user for a single
+			// replacements map.
+			if _, ok := replacements[u.String()]; ok {
 				continue
 			}
 
@@ -63,6 +66,8 @@ func mdDumpFillReplacements(ctx context.Context, prefix string,
 				replacements[u.String()] = fmt.Sprintf(
 					"%s (uid:%s)", username, u)
 			} else {
+				replacements[u.String()] = fmt.Sprintf(
+					"<unknown username> (uid:%s)", u)
 				printError(prefix, err)
 			}
 
