@@ -201,6 +201,8 @@ func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
 		return nil, err
 	}
 
+	// TODO: Chunk start and stop.
+
 	stop := start
 	if stopStr != "" {
 		stop, err = getRevision(ctx, config, tlfID, branchID, stopStr)
