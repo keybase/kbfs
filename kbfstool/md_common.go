@@ -177,11 +177,12 @@ func mdGet(ctx context.Context, config libkbfs.Config, tlfID tlf.ID,
 	return irmds, reversed, nil
 }
 
-func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
-	irmds []libkbfs.ImmutableRootMetadata, reversed bool, err error) {
+func mdParse(ctx context.Context, config libkbfs.Config, input string) (
+	tlfID tlf.ID, branchID kbfsmd.BranchID, start, stop kbfsmd.Revision, err error) {
 	matches := mdGetRegexp.FindStringSubmatch(input)
 	if matches == nil {
-		return nil, false, fmt.Errorf("Could not parse %q", input)
+		return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
+			kbfsmd.RevisionUninitialized, fmt.Errorf("Could not parse %q", input)
 	}
 
 	tlfStr := matches[1]
@@ -189,32 +190,36 @@ func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
 	startStr := matches[3]
 	stopStr := matches[4]
 
-	tlfID, err := getTlfID(ctx, config, tlfStr)
+	tlfID, err = getTlfID(ctx, config, tlfStr)
 	if err != nil {
-		return nil, false, err
+		return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
+			kbfsmd.RevisionUninitialized, err
 	}
 
-	branchID, err := getBranchID(ctx, config, tlfID, branchStr)
+	branchID, err = getBranchID(ctx, config, tlfID, branchStr)
 	if err != nil {
-		return nil, false, err
+		return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
+			kbfsmd.RevisionUninitialized, err
 	}
 
-	start, err := getRevision(ctx, config, tlfID, branchID, startStr)
+	start, err = getRevision(ctx, config, tlfID, branchID, startStr)
 	if err != nil {
-		return nil, false, err
+		return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
+			kbfsmd.RevisionUninitialized, err
 	}
 
 	// TODO: Chunk the range between start and stop.
 
-	stop := start
+	stop = start
 	if stopStr != "" {
 		stop, err = getRevision(ctx, config, tlfID, branchID, stopStr)
 		if err != nil {
-			return nil, false, err
+			return tlf.ID{}, kbfsmd.BranchID{}, kbfsmd.RevisionUninitialized,
+				kbfsmd.RevisionUninitialized, err
 		}
 	}
 
-	return mdGet(ctx, config, tlfID, branchID, start, stop)
+	return tlfID, branchID, start, stop, nil
 }
 
 func mdGetMergedHeadForWriter(ctx context.Context, config libkbfs.Config,

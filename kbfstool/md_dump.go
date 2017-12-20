@@ -88,7 +88,14 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 	replacements := make(map[string]string)
 
 	for _, input := range inputs {
-		irmds, _, err := mdParseAndGet(ctx, config, input)
+		tlfID, branchID, start, stop, err := mdParse(ctx, config, input)
+		if err != nil {
+			printError("md dump", err)
+			return 1
+		}
+
+		// TODO: Chunk the range between start and stop.
+		irmds, _, err := mdGet(ctx, config, tlfID, branchID, start, stop)
 		if err != nil {
 			printError("md dump", err)
 			return 1

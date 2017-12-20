@@ -213,7 +213,15 @@ func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (
 	}
 
 	for _, input := range inputs {
-		irmds, reversed, err := mdParseAndGet(ctx, config, input)
+		tlfID, branchID, start, stop, err := mdParse(ctx, config, input)
+		if err != nil {
+			printError("md check", err)
+			return 1
+		}
+
+		// TODO: Chunk the range between start and stop.
+		irmds, reversed, err :=
+			mdGet(ctx, config, tlfID, branchID, start, stop)
 		if err != nil {
 			printError("md check", err)
 			return 1
