@@ -201,7 +201,7 @@ func mdParseAndGet(ctx context.Context, config libkbfs.Config, input string) (
 		return nil, err
 	}
 
-	// TODO: Chunk start and stop.
+	// TODO: Chunk the range between start and stop.
 
 	stop := start
 	if stopStr != "" {
