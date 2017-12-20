@@ -11,7 +11,7 @@ import (
 
 func mdForceQROne(
 	ctx context.Context, config libkbfs.Config, tlfPath string,
-	dryRun bool) error {
+	replacements map[string]string, dryRun bool) error {
 	// Get the latest head, and add a QR record up to that point.
 	irmd, err := mdGetMergedHeadForWriter(ctx, config, tlfPath)
 	if err != nil {
@@ -35,7 +35,7 @@ func mdForceQROne(
 
 	fmt.Printf(
 		"Will put a forced QR op up to revision %d:\n", irmd.Revision())
-	err = mdDumpReadOnlyRMD(ctx, "md forceQR", config, rmdNext.ReadOnly())
+	err = mdDumpReadOnlyRMD(ctx, "md forceQR", config, rmdNext.ReadOnly(), replacements)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,9 @@ func mdForceQR(ctx context.Context, config libkbfs.Config,
 		return 1
 	}
 
-	err = mdForceQROne(ctx, config, inputs[0], *dryRun)
+	replacements := make(map[string]string)
+
+	err = mdForceQROne(ctx, config, inputs[0], replacements, *dryRun)
 	if err != nil {
 		printError("md forceQR", err)
 		return 1

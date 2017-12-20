@@ -42,21 +42,18 @@ func mdDumpGetDeviceStringForVerifyingKey(k kbfscrypto.VerifyingKey, ui libkbfs.
 	return fmt.Sprintf("%s (kid:%s)", deviceName, k), true
 }
 
-func mdDumpGetReplacements(ctx context.Context, prefix string,
+func mdDumpFillReplacements(ctx context.Context, prefix string,
 	codec kbfscodec.Codec, service libkbfs.KeybaseService,
-	rmd kbfsmd.RootMetadata, extra kbfsmd.ExtraMetadata) (
-	map[string]string, error) {
+	rmd kbfsmd.RootMetadata, extra kbfsmd.ExtraMetadata,
+	replacements map[string]string) error {
 	writers, readers, err := rmd.GetUserDevicePublicKeys(extra)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// TODO: Add caching for the service calls.
-
-	replacements := make(map[string]string)
 	for _, userKeys := range []kbfsmd.UserDevicePublicKeys{writers, readers} {
-		for u, deviceKeys := range userKeys {
-			if _, ok := replacements[u.String()]; ok {
+		for u := range userKeys {
+			if _, ok := replacements[u.String()]; !ok {
 				continue
 			}
 
@@ -71,10 +68,11 @@ func mdDumpGetReplacements(ctx context.Context, prefix string,
 
 			ui, err := service.LoadUserPlusKeys(ctx, u, "")
 			if err != nil {
+				printError(prefix, err)
 				continue
 			}
 
-			for k := range deviceKeys {
+			for _, k := range ui.CryptPublicKeys {
 				if _, ok := replacements[k.String()]; ok {
 					continue
 				}
@@ -84,8 +82,15 @@ func mdDumpGetReplacements(ctx context.Context, prefix string,
 				}
 			}
 
-			// The MD doesn't know about verifying keys,
-			// so just go through all of them.
+			for k := range ui.RevokedCryptPublicKeys {
+				if _, ok := replacements[k.String()]; ok {
+					continue
+				}
+
+				if deviceStr, ok := mdDumpGetDeviceStringForCryptPublicKey(k, ui); ok {
+					replacements[k.String()] = deviceStr
+				}
+			}
 
 			for _, k := range ui.VerifyingKeys {
 				if _, ok := replacements[k.String()]; ok {
@@ -109,7 +114,7 @@ func mdDumpGetReplacements(ctx context.Context, prefix string,
 		}
 	}
 
-	return replacements, nil
+	return nil
 }
 
 func mdDumpReplaceAll(s string, replacements map[string]string) string {
@@ -159,10 +164,11 @@ func mdDumpReadOnlyRMDWithReplacements(
 }
 
 func mdDumpReadOnlyRMD(ctx context.Context, prefix string,
-	config libkbfs.Config, rmd libkbfs.ReadOnlyRootMetadata) error {
-	replacements, err := mdDumpGetReplacements(
+	config libkbfs.Config, rmd libkbfs.ReadOnlyRootMetadata,
+	replacements map[string]string) error {
+	err := mdDumpFillReplacements(
 		ctx, prefix, config.Codec(), config.KeybaseService(),
-		rmd.GetBareRootMetadata(), rmd.Extra())
+		rmd.GetBareRootMetadata(), rmd.Extra(), replacements)
 	if err != nil {
 		printError(prefix, err)
 	}

@@ -9,10 +9,11 @@ import (
 )
 
 func mdDumpImmutableRMD(ctx context.Context, config libkbfs.Config,
-	irmd libkbfs.ImmutableRootMetadata) error {
-	replacements, err := mdDumpGetReplacements(
+	irmd libkbfs.ImmutableRootMetadata,
+	replacements map[string]string) error {
+	err := mdDumpFillReplacements(
 		ctx, "md dump", config.Codec(), config.KeybaseService(),
-		irmd.GetBareRootMetadata(), irmd.Extra())
+		irmd.GetBareRootMetadata(), irmd.Extra(), replacements)
 	if err != nil {
 		printError("md dump", err)
 	}
@@ -84,6 +85,8 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 		return 1
 	}
 
+	replacements := make(map[string]string)
+
 	for _, input := range inputs {
 		irmds, err := mdParseAndGet(ctx, config, input)
 		if err != nil {
@@ -94,7 +97,7 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 		fmt.Printf("%d results for %q:\n\n", len(irmds), input)
 
 		for _, irmd := range irmds {
-			err = mdDumpImmutableRMD(ctx, config, irmd)
+			err = mdDumpImmutableRMD(ctx, config, irmd, replacements)
 			if err != nil {
 				printError("md dump", err)
 				return 1
