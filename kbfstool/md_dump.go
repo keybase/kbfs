@@ -126,10 +126,10 @@ func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
 }
 
 func mdDumpImmutableRMD(ctx context.Context, config libkbfs.Config,
-	rmd libkbfs.ImmutableRootMetadata) error {
-	fmt.Printf("MD ID: %s\n", rmd.MdID())
+	irmd libkbfs.ImmutableRootMetadata) error {
+	fmt.Printf("MD ID: %s\n", irmd.MdID())
 
-	return mdDumpReadOnlyRMD(ctx, config, rmd.ReadOnly())
+	return mdDumpReadOnlyRMD(ctx, config, irmd.ReadOnly())
 }
 
 const mdDumpUsageStr = `Usage:
