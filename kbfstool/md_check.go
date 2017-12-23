@@ -176,7 +176,7 @@ func mdCheckChain(ctx context.Context, config libkbfs.Config,
 	return reversedIRMDsWithRoots
 }
 
-func mdCheckOne(ctx context.Context, config libkbfs.Config,
+func mdCheckIRMDs(ctx context.Context, config libkbfs.Config,
 	tlfStr, branchStr string, reversedIRMDs []libkbfs.ImmutableRootMetadata,
 	verbose bool) error {
 	reversedIRMDsWithRoots :=
@@ -247,7 +247,7 @@ func mdCheck(ctx context.Context, config libkbfs.Config, args []string) (
 		}
 
 		reversedIRMDs := reverseIRMDList(irmds)
-		err = mdCheckOne(ctx, config, tlfStr, branchStr, reversedIRMDs, *verbose)
+		err = mdCheckIRMDs(ctx, config, tlfStr, branchStr, reversedIRMDs, *verbose)
 		if err != nil {
 			printError("md check", err)
 			return 1
