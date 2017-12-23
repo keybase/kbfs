@@ -14,7 +14,7 @@ import (
 
 func mdResetOne(
 	ctx context.Context, config libkbfs.Config, tlfPath string,
-	replacements map[string]string, checkValid, dryRun, force bool) error {
+	replacements replacementMap, checkValid, dryRun, force bool) error {
 	irmd, err := mdGetMergedHeadForWriter(ctx, config, tlfPath)
 	if err != nil {
 		return err
@@ -137,7 +137,7 @@ func mdReset(ctx context.Context, config libkbfs.Config, args []string) (exitSta
 		return 1
 	}
 
-	replacements := make(map[string]string)
+	replacements := make(replacementMap)
 
 	err = mdResetOne(ctx, config, inputs[0], replacements, *checkValid, *dryRun, *force)
 	if err != nil {

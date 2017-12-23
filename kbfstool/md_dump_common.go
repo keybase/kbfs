@@ -12,6 +12,13 @@ import (
 	"golang.org/x/net/context"
 )
 
+// replacementMap is a map from a string to its replacement, intended
+// to provide human-readable strings to UIDs and KIDs. It is usually
+// created once per invocation and plumbed through everything that
+// uses it, filling it on-demand so as to avoid needless calls to the
+// service.
+type replacementMap map[string]string
+
 func mdDumpGetDeviceStringForCryptPublicKey(k kbfscrypto.CryptPublicKey, ui libkbfs.UserInfo) (
 	string, bool) {
 	deviceName, ok := ui.KIDNames[k.KID()]
@@ -45,7 +52,7 @@ func mdDumpGetDeviceStringForVerifyingKey(k kbfscrypto.VerifyingKey, ui libkbfs.
 func mdDumpFillReplacements(ctx context.Context, codec kbfscodec.Codec,
 	service libkbfs.KeybaseService, prefix string,
 	rmd kbfsmd.RootMetadata, extra kbfsmd.ExtraMetadata,
-	replacements map[string]string) error {
+	replacements replacementMap) error {
 	writers, readers, err := rmd.GetUserDevicePublicKeys(extra)
 	if err != nil {
 		return err
@@ -122,7 +129,7 @@ func mdDumpFillReplacements(ctx context.Context, codec kbfscodec.Codec,
 	return nil
 }
 
-func mdDumpReplaceAll(s string, replacements map[string]string) string {
+func mdDumpReplaceAll(s string, replacements replacementMap) string {
 	for old, new := range replacements {
 		s = strings.Replace(s, old, new, -1)
 	}
@@ -131,7 +138,7 @@ func mdDumpReplaceAll(s string, replacements map[string]string) string {
 
 func mdDumpReadOnlyRMDWithReplacements(
 	ctx context.Context, codec kbfscodec.Codec,
-	replacements map[string]string, rmd libkbfs.ReadOnlyRootMetadata) error {
+	replacements replacementMap, rmd libkbfs.ReadOnlyRootMetadata) error {
 	c := spew.NewDefaultConfig()
 	c.Indent = "  "
 	c.DisablePointerAddresses = true
@@ -170,7 +177,7 @@ func mdDumpReadOnlyRMDWithReplacements(
 }
 
 func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
-	prefix string, replacements map[string]string,
+	prefix string, replacements replacementMap,
 	rmd libkbfs.ReadOnlyRootMetadata) error {
 	err := mdDumpFillReplacements(
 		ctx, config.Codec(), config.KeybaseService(),
