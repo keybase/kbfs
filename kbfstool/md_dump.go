@@ -69,7 +69,7 @@ func mdDumpChunk(ctx context.Context, config libkbfs.Config,
 	return nil
 }
 
-func mdDumpOne(ctx context.Context, config libkbfs.Config,
+func mdDumpInput(ctx context.Context, config libkbfs.Config,
 	replacements map[string]string, input string) error {
 	tlfStr, branchStr, startStr, stopStr, err := mdSplitInput(input)
 	if err != nil {
@@ -174,7 +174,7 @@ func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStat
 	replacements := make(map[string]string)
 
 	for _, input := range inputs {
-		err := mdDumpOne(ctx, config, replacements, input)
+		err := mdDumpInput(ctx, config, replacements, input)
 		if err != nil {
 			printError("md dump", err)
 			return 1
