@@ -42,8 +42,8 @@ func mdDumpGetDeviceStringForVerifyingKey(k kbfscrypto.VerifyingKey, ui libkbfs.
 	return fmt.Sprintf("%s (kid:%s)", deviceName, k), true
 }
 
-func mdDumpFillReplacements(ctx context.Context, prefix string,
-	codec kbfscodec.Codec, service libkbfs.KeybaseService,
+func mdDumpFillReplacements(ctx context.Context, codec kbfscodec.Codec,
+	service libkbfs.KeybaseService, prefix string,
 	rmd kbfsmd.RootMetadata, extra kbfsmd.ExtraMetadata,
 	replacements map[string]string) error {
 	writers, readers, err := rmd.GetUserDevicePublicKeys(extra)
@@ -169,12 +169,12 @@ func mdDumpReadOnlyRMDWithReplacements(
 	return nil
 }
 
-func mdDumpReadOnlyRMD(ctx context.Context, prefix string,
-	config libkbfs.Config, replacements map[string]string,
+func mdDumpReadOnlyRMD(ctx context.Context, config libkbfs.Config,
+	prefix string, replacements map[string]string,
 	rmd libkbfs.ReadOnlyRootMetadata) error {
 	err := mdDumpFillReplacements(
-		ctx, prefix, config.Codec(), config.KeybaseService(),
-		rmd.GetBareRootMetadata(), rmd.Extra(), replacements)
+		ctx, config.Codec(), config.KeybaseService(),
+		prefix, rmd.GetBareRootMetadata(), rmd.Extra(), replacements)
 	if err != nil {
 		printError(prefix, err)
 	}
