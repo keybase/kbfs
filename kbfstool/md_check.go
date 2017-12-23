@@ -101,9 +101,9 @@ func checkFileBlock(ctx context.Context, config libkbfs.Config,
 	return nil
 }
 
-// mdCheckChain checks that the every MD object in the given list is a
-// valid successor of the next object in the list. Along the way,
-// it also checks that the root blocks that haven't been
+// mdCheckChain checks that every MD object in the given list is a
+// valid successor of the next object in the list. Along the way, it
+// also checks that the root blocks that haven't been
 // garbage-collected are present. It returns a list of MD objects with
 // valid roots, in reverse revision order. If multiple MD objects have
 // the same root (which are assumed to all be adjacent), the most
