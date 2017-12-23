@@ -163,6 +163,7 @@ func mdDumpReadOnlyRMDWithReplacements(
 	if err != nil {
 		return err
 	}
+	// Let the caller provide a trailing newline (if desired).
 	fmt.Printf("%s", mdDumpReplaceAll(pmdDump, replacements))
 
 	return nil
