@@ -129,8 +129,8 @@ Each input must be in the following format:
 
 where TLF can be:
 
-  - a TLF ID string (32 hex digits),
-  - or a keybase TLF path (e.g., "/keybase/public/user1,user2", or
+  - a TLF ID string (32 hex digits), or
+  - a keybase TLF path (e.g., "/keybase/public/user1,user2", or
     "/keybase/private/user1,assertion2");
 
 Branch can be:
@@ -155,6 +155,10 @@ where Revision can be:
     branch, or
   - omitted, in which case it is treated as if it were the string "latest".
 
+If a single revision "rev" is specified, it's treated as if the range
+"rev-rev" was specified. If a range "rev1-rev2" is specified, then the
+revisions are dumped in ascending order if rev1 <= rev2, and descending
+order if rev1 > rev2.
 `
 
 func mdDump(ctx context.Context, config libkbfs.Config, args []string) (exitStatus int) {
