@@ -12,7 +12,9 @@ import (
 const mdCheckUsageStr = `Usage:
   kbfstool md check input [inputs...]
 
-Each input must be in the same format as in md dump.
+Each input must be in the same format as in md dump. However,
+revisions in a revision range rev1-rev2 are always checked in
+descending order, regardless of whether rev1 <= rev2 or rev1 > rev2.
 
 `
 
