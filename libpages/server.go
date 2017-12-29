@@ -271,9 +271,25 @@ const (
 	gracefulShutdownTimeout = 16 * time.Second
 	httpReadHeaderTimeout   = 8 * time.Second
 	httpIdleTimeout         = 1 * time.Minute
-	stagingDiskCacheName    = "./kbp-cert-cache-dev"
+	stagingDiskCacheName    = "./kbp-cert-cache-staging"
 	prodDiskCacheName       = "./kbp-cert-cache"
 )
+
+func redirectHandlerFunc(w http.ResponseWriter, req *http.Request) {
+	http.Redirect(w, req, "https://"+req.Host+req.URL.RequestURI(),
+		// Using 307 (Temporary Redirect) here, 1) instead of 302 to require
+		// same method to be used; and 2) instead of 308/301 to avoid pollute
+		// visitors' browser cache in case kbp user wants to use the domain in
+		// a way that needs HTTP not to be redirected to HTTPS.
+		http.StatusTemporaryRedirect)
+}
+
+func listenAndServeHTTPRedirect(logger *zap.Logger) {
+	err := http.ListenAndServe(":80", http.HandlerFunc(redirectHandlerFunc))
+	if err != nil {
+		logger.Error("http.ListenAndServe:80", zap.Error(err))
+	}
+}
 
 // ListenAndServe listens on 443 and 80 ports of all addresses, and serve
 // Keybase Pages based on config and kbfsConfig. HTTPs setup is handled with
@@ -291,10 +307,6 @@ func ListenAndServe(ctx context.Context,
 		config:     config,
 		kbfsConfig: kbfsConfig,
 		siteCache:  siteCache,
-	}
-
-	if config.AutoDirectHTTP {
-		// TODO
 	}
 
 	manager := autocert.Manager{
@@ -334,6 +346,10 @@ func ListenAndServe(ctx context.Context,
 		defer cancel()
 		httpServer.Shutdown(shutdownCtx)
 	}()
+
+	if config.AutoDirectHTTP {
+		go listenAndServeHTTPRedirect(config.Logger)
+	}
 
 	return httpServer.Serve(manager.Listener())
 }
