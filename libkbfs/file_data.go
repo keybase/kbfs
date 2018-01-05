@@ -1082,12 +1082,16 @@ func (fd *fileData) write(ctx context.Context, data []byte, off int64,
 	oldSizeWithoutHoles := oldDe.Size
 	newDe = oldDe
 
-	fd.log.CDebugf(ctx, "Writing %d bytes at off %d", n, off)
+	fd.log.CDebugf(ctx, "ooo Writing %d bytes at off %d", n, off)
+	fd.log.CDebugf(ctx, "ooo topBlock=%#v oldDe=%#v df=%#v", topBlock, oldDe, df)
 
 	dirtyMap := make(map[BlockPointer]bool)
 	for nCopied < n {
+		fd.log.CDebugf(ctx, "ooo loop at %d of %d", nCopied, n)
 		ptr, parentBlocks, block, nextBlockOff, startOff, wasDirty, err :=
 			fd.getFileBlockAtOffset(ctx, topBlock, off+nCopied, blockWrite)
+		fd.log.CDebugf(ctx, "ooo getFileBlockAtOffset() -> (ptr=%#v, parentBlocks=%#v, block=%#v, nextBlockOff=%#v, startOff=%#v, wasDirty=%#v, err=%#v)",
+			ptr, parentBlocks, block, nextBlockOff, startOff, wasDirty, err)
 		if err != nil {
 			return newDe, nil, unrefs, newlyDirtiedChildBytes, 0, err
 		}
@@ -1103,6 +1107,7 @@ func (fd *fileData) write(ctx context.Context, data []byte, off int64,
 			}
 		}
 		oldNCopied := nCopied
+		fd.log.CDebugf(ctx, "ooo len(data)=%d [nCopied=%d, max=%d]", len(data), nCopied, max)
 		nCopied += fd.bsplit.CopyUntilSplit(
 			block, nextBlockOff < 0, data[nCopied:max], off+nCopied-startOff)
 
@@ -1222,6 +1227,7 @@ func (fd *fileData) write(ctx context.Context, data []byte, off int64,
 		}
 		dirtyMap[ptr] = true
 	}
+	fd.log.CDebugf(ctx, "ooo loop done")
 
 	// Always make the top block dirty, so we will sync any indirect
 	// blocks.  This has the added benefit of ensuring that any write
