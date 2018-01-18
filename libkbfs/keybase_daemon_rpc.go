@@ -6,6 +6,7 @@ package libkbfs
 
 import (
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/keybase/client/go/libkb"
@@ -402,6 +403,10 @@ func (k *KeybaseDaemonRPC) Shutdown() {
 	}
 	if k.keepAliveCancel != nil {
 		k.keepAliveCancel()
+	}
+	k.log.Warning("Keybase service shutdown")
+	if runtime.GOOS == "windows" {
+		os.Exit(0)
 	}
 }
 
