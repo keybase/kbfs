@@ -83,7 +83,7 @@ func NewKeybaseDaemonRPC(config Config, kbCtx Context, log logger.Logger,
 		k.keepAliveCancel = cancel
 		go k.keepAliveLoop(ctx)
 	}
-	k.notifyService = NewNotifyServiceHandler(config, log)
+	k.notifyService = newNotifyServiceHandler(config, log)
 
 	return k
 }
@@ -422,12 +422,13 @@ func (k *KeybaseDaemonRPC) TeamExit(context.Context, keybase1.TeamID) error {
 	return nil
 }
 
-type NotifyServiceHandler struct {
+// notifyServiceHandler implements keybase1.NotifyServiceInterface
+type notifyServiceHandler struct {
 	config Config
 	log    logger.Logger
 }
 
-func (s NotifyServiceHandler) Shutdown(_ context.Context) error {
+func (s notifyServiceHandler) Shutdown(_ context.Context) error {
 	s.log.Warning("NotifyService: Shutdown")
 	if runtime.GOOS == "windows" {
 		os.Exit(0)
@@ -435,8 +436,8 @@ func (s NotifyServiceHandler) Shutdown(_ context.Context) error {
 	return nil
 }
 
-// NewNotifyServiceHandler makes a new NotifyServiceHandler
-func NewNotifyServiceHandler(config Config, log logger.Logger) keybase1.NotifyServiceInterface {
-	s := NotifyServiceHandler{config: config, log: log}
+// newNotifyServiceHandler makes a new NotifyServiceHandler
+func newNotifyServiceHandler(config Config, log logger.Logger) keybase1.NotifyServiceInterface {
+	s := notifyServiceHandler{config: config, log: log}
 	return s
 }
