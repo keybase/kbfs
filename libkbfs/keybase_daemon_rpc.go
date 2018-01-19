@@ -435,6 +435,7 @@ func (s NotifyServiceHandler) Shutdown(_ context.Context) error {
 	return nil
 }
 
+// NewNotifyServiceHandler makes a new NotifyServiceHandler
 func NewNotifyServiceHandler(config Config, log logger.Logger) keybase1.NotifyServiceInterface {
 	s := NotifyServiceHandler{config: config, log: log}
 	return s
