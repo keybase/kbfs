@@ -428,7 +428,7 @@ type notifyServiceHandler struct {
 	log    logger.Logger
 }
 
-func (s notifyServiceHandler) Shutdown(_ context.Context) error {
+func (s *notifyServiceHandler) Shutdown(_ context.Context) error {
 	s.log.Warning("NotifyService: Shutdown")
 	if runtime.GOOS == "windows" {
 		os.Exit(0)
@@ -438,6 +438,6 @@ func (s notifyServiceHandler) Shutdown(_ context.Context) error {
 
 // newNotifyServiceHandler makes a new NotifyServiceHandler
 func newNotifyServiceHandler(config Config, log logger.Logger) keybase1.NotifyServiceInterface {
-	s := notifyServiceHandler{config: config, log: log}
+	s := &notifyServiceHandler{config: config, log: log}
 	return s
 }
