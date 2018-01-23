@@ -11,6 +11,7 @@ import (
 
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/libfs"
+	"github.com/keybase/kbfs/libgit"
 	"github.com/keybase/kbfs/libkbfs"
 	"github.com/keybase/kbfs/tlf"
 	"go.uber.org/zap"
@@ -120,9 +121,9 @@ func (r *Root) MakeFS(
 		if err != nil {
 			return nil, tlf.ID{}, nil, err
 		}
-		fs, err = libfs.NewFS(fsCtx, kbfsConfig,
-			tlfHandle, fmt.Sprintf(".kbfs_autogit/%s/%s/%s",
-				r.TlfType, r.TlfNameUnparsed, r.PathUnparsed), "",
+		fs, err = libfs.NewFS(fsCtx, kbfsConfig, tlfHandle,
+			fmt.Sprintf("%s/%s/%s", libgit.AutogitTLFListDir(r.TlfType),
+				r.TlfNameUnparsed, r.PathUnparsed), "",
 			keybase1.MDPriorityNormal)
 		if err != nil {
 			return nil, tlf.ID{}, nil, err

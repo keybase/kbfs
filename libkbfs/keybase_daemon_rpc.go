@@ -422,6 +422,11 @@ func (k *KeybaseDaemonRPC) TeamExit(context.Context, keybase1.TeamID) error {
 	return nil
 }
 
+// TeamAbandoned is a placeholder for the abandoned team notification from the service.
+func (k *KeybaseDaemonRPC) TeamAbandoned(context.Context, keybase1.TeamID) error {
+	return nil
+}
+
 // notifyServiceHandler implements keybase1.NotifyServiceInterface
 type notifyServiceHandler struct {
 	config Config
