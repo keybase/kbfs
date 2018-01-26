@@ -130,7 +130,7 @@ func (q *EventuallyConsistentQuotaUsage) Get(
 	timestamp time.Time, usageBytes, limitBytes int64, err error) {
 	c := q.getCached()
 
-	// check if i have recently encountered error, if so, do not query again
+	// Check if I have recently encountered an error. If so, do not query again.
 	if c.cachedError != nil && errorTolerance > q.config.Clock().Now().Sub(c.errorTimestamp) {
 		return time.Time{}, -1, -1, c.cachedError
 	}
@@ -160,7 +160,7 @@ func (q *EventuallyConsistentQuotaUsage) GetAllTypes(
 	usageBytes, limitBytes, gitUsageBytes, getLimitBytes int64, err error) {
 	c := q.getCached()
 
-	// check if i have recently encountered error, if so, do not query again
+	// Check if I have recently encountered an error. If so, do not query again.
 	if c.cachedError != nil && errorTolerance > q.config.Clock().Now().Sub(c.errorTimestamp) {
 		return time.Time{}, -1, -1, -1, -1, c.cachedError
 	}
