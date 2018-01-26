@@ -31,3 +31,7 @@ const registerForUpdatesFireNowThreshold = 10 * time.Minute
 // dialerTimeout is the TCP dial timeout used by mdserver and bserver RPC
 // connections.
 const dialerTimeout = 16 * time.Second
+
+// QuotaUsageErrorTolerance is the amount of time an error encountered
+// for GetUserQuotaInfo/GetTeamQuotaInfo will be cached and reused
+const QuotaUsageErrorTolerance = 5 * time.Second

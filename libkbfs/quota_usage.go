@@ -26,11 +26,13 @@ type ECQUCtxTagKey struct{}
 const ECQUID = "ECQU"
 
 type cachedQuotaUsage struct {
-	timestamp     time.Time
-	usageBytes    int64
-	limitBytes    int64
-	gitUsageBytes int64
-	gitLimitBytes int64
+	timestamp      time.Time
+	usageBytes     int64
+	limitBytes     int64
+	gitUsageBytes  int64
+	gitLimitBytes  int64
+	cachedError    error
+	errorTimestamp time.Time
 }
 
 // EventuallyConsistentQuotaUsage keeps tracks of quota usage, in a way user of
@@ -79,12 +81,16 @@ func (q *EventuallyConsistentQuotaUsage) getAndCache(
 	} else {
 		quotaInfo, err = q.config.BlockServer().GetTeamQuotaInfo(ctx, q.tid)
 	}
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
 	if err != nil {
+		q.cached.cachedError = err
+		q.cached.errorTimestamp = q.config.Clock().Now()
 		return err
 	}
 
-	q.mu.Lock()
-	defer q.mu.Unlock()
+	q.cached.cachedError = nil
 	q.cached.limitBytes = quotaInfo.Limit
 	q.cached.gitLimitBytes = quotaInfo.GitLimit
 	if quotaInfo.Total != nil {
@@ -111,17 +117,24 @@ func (q *EventuallyConsistentQuotaUsage) getCached() cachedQuotaUsage {
 // always makes a blocking RPC to bserver and return latest quota
 // usage.
 //
-// 1) If the age of cached data is more than blockTolerance, a blocking RPC is
+// 1) If age of cached error is less than errorTolerance, return cached error message
+// 2) If the age of cached data is more than blockTolerance, a blocking RPC is
 // issued and the function only returns after RPC finishes, with the newest
 // data from RPC. The RPC causes cached data to be refreshed as well.
-// 2) Otherwise, if the age of cached data is more than bgTolerance,
+// 3) Otherwise, if the age of cached data is more than bgTolerance,
 // a background RPC is spawned to refresh cached data, and the stale
 // data is returned immediately.
-// 3) Otherwise, the cached stale data is returned immediately.
+// 4) Otherwise, the cached stale data is returned immediately.
 func (q *EventuallyConsistentQuotaUsage) Get(
-	ctx context.Context, bgTolerance, blockTolerance time.Duration) (
+	ctx context.Context, bgTolerance, blockTolerance, errorTolerance time.Duration) (
 	timestamp time.Time, usageBytes, limitBytes int64, err error) {
 	c := q.getCached()
+
+	// check if i have recently encountered error, if so, do not query again
+	if c.cachedError != nil && errorTolerance > q.config.Clock().Now().Sub(c.errorTimestamp) {
+		return time.Time{}, -1, -1, c.cachedError
+	}
+
 	err = q.fetcher.Do(ctx, bgTolerance, blockTolerance, c.timestamp)
 	if err != nil {
 		return time.Time{}, -1, -1, err
@@ -142,10 +155,15 @@ func (q *EventuallyConsistentQuotaUsage) Get(
 // GetAllTypes is the same as Get, except it returns usage and limits
 // for all block types.
 func (q *EventuallyConsistentQuotaUsage) GetAllTypes(
-	ctx context.Context, bgTolerance, blockTolerance time.Duration) (
+	ctx context.Context, bgTolerance, blockTolerance, errorTolerance time.Duration) (
 	timestamp time.Time,
 	usageBytes, limitBytes, gitUsageBytes, getLimitBytes int64, err error) {
 	c := q.getCached()
+
+	// check if i have recently encountered error, if so, do not query again
+	if c.cachedError != nil && errorTolerance > q.config.Clock().Now().Sub(c.errorTimestamp) {
+		return time.Time{}, -1, -1, -1, -1, c.cachedError
+	}
 	err = q.fetcher.Do(ctx, bgTolerance, blockTolerance, c.timestamp)
 	if err != nil {
 		return time.Time{}, -1, -1, -1, -1, err

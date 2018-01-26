@@ -852,7 +852,7 @@ func (fs *KBFSOpsStandard) Status(ctx context.Context) (
 	if err == nil && fs.config.MDServer().IsConnected() {
 		var quErr error
 		_, usageBytes, limitBytes, gitUsageBytes, gitLimitBytes, quErr =
-			fs.quotaUsage.GetAllTypes(ctx, 0, 0)
+			fs.quotaUsage.GetAllTypes(ctx, 0, 0, QuotaUsageErrorTolerance)
 		if quErr != nil {
 			// The error is ignored here so that other fields can still be populated
 			// even if this fails.

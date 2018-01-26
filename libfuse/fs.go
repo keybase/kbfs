@@ -379,7 +379,7 @@ func (f *FS) Statfs(ctx context.Context, req *fuse.StatfsRequest, resp *fuse.Sta
 		return nil
 	}
 	_, usageBytes, limitBytes, err := f.quotaUsage.Get(
-		ctx, quotaUsageStaleTolerance/2, quotaUsageStaleTolerance)
+		ctx, quotaUsageStaleTolerance/2, quotaUsageStaleTolerance, libkbfs.QuotaUsageErrorTolerance)
 	if err != nil {
 		f.log.CDebugf(ctx, "Getting quota usage error: %v", err)
 		return err

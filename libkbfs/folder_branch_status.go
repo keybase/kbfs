@@ -233,7 +233,7 @@ func (fbsk *folderBranchStatusKeeper) getStatusWithoutJournaling(
 			}
 		}
 		_, usageBytes, limitBytes, gitUsageBytes, gitLimitBytes, quErr :=
-			fbsk.quotaUsage.GetAllTypes(ctx, 0, 0)
+			fbsk.quotaUsage.GetAllTypes(ctx, 0, 0, QuotaUsageErrorTolerance)
 		if quErr != nil {
 			// The error is ignored here so that other fields can
 			// still be populated even if this fails.
