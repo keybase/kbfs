@@ -352,15 +352,9 @@ var _ fbmHelper = (*folderBranchOps)(nil)
 // newFolderBranchOps constructs a new folderBranchOps object.
 func newFolderBranchOps(ctx context.Context, config Config, fb FolderBranch,
 	bType branchType) *folderBranchOps {
-	var nodeCache NodeCache
-	if config.Mode() == InitMinimal {
-		// If we're in minimal mode, let the node cache remain nil to
-		// ensure that the user doesn't try any data reads or writes.
-	} else {
-		nodeCache = newNodeCacheStandard(fb)
-		for _, f := range config.RootNodeWrappers() {
-			nodeCache.AddRootWrapper(f)
-		}
+	nodeCache := newNodeCacheStandard(fb)
+	for _, f := range config.RootNodeWrappers() {
+		nodeCache.AddRootWrapper(f)
 	}
 
 	// make logger
@@ -4580,12 +4574,6 @@ func (fbo *folderBranchOps) notifyOneOpLocked(ctx context.Context,
 	shouldPrefetch bool) error {
 	fbo.mdWriterLock.AssertLocked(lState)
 	fbo.headLock.AssertLocked(lState)
-
-	if fbo.config.Mode() == InitMinimal {
-		// There is no node cache in minimal mode, so there's nothing
-		// to update.
-		return nil
-	}
 
 	// We need to get unlinkPath before calling UpdatePointers so that
 	// nodeCache.Unlink can properly update cachedPath.

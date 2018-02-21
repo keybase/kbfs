@@ -401,7 +401,7 @@ func NewConfigLocal(mode InitMode, loggerFn func(module string) logger.Logger,
 
 	// Don't bother creating the registry if UseNilMetrics is set, or
 	// if we're in minimal mode.
-	if !metrics.UseNilMetrics && config.Mode() != InitMinimal {
+	if !metrics.UseNilMetrics {
 		registry := metrics.NewRegistry()
 		config.SetMetricsRegistry(registry)
 	}
@@ -926,12 +926,6 @@ func (c *ConfigLocal) resetCachesWithoutShutdown() DirtyBlockCache {
 			capacity)
 	}
 	c.bcache = NewBlockCacheStandard(10000, capacity)
-
-	if c.Mode() == InitMinimal {
-		// No blocks will be dirtied in minimal mode, so don't bother
-		// with the dirty block cache.
-		return nil
-	}
 
 	oldDirtyBcache := c.dirtyBcache
 
