@@ -378,21 +378,27 @@ def runNixTest(prefix) {
     }
     tests[prefix+'libpages'] = {
         dir('libpages') {
-            sh 'go test -timeout 30s'
+            sh 'go test -i'
+            sh 'go test -c'
+            retry (3) {
+              sh './libpages.test -test.timeout 10s'
+            }
         }
     }
     tests[prefix+'libpages_config'] = {
         dir('libpages/config') {
             sh 'go test -i'
             sh 'go test -c'
-            sh './config.test -test.timeout 30s'
+            sh './config.test -test.timeout 10s'
         }
     }
     tests[prefix+'kbpagesconfig'] = {
         dir('kbpagesconfig') {
             sh 'go test -i'
             sh 'go test -c'
-            sh './kbpagesconfig.test -test.timeout 30s'
+            retry (3) {
+              sh './kbpagesconfig.test -test.timeout 10s'
+            }
         }
     }
     parallel (tests)
