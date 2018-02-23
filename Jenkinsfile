@@ -312,11 +312,11 @@ def runNixTest(prefix) {
     }
     dir('libfuse') {
         sh 'go test -i'
-        sh 'go test -race -c'
+        sh 'go test -c'
     }
     dir('simplefs') {
         sh 'go test -i'
-        sh 'go test -race -c'
+        sh 'go test -c'
     }
     dir('kbfsgit') {
         sh 'go test -i'
