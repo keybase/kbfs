@@ -268,97 +268,138 @@ def runNixTest(prefix) {
         sh 'go test -i -tags fuse'
     }
 
-    // Build out the vendored gogit dependency first, otherwise the
-    // git-remote-helper binary and the kbfsgit tests might have
-    // concurrent build issues when running in parallel.
+    // Build out the test dependencies and binaries (in most cases) first,
+    // otherwise the we might have concurrent build issues when running in
+    // parallel.
     dir('kbfsgit') {
         sh 'go test -i'
     }
-    tests = [:]
-    tests[prefix+'install'] = {
-        sh 'go install github.com/keybase/kbfs/...'
+    dir('kbfsblock') {
+        sh 'go test -i'
+        sh 'go test -race -c'
     }
+    dir('kbfscodec') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+    }
+    dir('kbfscrypto') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+    }
+    dir('kbfshash') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+    }
+    dir('kbfssync') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+    }
+    dir('tlf') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+    }
+    dir('libfs') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+    }
+    dir('libgit') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+    }
+    dir('libkbfs') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+    }
+    dir('libfuse') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+    }
+    dir('simplefs') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+    }
+    dir('kbfsgit') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+    }
+    dir('test') {
+        sh 'go test -i'
+        // Don't build test binaries here since we build them separately in two
+        // tests for fuse/race configurations.
+    }
+    dir('libpages') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+    }
+    dir('libpages/config') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+    }
+    dir('kbpagesconfig') {
+        sh 'go test -i'
+        sh 'go test -race -c'
+    }
+
+    sh 'go install github.com/keybase/kbfs/...'
+
+    tests = [:]
     tests[prefix+'kbfsblock'] = {
         dir('kbfsblock') {
-            sh 'go test -i'
-            sh 'go test -race -c'
             sh './kbfsblock.test -test.timeout 30s'
         }
     }
     tests[prefix+'kbfscodec'] = {
         dir('kbfscodec') {
-            sh 'go test -i'
-            sh 'go test -race -c'
             sh './kbfscodec.test -test.timeout 10m'
         }
     }
     tests[prefix+'kbfscrypto'] = {
         dir('kbfscrypto') {
-            sh 'go test -i'
-            sh 'go test -race -c'
             sh './kbfscrypto.test -test.timeout 10m'
         }
     }
     tests[prefix+'kbfshash'] = {
         dir('kbfshash') {
-            sh 'go test -i'
-            sh 'go test -race -c'
             sh './kbfshash.test -test.timeout 10m'
         }
     }
     tests[prefix+'kbfssync'] = {
         dir('kbfssync') {
-            sh 'go test -i'
-            sh 'go test -race -c'
             sh './kbfssync.test -test.timeout 10m'
         }
     }
     tests[prefix+'tlf'] = {
         dir('tlf') {
-            sh 'go test -i'
-            sh 'go test -race -c'
             sh './tlf.test -test.timeout 10m'
         }
     }
     tests[prefix+'libfs'] = {
         dir('libfs') {
-            sh 'go test -i'
-            sh 'go test -race -c'
             sh './libfs.test -test.timeout 10m'
         }
     }
     tests[prefix+'libgit'] = {
         dir('libgit') {
-            sh 'go test -i'
-            sh 'go test -race -c'
             sh './libgit.test -test.timeout 10m'
         }
     }
     tests[prefix+'libkbfs'] = {
         dir('libkbfs') {
-            sh 'go test -i'
-            sh 'go test -race -c'
             sh './libkbfs.test -test.timeout 5m'
         }
     }
     tests[prefix+'libfuse'] = {
         dir('libfuse') {
-            sh 'go test -i'
-            sh 'go test -c'
             sh './libfuse.test -test.timeout 3m'
         }
     }
     tests[prefix+'simplefs'] = {
         dir('simplefs') {
-            sh 'go test -i'
-            sh 'go test -c'
             sh './simplefs.test -test.timeout 2m'
         }
     }
     tests[prefix+'kbfsgit'] = {
         dir('kbfsgit') {
-            // test dependencies pre-built above
-            sh 'go test -race -c'
             sh './kbfsgit.test -test.timeout 10m'
         }
     }
@@ -378,8 +419,6 @@ def runNixTest(prefix) {
     }
     tests[prefix+'libpages'] = {
         dir('libpages') {
-            sh 'go test -i'
-            sh 'go test -c'
             retry (3) {
               sh './libpages.test -test.timeout 10s'
             }
@@ -387,15 +426,11 @@ def runNixTest(prefix) {
     }
     tests[prefix+'libpages_config'] = {
         dir('libpages/config') {
-            sh 'go test -i'
-            sh 'go test -c'
             sh './config.test -test.timeout 10s'
         }
     }
     tests[prefix+'kbpagesconfig'] = {
         dir('kbpagesconfig') {
-            sh 'go test -i'
-            sh 'go test -c'
             retry (3) {
               sh './kbpagesconfig.test -test.timeout 10s'
             }
