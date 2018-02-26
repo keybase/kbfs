@@ -1,0 +1,11 @@
+[package]
+name = "redirector"
+version = "0.1.0"
+authors = ["Jack O'Connor <jack@keyba.se>"]
+
+[dependencies]
+fuse = "0.3.1"
+env_logger = "0.5.4"
+libc = "0.2.36"
+time = "0.1.39"
+log = "0.4.1"
