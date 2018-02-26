@@ -164,6 +164,12 @@ fn get_keybase_fuse_mount(uid: u32) -> Option<PathBuf> {
     None
 }
 
+// Toy implementation for testing on Mac.
+#[cfg(target_os = "darwin")]
+fn get_keybase_fuse_mount(uid: u32) -> Option<PathBuf> {
+    Some("/foo/bar".into())
+}
+
 fn main() {
     // The rust-fuse library writes logs using the standard log crate
     // interface. To init a log backend that will actually print those,
