@@ -17,7 +17,6 @@ use fuse::{FileAttr, FileType, Filesystem, ReplyAttr, ReplyData, ReplyDirectory,
            Request};
 
 // A TTL of zero for all our attribute replies.
-// TODO: Should this be nonzero for performance reasons?
 const TTL: Timespec = Timespec { sec: 0, nsec: 0 };
 
 // FD 1 is a magical value that we can't change, but the others are arbitrary.
@@ -174,7 +173,7 @@ fn main() {
         start_time: time::get_time(),
     };
     let mountpoint = env::args_os().nth(1).expect("must have a path argument");
-    let options = &["-o", "allow_other", "-o", "fsname=keybase-redirector"];
+    let options = ["-o", "allow_other", "-o", "fsname=keybase-redirector", "-o", "ro"];
     let options_osstr: Vec<&OsStr> = options.iter().map(|o| o.as_ref()).collect();
     fuse::mount(redirector, &mountpoint, &options_osstr).expect("mount returned an error");
 }
