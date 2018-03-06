@@ -119,6 +119,7 @@ func main() {
 	params.EnableJournal = true
 	params.Debug = true
 	params.LogFileConfig.Path = fKBFSLogFile
+	params.LogFileConfig.MaxKeepFiles = 16
 	// Enable simpleFS in case we need to debug.
 	params.CreateSimpleFSInstance = simplefs.NewSimpleFS
 	kbfsLog, err := libkbfs.InitLog(params, kbCtx)
