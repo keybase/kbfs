@@ -594,7 +594,7 @@ func doInit(
 	if config.Mode() == InitMinimal {
 		// In minimal mode, block re-embedding is not required, so we don't
 		// fetch the unembedded blocks..
-		workers = 0
+		workers = 1
 		prefetchWorkers = 0
 	}
 	config.SetBlockOps(NewBlockOpsStandard(config, workers, prefetchWorkers))

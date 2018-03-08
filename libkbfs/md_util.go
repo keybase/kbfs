@@ -436,15 +436,6 @@ func reembedBlockChanges(ctx context.Context, codec kbfscodec.Codec,
 		return nil
 	}
 
-	if mode == InitMinimal {
-		// Leave the block changes unembedded -- they aren't needed in
-		// minimal mode since there's no node cache, and thus there
-		// are no Nodes that needs to be updated due to BlockChange
-		// pointers in those blocks.
-		log.CDebugf(ctx, "Skipping block change reembedding in mode: %s", mode)
-		return nil
-	}
-
 	// Treat the unembedded block change like a file so we can reuse
 	// the file reading code.
 	file := path{FolderBranch{tlfID, MasterBranch},
