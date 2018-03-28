@@ -31,3 +31,22 @@ func TestRenameAfterRenameThatWouldHaveBeenAnOverwrite(t *testing.T) {
 		),
 	)
 }
+
+// Regression test for KBFS-2853
+func TestMoveFileIntoDirThatUsedToBeAFile(t *testing.T) {
+	test(t,
+		users("alice"),
+		as(alice,
+			mkfile("hello", "hi"),
+		),
+		as(alice,
+			rename("hello", "other"),
+		),
+		as(alice,
+			mkdir("hello"),
+		),
+		as(alice,
+			rename("other", "hello/other"),
+		),
+	)
+}
