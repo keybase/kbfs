@@ -1118,7 +1118,7 @@ func (k *KeybaseServiceBase) StartMigration(ctx context.Context,
 // KeybaseServiceBase.
 func (k *KeybaseServiceBase) GetTLFCryptKeys(ctx context.Context,
 	query keybase1.TLFQuery) (res keybase1.GetTLFCryptKeysRes, err error) {
-	if ctx, err = makeExtendedIdentify(
+	if ctx, err = MakeExtendedIdentify(
 		CtxWithRandomIDReplayable(ctx,
 			CtxKeybaseServiceIDKey, CtxKeybaseServiceOpID, k.log),
 		query.IdentifyBehavior,
@@ -1160,7 +1160,7 @@ func (k *KeybaseServiceBase) GetTLFCryptKeys(ctx context.Context,
 func (k *KeybaseServiceBase) GetPublicCanonicalTLFNameAndID(
 	ctx context.Context, query keybase1.TLFQuery) (
 	res keybase1.CanonicalTLFNameAndIDWithBreaks, err error) {
-	if ctx, err = makeExtendedIdentify(
+	if ctx, err = MakeExtendedIdentify(
 		CtxWithRandomIDReplayable(ctx,
 			CtxKeybaseServiceIDKey, CtxKeybaseServiceOpID, k.log),
 		query.IdentifyBehavior,

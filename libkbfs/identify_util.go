@@ -102,7 +102,7 @@ const (
 	ctxExtendedIdentifyKey ctxExtendedIdentifyKeyType = iota
 )
 
-// ExtendedIdentifyAlreadyExists is returned when makeExtendedIdentify is
+// ExtendedIdentifyAlreadyExists is returned when MakeExtendedIdentify is
 // called on a context already with extendedIdentify.
 type ExtendedIdentifyAlreadyExists struct{}
 
@@ -110,7 +110,9 @@ func (e ExtendedIdentifyAlreadyExists) Error() string {
 	return "extendedIdentify already exists"
 }
 
-func makeExtendedIdentify(ctx context.Context,
+// MakeExtendedIdentify returns a context.Context that, when used with KBFS
+// calls, uses behavior as TLFIdentifyBehavior.
+func MakeExtendedIdentify(ctx context.Context,
 	behavior keybase1.TLFIdentifyBehavior) (context.Context, error) {
 	if _, ok := ctx.Value(ctxExtendedIdentifyKey).(*extendedIdentify); ok {
 		return nil, ExtendedIdentifyAlreadyExists{}

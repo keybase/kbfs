@@ -1158,6 +1158,7 @@ func (b TLFIdentifyBehavior) CanUseUntrackedFastPath() bool {
 	switch b {
 	case TLFIdentifyBehavior_CHAT_GUI,
 		TLFIdentifyBehavior_CHAT_GUI_STRICT,
+		TLFIdentifyBehavior_PAGES,
 		TLFIdentifyBehavior_SALTPACK:
 		return true
 	default:
@@ -1169,10 +1170,15 @@ func (b TLFIdentifyBehavior) CanUseUntrackedFastPath() bool {
 
 func (b TLFIdentifyBehavior) WarningInsteadOfErrorOnBrokenTracks() bool {
 	switch b {
-	case TLFIdentifyBehavior_CHAT_GUI:
+	case TLFIdentifyBehavior_CHAT_GUI,
+		TLFIdentifyBehavior_PAGES:
 		// The chat GUI (in non-strict mode) is specifically exempted from broken
 		// track errors, because people need to be able to use it to ask each other
 		// about the fact that proofs are broken.
+		//
+		// Pages is exempted from broken track errors too since 1) it doesn't
+		// buy user anything, and 2) if user's proof is hosted with Pages,
+		// error here could prevent them from fixing the proof.
 		return true
 	default:
 		return false
@@ -1187,6 +1193,7 @@ func (b TLFIdentifyBehavior) ShouldSuppressTrackerPopups() bool {
 		TLFIdentifyBehavior_CHAT_CLI,
 		TLFIdentifyBehavior_KBFS_REKEY,
 		TLFIdentifyBehavior_KBFS_QR,
+		TLFIdentifyBehavior_PAGES,
 		TLFIdentifyBehavior_SALTPACK:
 		// These are identifies that either happen without user interaction at
 		// all, or happen while you're staring at some Keybase UI that can
@@ -2334,34 +2341,14 @@ func (r ResetLink) Summarize() ResetSummary {
 	}
 }
 
-// CheckInvariants checks that the bundle satisfies
-// 1. No duplicate account IDs
-// 2. At most one primary account
-func (s StellarBundle) CheckInvariants() error {
-	accountIDs := make(map[StellarAccountID]bool)
-	var foundPrimary bool
-	for _, entry := range s.Accounts {
-		_, found := accountIDs[entry.AccountID]
-		if found {
-			return fmt.Errorf("duplicate account ID: %v", entry.AccountID)
-		}
-		accountIDs[entry.AccountID] = true
-		if entry.IsPrimary {
-			if foundPrimary {
-				return errors.New("multiple primary accounts")
-			}
-			foundPrimary = true
-		}
-		if entry.Mode == StellarAccountMode_NONE {
-			return errors.New("account missing mode")
-		}
-	}
-	if s.Revision < 1 {
-		return fmt.Errorf("revision %v < 1", s.Revision)
-	}
-	return nil
-}
-
 func (f AvatarFormat) String() string {
 	return string(f)
+}
+
+func (u AvatarUrl) String() string {
+	return string(u)
+}
+
+func MakeAvatarURL(u string) AvatarUrl {
+	return AvatarUrl(u)
 }
