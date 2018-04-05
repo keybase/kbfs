@@ -258,6 +258,9 @@ func (k *KeybaseDaemonLocal) Identify(
 	ctx context.Context, assertion, _ string) (
 	name libkb.NormalizedUsername, utid keybase1.UserOrTeamID, err error) {
 	defer func() {
+		if !utid.IsUser() {
+			return
+		}
 		var asUser keybase1.UID
 		asUser, err = utid.AsUser()
 		if err != nil {
