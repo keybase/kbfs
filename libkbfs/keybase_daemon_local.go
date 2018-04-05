@@ -256,7 +256,17 @@ func (k *KeybaseDaemonLocal) Resolve(ctx context.Context, assertion string) (
 // Identify implements KeybaseDaemon for KeybaseDaemonLocal.
 func (k *KeybaseDaemonLocal) Identify(
 	ctx context.Context, assertion, _ string) (
-	libkb.NormalizedUsername, keybase1.UserOrTeamID, error) {
+	name libkb.NormalizedUsername, utid keybase1.UserOrTeamID, err error) {
+	defer func() {
+		var asUser keybase1.UID
+		asUser, err = utid.AsUser()
+		if err != nil {
+			return
+		}
+		// This is required for every identify call. The userBreak function
+		// will take care of checking if third arg (breaks) is nil or not.
+		getExtendedIdentify(ctx).userBreak(name, asUser, nil)
+	}()
 	// The local daemon doesn't need to distinguish resolves from
 	// identifies.
 	return k.Resolve(ctx, assertion)
