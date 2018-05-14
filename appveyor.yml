@@ -80,7 +80,7 @@ build_script:
   - echo github.com/keybase/kbfs/kbfscodec >> testlist.txt
   - echo github.com/keybase/kbfs/kbfscrypto >> testlist.txt
   - echo github.com/keybase/kbfs/kbfsdokan >> testlist.txt
-  - echo github.com/keybase/kbfs/kbfsfuse >> testlist.txt
+  # kbfsfuse is non-Windows-only.
   - echo github.com/keybase/kbfs/kbfsgit >> testlist.txt
   - echo github.com/keybase/kbfs/kbfsgit/git-remote-keybase >> testlist.txt
   - echo github.com/keybase/kbfs/kbfshash >> testlist.txt
@@ -91,7 +91,7 @@ build_script:
   - echo github.com/keybase/kbfs/kbpagesd >> testlist.txt
   - echo github.com/keybase/kbfs/libdokan >> testlist.txt
   - echo github.com/keybase/kbfs/libfs >> testlist.txt
-  - echo github.com/keybase/kbfs/libfuse >> testlist.txt
+  # libfuse is non-Windows-only.
   - echo github.com/keybase/kbfs/libgit >> testlist.txt
   - echo github.com/keybase/kbfs/libhttpserver >> testlist.txt
   - echo github.com/keybase/kbfs/libkbfs >> testlist.txt
