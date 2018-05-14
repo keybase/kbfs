@@ -67,7 +67,7 @@ build_script:
 #  - go list ./... | find /V "vendor" > testlist.txt
 
   # Keep the list below in sync with the result of
-  # find . \( -path ./vendor -o -path ./.git \) -prune -o -type d | sort
+  #   find . \( -path ./vendor -o -path ./.git \) -prune -o -type d | sort
   - echo github.com/keybase/kbfs/cache > testlist.txt
   # dokan dir is tested above.
   - echo github.com/keybase/kbfs/dokan/dokan_header >> testlist.txt
