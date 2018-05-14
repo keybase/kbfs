@@ -71,8 +71,8 @@ func CanEncrypt(key GenericKey) bool {
 	}
 }
 
-func skbPushAndSave(m MetaContext, skb *SKB) error {
-	if lctx := m.LoginContext(); lctx != nil {
+func skbPushAndSave(g *GlobalContext, skb *SKB, lctx LoginContext) error {
+	if lctx != nil {
 		kr, err := lctx.Keyring()
 		if err != nil {
 			return err
@@ -80,7 +80,7 @@ func skbPushAndSave(m MetaContext, skb *SKB) error {
 		return kr.PushAndSave(skb)
 	}
 	var err error
-	kerr := m.G().LoginState().Keyring(func(ring *SKBKeyringFile) {
+	kerr := g.LoginState().Keyring(func(ring *SKBKeyringFile) {
 		err = ring.PushAndSave(skb)
 	}, "PushAndSave")
 	if kerr != nil {

@@ -8,7 +8,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/sha512"
-	"crypto/subtle"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -1376,21 +1375,21 @@ func (u UserPlusKeysV2) FindDeviceKey(needle KID) *PublicKeyV2NaCl {
 	return nil
 }
 
-func (u UserPlusKeysV2) FindSigningDeviceKey(d DeviceID) *PublicKeyV2NaCl {
+func (u UserPlusKeysV2) FindSigningDeviceKey(d DeviceID) (*PublicKeyV2NaCl, string) {
 	for _, k := range u.DeviceKeys {
 		if k.DeviceID.Eq(d) && k.Base.IsSibkey {
-			return &k
+			return &k, k.DeviceDescription
 		}
 	}
-	return nil
+	return nil, ""
 }
 
 func (u UserPlusKeysV2) FindSigningDeviceKID(d DeviceID) (KID, string) {
-	key := u.FindSigningDeviceKey(d)
+	key, name := u.FindSigningDeviceKey(d)
 	if key == nil {
-		return KID(""), ""
+		return KID(""), name
 	}
-	return key.Base.Kid, key.DeviceDescription
+	return key.Base.Kid, name
 }
 
 func (u UserPlusKeysV2) FindEncryptionDeviceKey(parent KID) *PublicKeyV2NaCl {
@@ -2413,9 +2412,4 @@ func (u AvatarUrl) String() string {
 
 func MakeAvatarURL(u string) AvatarUrl {
 	return AvatarUrl(u)
-}
-
-func (b Bytes32) IsBlank() bool {
-	var blank Bytes32
-	return (subtle.ConstantTimeCompare(b[:], blank[:]) == 1)
 }

@@ -707,9 +707,9 @@ func (k *PGPKeyBundle) unlockAllPrivateKeys(pw string) error {
 	return nil
 }
 
-func (k *PGPKeyBundle) Unlock(m MetaContext, reason string, secretUI SecretUI) error {
+func (k *PGPKeyBundle) Unlock(g *GlobalContext, reason string, secretUI SecretUI) error {
 	if !k.isAnyKeyEncrypted() {
-		m.CDebugf("Key is not encrypted, skipping Unlock.")
+		g.Log.Debug("Key is not encrypted, skipping Unlock.")
 		return nil
 	}
 
@@ -720,7 +720,7 @@ func (k *PGPKeyBundle) Unlock(m MetaContext, reason string, secretUI SecretUI) e
 		return k, nil
 	}
 
-	_, err := NewKeyUnlocker(5, reason, k.VerboseDescription(), PassphraseTypePGP, false, secretUI, unlocker).Run(m)
+	_, err := NewKeyUnlocker(g, 5, reason, k.VerboseDescription(), PassphraseTypePGP, false, secretUI, unlocker).Run()
 	return err
 }
 

@@ -77,6 +77,7 @@ var errHTTPServerAlreadyRunning = errors.New("http server already running")
 // HTTPSrv starts a simple HTTP server with a parameter for a module to provide a listener source
 type HTTPSrv struct {
 	sync.Mutex
+	*http.ServeMux
 	Contextified
 
 	listenerSource HTTPSrvListenerSource
@@ -91,26 +92,28 @@ func NewHTTPSrv(g *GlobalContext, listenerSource HTTPSrvListenerSource) *HTTPSrv
 	}
 }
 
-func (h *HTTPSrv) EnsureActive(serveMux *http.ServeMux) (startedNew bool, err error) {
+func (h *HTTPSrv) Start() (err error) {
 	h.Lock()
 	defer h.Unlock()
 	if h.active {
 		h.G().Log.Debug("HTTPSrv: already running, not starting again")
 		// Just bail out of this if we are already running
-		return false, nil
+		return errHTTPServerAlreadyRunning
 	}
+	h.ServeMux = http.NewServeMux()
 	listener, address, err := h.listenerSource.GetListener()
 	if err != nil {
 		h.G().Log.Debug("HTTPSrv: failed to get a listener: %s", err)
-		return false, err
+		return err
 	}
 	h.server = &http.Server{
 		Addr:    address,
-		Handler: serveMux,
+		Handler: h.ServeMux,
 	}
-	// Set active to true before returning.
-	h.active = true
 	go func() {
+		h.Lock()
+		h.active = true
+		h.Unlock()
 		h.G().Log.Debug("HTTPSrv: server starting on: %s", address)
 		if err := h.server.Serve(listener); err != nil {
 			h.G().Log.Debug("HTTPSrv: server died: %s", err)
@@ -119,7 +122,7 @@ func (h *HTTPSrv) EnsureActive(serveMux *http.ServeMux) (startedNew bool, err er
 		h.active = false
 		h.Unlock()
 	}()
-	return true, nil
+	return nil
 }
 
 func (h *HTTPSrv) Active() bool {

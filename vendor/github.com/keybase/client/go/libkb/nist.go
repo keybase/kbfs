@@ -23,9 +23,9 @@ import (
 // we're more responsive when we come back from backgrounding, etc.
 //
 
-// If we're within 26 hours of expiration, generate a new NIST;
-const nistExpirationMargin = 26 * time.Hour // I.e., half of the lifetime
-const nistLifetime = 52 * time.Hour         // A little longer than 2 days.
+// If we're within 1 hour of expiration, generate a new NIST;
+const nistExpirationMargin = time.Hour
+const nistLifetime = 28 * time.Hour
 const nistSessionIDLength = 16
 const nistShortHashLen = 19
 
@@ -115,15 +115,10 @@ func (f *NISTFactory) NIST(ctx context.Context) (ret *NIST, err error) {
 	return f.nist, nil
 }
 
-func durationToSeconds(d time.Duration) int64 {
-	return int64(d / time.Second)
-}
-
 func (n *NIST) IsStillValid() (bool, time.Duration) {
 	n.RLock()
 	defer n.RUnlock()
-	now := ForceWallClock(n.G().Clock().Now())
-	diff := n.expiresAt.Sub(now) - nistExpirationMargin
+	diff := n.expiresAt.Sub(n.G().Clock().Now()) - nistExpirationMargin
 	return (diff > 0), diff
 }
 
@@ -247,7 +242,7 @@ func (n *NIST) generate(ctx context.Context, uid keybase1.UID, deviceID keybase1
 		Hostname:  CanonicalHost,
 		UID:       uid.ToBytes(),
 		Generated: generated.Unix(),
-		Lifetime:  durationToSeconds(nistLifetime),
+		Lifetime:  nistLifetime.Nanoseconds() / 1000000000,
 		KID:       key.GetBinaryKID(),
 	}
 	payload.DeviceID, err = hex.DecodeString(string(deviceID))
@@ -292,7 +287,7 @@ func (n *NIST) generate(ctx context.Context, uid keybase1.UID, deviceID keybase1
 
 	n.long = longTmp
 	n.short = shortTmp
-	n.expiresAt = ForceWallClock(expires)
+	n.expiresAt = expires
 
 	return nil
 }

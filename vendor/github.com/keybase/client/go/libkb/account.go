@@ -79,17 +79,6 @@ func (a *Account) GetUID() (ret keybase1.UID) {
 	return ret
 }
 
-func (a *Account) GetUsername() (ret NormalizedUsername) {
-	if a.localSession == nil {
-		return ret
-	}
-	if a.localSession.username == nil {
-		return ret
-	}
-	ret = *a.localSession.username
-	return ret
-}
-
 func (a *Account) GetDeviceID() (ret keybase1.DeviceID) {
 	if a.localSession != nil {
 		ret = a.localSession.GetDeviceID()
@@ -109,13 +98,13 @@ func (a *Account) LoggedIn() bool {
 
 // LoggedInLoad will load and check the session with the api server if necessary.
 func (a *Account) LoggedInLoad() (bool, error) {
-	return a.LoggedIn(), nil
+	return a.LocalSession().loadAndCheck()
 }
 
 // LoggedInProvisioned will check if the user is logged in and provisioned on this
 // device. It will do so by bootstrapping the ActiveDevice.
 func (a *Account) LoggedInProvisioned(ctx context.Context) (bool, error) {
-	_, err := BootstrapActiveDeviceFromConfig(NewMetaContext(ctx, a.G()).WithLoginContext(a), true)
+	_, err := BootstrapActiveDeviceFromConfig(context.TODO(), a.G(), a, true)
 	if err == nil {
 		return true, nil
 	}
@@ -130,8 +119,8 @@ func (a *Account) LoadLoginSession(emailOrUsername string) error {
 		return nil
 	}
 
-	ls := NewLoginSession(a.G(), emailOrUsername)
-	if err := ls.Load(NewMetaContextBackground(a.G())); err != nil {
+	ls := NewLoginSession(emailOrUsername, a.G())
+	if err := ls.Load(); err != nil {
 		return err
 	}
 	a.setLoginSession(ls)
@@ -143,7 +132,7 @@ func (a *Account) CreateLoginSessionWithSalt(emailOrUsername string, salt []byte
 		return fmt.Errorf("CreateLoginSessionWithSalt called, but Account already has LoginSession")
 	}
 
-	ls := NewLoginSessionWithSalt(a.G(), emailOrUsername, salt)
+	ls := NewLoginSessionWithSalt(emailOrUsername, salt, a.G())
 	a.setLoginSession(ls)
 	return nil
 }
@@ -199,11 +188,13 @@ func (a *Account) CreateStreamCache(tsec Triplesec, pps *PassphraseStream) {
 // SetStreamGeneration sets the passphrase generation on the cached stream
 // if it exists, and otherwise will wind up warning of a problem.
 func (a *Account) SetStreamGeneration(gen PassphraseGeneration, nilPPStreamOK bool) {
-	found := a.PassphraseStreamCache().MutatePassphraseStream(func(ps *PassphraseStream) {
+	ps := a.PassphraseStreamRef()
+	if ps == nil {
+		if !nilPPStreamOK {
+			a.G().Log.Warning("Passphrase stream was nil; unexpected")
+		}
+	} else {
 		ps.SetGeneration(gen)
-	})
-	if !found && !nilPPStreamOK {
-		a.G().Log.Warning("Passphrase stream was nil; unexpected")
 	}
 }
 
@@ -244,6 +235,12 @@ func (a *Account) PassphraseStreamCache() *PassphraseStreamCache {
 // or nil if none is there.
 func (a *Account) PassphraseStream() *PassphraseStream {
 	return a.PassphraseStreamCache().PassphraseStream()
+}
+
+// PassphraseStreamRef returns a reference to the actual passphrase stream, or
+// nil if none is there.
+func (a *Account) PassphraseStreamRef() *PassphraseStream {
+	return a.PassphraseStreamCache().PassphraseStreamRef()
 }
 
 func (a *Account) ClearStreamCache() {
@@ -459,7 +456,7 @@ func (a *Account) SetCachedSecretKey(ska SecretKeyArg, key GenericKey, device *D
 	}
 
 	uid := a.G().Env.GetUID()
-	deviceID := a.deviceIDFromDevice(uid, device)
+	deviceID := a.deviceIDFromDevice(device)
 	if deviceID.IsNil() {
 		a.G().Log.Debug("SetCachedSecretKey with nil deviceID (%+v)", ska)
 	}
@@ -488,11 +485,11 @@ func (a *Account) SetCachedSecretKey(ska SecretKeyArg, key GenericKey, device *D
 	}
 }
 
-func (a *Account) deviceIDFromDevice(uid keybase1.UID, device *Device) keybase1.DeviceID {
+func (a *Account) deviceIDFromDevice(device *Device) keybase1.DeviceID {
 	if device != nil {
 		return device.ID
 	}
-	return a.G().Env.GetDeviceIDForUID(uid)
+	return a.localSession.GetDeviceID()
 }
 
 func (a *Account) deviceNameLookup(device *Device, me *User, key GenericKey) string {

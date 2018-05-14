@@ -53,7 +53,6 @@ type LoginContext interface {
 
 	LocalSession() *Session
 	GetUID() keybase1.UID
-	GetUsername() NormalizedUsername
 	EnsureUsername(username NormalizedUsername)
 	SaveState(sessionID, csrf string, username NormalizedUsername, uid keybase1.UID, deviceID keybase1.DeviceID) error
 
@@ -159,42 +158,42 @@ func NewLoginState(g *GlobalContext) *LoginState {
 	return res
 }
 
-func (s *LoginState) LoginWithPrompt(m MetaContext, username string, loginUI LoginUI, secretUI SecretUI, after afterFn) (err error) {
-	m.G().Log.CDebugf(m.Ctx(), "+ LoginWithPrompt(%s) called", username)
-	defer func() { m.G().Log.CDebugf(m.Ctx(), "- LoginWithPrompt -> %s", ErrToOk(err)) }()
+func (s *LoginState) LoginWithPrompt(username string, loginUI LoginUI, secretUI SecretUI, after afterFn) (err error) {
+	s.G().Log.Debug("+ LoginWithPrompt(%s) called", username)
+	defer func() { s.G().Log.Debug("- LoginWithPrompt -> %s", ErrToOk(err)) }()
 
 	err = s.loginHandle(func(lctx LoginContext) error {
-		return s.loginWithPromptHelper(m.WithLoginContext(lctx), username, loginUI, secretUI, false)
+		return s.loginWithPromptHelper(lctx, username, loginUI, secretUI, false)
 	}, after, "loginWithPromptHelper")
 	return
 }
 
-func (s *LoginState) LoginWithStoredSecret(m MetaContext, username string, after afterFn) (err error) {
-	m.G().Log.CDebugf(m.Ctx(), "+ LoginWithStoredSecret(%s) called", username)
-	defer func() { m.G().Log.CDebugf(m.Ctx(), "- LoginWithStoredSecret -> %s", ErrToOk(err)) }()
+func (s *LoginState) LoginWithStoredSecret(username string, after afterFn) (err error) {
+	s.G().Log.Debug("+ LoginWithStoredSecret(%s) called", username)
+	defer func() { s.G().Log.Debug("- LoginWithStoredSecret -> %s", ErrToOk(err)) }()
 
 	err = s.loginHandle(func(lctx LoginContext) error {
-		return s.loginWithStoredSecret(m.WithLoginContext(lctx), username)
+		return s.loginWithStoredSecret(lctx, username)
 	}, after, "loginWithStoredSecret")
 	return
 }
 
-func (s *LoginState) LoginWithPassphrase(m MetaContext, username, passphrase string, storeSecret bool, after afterFn) (err error) {
-	m.G().Log.CDebugf(m.Ctx(), "+ LoginWithPassphrase(%s) called", username)
-	defer func() { m.G().Log.CDebugf(m.Ctx(), "- LoginWithPassphrase -> %s", ErrToOk(err)) }()
+func (s *LoginState) LoginWithPassphrase(username, passphrase string, storeSecret bool, after afterFn) (err error) {
+	s.G().Log.Debug("+ LoginWithPassphrase(%s) called", username)
+	defer func() { s.G().Log.Debug("- LoginWithPassphrase -> %s", ErrToOk(err)) }()
 
 	err = s.loginHandle(func(lctx LoginContext) error {
-		return s.loginWithPassphrase(m.WithLoginContext(lctx), username, passphrase, storeSecret)
+		return s.loginWithPassphrase(lctx, username, passphrase, storeSecret)
 	}, after, "loginWithPassphrase")
 	return
 }
 
-func (s *LoginState) LoginWithKey(m MetaContext, user *User, key GenericKey, after afterFn) (err error) {
-	m.G().Log.CDebugf(m.Ctx(), "+ LoginWithKey(%s) called", user.GetName())
-	defer func() { m.G().Log.CDebugf(m.Ctx(), "- LoginWithKey -> %s", ErrToOk(err)) }()
+func (s *LoginState) LoginWithKey(lctx LoginContext, user *User, key GenericKey, after afterFn) (err error) {
+	s.G().Log.Debug("+ LoginWithKey(%s) called", user.GetName())
+	defer func() { s.G().Log.Debug("- LoginWithKey -> %s", ErrToOk(err)) }()
 
 	err = s.loginHandle(func(lctx LoginContext) error {
-		return s.loginWithKey(m.WithLoginContext(lctx), user, key)
+		return s.loginWithKey(lctx, user, key)
 	}, after, "loginWithKey")
 	return
 }
@@ -214,11 +213,11 @@ func (s *LoginState) ExternalFunc(f loginHandler, name string) error {
 	return s.loginHandle(f, nil, name)
 }
 
-func (s *LoginState) VerifyEmailAddress(m MetaContext, email string, secretUI SecretUI, after afterFn) (err error) {
-	defer m.G().CTrace(m.Ctx(), "VerifyEmailAddress", func() error { return err })()
+func (s *LoginState) VerifyEmailAddress(email string, secretUI SecretUI, after afterFn) (err error) {
+	defer Trace(s.G().Log, "VerifyEmailAddress", func() error { return err })()
 
 	err = s.loginHandle(func(lctx LoginContext) error {
-		return s.tryPassphrasePromptLogin(m.WithLoginContext(lctx), email, secretUI)
+		return s.tryPassphrasePromptLogin(lctx, email, secretUI)
 	}, after, "loginWithPassphrase")
 	return err
 }
@@ -242,20 +241,20 @@ func (s *LoginState) Shutdown() error {
 // GetPassphraseStream either returns a cached, verified passphrase stream
 // (maybe from a previous login) or generates a new one via Login. It will
 // return the current Passphrase stream on success or an error on failure.
-func (s *LoginState) GetPassphraseStream(m MetaContext, ui SecretUI) (pps *PassphraseStream, err error) {
-	m.G().Log.CDebugf(m.Ctx(), "+ GetPassphraseStream() called")
-	defer func() { m.G().Log.CDebugf(m.Ctx(), "- GetPassphraseStream() -> %s", ErrToOk(err)) }()
+func (s *LoginState) GetPassphraseStream(ui SecretUI) (pps *PassphraseStream, err error) {
+	s.G().Log.Debug("+ GetPassphraseStream() called")
+	defer func() { s.G().Log.Debug("- GetPassphraseStream() -> %s", ErrToOk(err)) }()
 
-	pps, err = s.GetPassphraseStreamForUser(m, ui, m.G().Env.GetUsername().String())
+	pps, err = s.GetPassphraseStreamForUser(ui, s.G().Env.GetUsername().String())
 	return
 }
 
 // GetPassphraseStreamForUser either returns a cached, verified passphrase stream
 // (maybe from a previous login) or generates a new one via Login. It will
 // return the current Passphrase stream on success or an error on failure.
-func (s *LoginState) GetPassphraseStreamForUser(m MetaContext, ui SecretUI, username string) (pps *PassphraseStream, err error) {
-	m.G().Log.CDebugf(m.Ctx(), "+ GetPassphraseStreamForUser() called")
-	defer func() { m.G().Log.CDebugf(m.Ctx(), "- GetPassphraseStreamForUser() -> %s", ErrToOk(err)) }()
+func (s *LoginState) GetPassphraseStreamForUser(ui SecretUI, username string) (pps *PassphraseStream, err error) {
+	s.G().Log.Debug("+ GetPassphraseStreamForUser() called")
+	defer func() { s.G().Log.Debug("- GetPassphraseStreamForUser() -> %s", ErrToOk(err)) }()
 
 	pps, err = s.PassphraseStream()
 	if err != nil {
@@ -265,7 +264,7 @@ func (s *LoginState) GetPassphraseStreamForUser(m MetaContext, ui SecretUI, user
 		return pps, nil
 	}
 	err = s.loginHandle(func(lctx LoginContext) error {
-		return s.loginWithPromptHelper(m.WithLoginContext(lctx), username, nil, ui, true)
+		return s.loginWithPromptHelper(lctx, username, nil, ui, true)
 	}, nil, "LoginState - GetPassphraseStreamForUser")
 	if err != nil {
 		return nil, err
@@ -285,11 +284,11 @@ func (s *LoginState) GetPassphraseStreamForUser(m MetaContext, ui SecretUI, user
 // passphrase stream (maybe from a previous login) or generates a new one via
 // Login. It will return the current Passphrase stream on success or an error
 // on failure.
-func (s *LoginState) GetPassphraseStreamWithPassphrase(m MetaContext, passphrase string) (pps *PassphraseStream, err error) {
-	m.G().Log.CDebugf(m.Ctx(), "+ GetPassphraseStreamWithPassphrase() called")
-	defer func() { m.G().Log.CDebugf(m.Ctx(), "- GetPassphraseStreamWithPassphrase() -> %s", ErrToOk(err)) }()
+func (s *LoginState) GetPassphraseStreamWithPassphrase(passphrase string) (pps *PassphraseStream, err error) {
+	s.G().Log.Debug("+ GetPassphraseStreamWithPassphrase() called")
+	defer func() { s.G().Log.Debug("- GetPassphraseStreamWithPassphrase() -> %s", ErrToOk(err)) }()
 
-	username := string(m.G().Env.GetUsername())
+	username := string(s.G().Env.GetUsername())
 	if username == "" {
 		return nil, fmt.Errorf("No current user to unlock.")
 	}
@@ -302,7 +301,7 @@ func (s *LoginState) GetPassphraseStreamWithPassphrase(m MetaContext, passphrase
 		return pps, nil
 	}
 	err = s.loginHandle(func(lctx LoginContext) error {
-		return s.passphraseLogin(m.WithLoginContext(lctx), username, passphrase, nil, "")
+		return s.passphraseLogin(lctx, username, passphrase, nil, "")
 	}, nil, "LoginState - GetPassphraseStreamWithPassphrase")
 	if err != nil {
 		return nil, err
@@ -318,13 +317,13 @@ func (s *LoginState) GetPassphraseStreamWithPassphrase(m MetaContext, passphrase
 	return nil, err
 }
 
-func (s *LoginState) getStoredPassphraseStream(m MetaContext, username NormalizedUsername) (*PassphraseStream, error) {
-	fullSecret, err := m.G().SecretStore().RetrieveSecret(m.G().Env.GetUsername())
+func (s *LoginState) getStoredPassphraseStream(username NormalizedUsername) (*PassphraseStream, error) {
+	fullSecret, err := s.G().SecretStore().RetrieveSecret(s.G().Env.GetUsername())
 	if err != nil {
 		return nil, err
 	}
-	lks := NewLKSecWithFullSecret(fullSecret, m.G().Env.GetUID(), s.G())
-	if err = lks.LoadServerHalf(m); err != nil {
+	lks := NewLKSecWithFullSecret(fullSecret, s.G().Env.GetUID(), s.G())
+	if err = lks.LoadServerHalf(nil); err != nil {
 		return nil, err
 	}
 	stream, err := NewPassphraseStreamLKSecOnly(lks)
@@ -337,41 +336,41 @@ func (s *LoginState) getStoredPassphraseStream(m MetaContext, username Normalize
 // GetPassphraseStreamStored either returns a cached, verified passphrase
 // stream from a previous login, the secret store, or generates a new one via
 // login.
-func (s *LoginState) GetPassphraseStreamStored(m MetaContext, ui SecretUI) (pps *PassphraseStream, err error) {
-	m.G().Log.CDebugf(m.Ctx(), "+ GetPassphraseStreamStored() called")
-	defer func() { m.G().Log.CDebugf(m.Ctx(), "- GetPassphraseStreamStored() -> %s", ErrToOk(err)) }()
+func (s *LoginState) GetPassphraseStreamStored(ui SecretUI) (pps *PassphraseStream, err error) {
+	s.G().Log.Debug("+ GetPassphraseStreamStored() called")
+	defer func() { s.G().Log.Debug("- GetPassphraseStreamStored() -> %s", ErrToOk(err)) }()
 
 	// 1. try cached
-	m.G().Log.CDebugf(m.Ctx(), "| trying cached passphrase stream")
+	s.G().Log.Debug("| trying cached passphrase stream")
 	full, err := s.PassphraseStream()
 	if err != nil {
 		return pps, err
 	}
 	if full != nil {
-		m.G().Log.CDebugf(m.Ctx(), "| cached passphrase stream ok, using it")
+		s.G().Log.Debug("| cached passphrase stream ok, using it")
 		return full, nil
 	}
 
 	// 2. try from secret store
-	if m.G().SecretStore() != nil {
-		m.G().Log.CDebugf(m.Ctx(), "| trying to get passphrase stream from secret store")
-		pps, err = s.getStoredPassphraseStream(m, s.G().Env.GetUsername())
+	if s.G().SecretStore() != nil {
+		s.G().Log.Debug("| trying to get passphrase stream from secret store")
+		pps, err = s.getStoredPassphraseStream(s.G().Env.GetUsername())
 		if err == nil {
-			m.G().Log.CDebugf(m.Ctx(), "| got passphrase stream from secret store")
+			s.G().Log.Debug("| got passphrase stream from secret store")
 			return pps, nil
 		}
 
-		m.G().Log.CDebugf(m.Ctx(), "| failed to get passphrase stream from secret store: %s", err)
+		s.G().Log.Debug("| failed to get passphrase stream from secret store: %s", err)
 	}
 
 	// 3. login and get it
-	m.G().Log.CDebugf(m.Ctx(), "| using full GetPassphraseStream")
-	full, err = s.GetPassphraseStream(m, ui)
+	s.G().Log.Debug("| using full GetPassphraseStream")
+	full, err = s.GetPassphraseStream(ui)
 	if err != nil {
 		return pps, err
 	}
 	if full != nil {
-		m.G().Log.CDebugf(m.Ctx(), "| success using full GetPassphraseStream")
+		s.G().Log.Debug("| success using full GetPassphraseStream")
 		return full, nil
 	}
 	return pps, nil
@@ -379,7 +378,7 @@ func (s *LoginState) GetPassphraseStreamStored(m MetaContext, ui SecretUI) (pps 
 
 // GetVerifiedTripleSec either returns a cached, verified Triplesec
 // or generates a new one that's verified via Login.
-func (s *LoginState) GetVerifiedTriplesec(m MetaContext, ui SecretUI) (ret Triplesec, gen PassphraseGeneration, err error) {
+func (s *LoginState) GetVerifiedTriplesec(ui SecretUI) (ret Triplesec, gen PassphraseGeneration, err error) {
 	err = s.Account(func(a *Account) {
 		ret = a.PassphraseStreamCache().Triplesec()
 		gen = a.GetStreamGeneration()
@@ -388,7 +387,7 @@ func (s *LoginState) GetVerifiedTriplesec(m MetaContext, ui SecretUI) (ret Tripl
 		return
 	}
 
-	if err = s.verifyPassphraseWithServer(m, ui); err != nil {
+	if err = s.verifyPassphraseWithServer(ui); err != nil {
 		return
 	}
 
@@ -407,9 +406,9 @@ func (s *LoginState) GetVerifiedTriplesec(m MetaContext, ui SecretUI) (ret Tripl
 // is indeed the correct passphrase for the logged in user.  This is accomplished
 // via a login request.  The side effect will be that we'll retrieve the
 // correct generation number of the current passphrase from the server.
-func (s *LoginState) VerifyPlaintextPassphrase(m MetaContext, pp string, after afterFn) (ppStream *PassphraseStream, err error) {
+func (s *LoginState) VerifyPlaintextPassphrase(pp string, after afterFn) (ppStream *PassphraseStream, err error) {
 	err = s.loginHandle(func(lctx LoginContext) error {
-		err := s.verifyPlaintextPassphraseForLoggedInUser(m.WithLoginContext(lctx), pp)
+		err := s.verifyPlaintextPassphraseForLoggedInUser(lctx, pp)
 		if err == nil {
 			ppStream = lctx.PassphraseStreamCache().PassphraseStream()
 		}
@@ -418,8 +417,7 @@ func (s *LoginState) VerifyPlaintextPassphrase(m MetaContext, pp string, after a
 	return
 }
 
-func ComputeLoginPackage(m MetaContext, username string) (ret PDPKALoginPackage, err error) {
-	lctx := m.LoginContext()
+func ComputeLoginPackage(lctx LoginContext, username string) (ret PDPKALoginPackage, err error) {
 	loginSession, err := lctx.LoginSession().Session()
 	if err != nil {
 		return ret, err
@@ -434,29 +432,28 @@ func ComputeLoginPackage(m MetaContext, username string) (ret PDPKALoginPackage,
 	return computeLoginPackageFromEmailOrUsername(username, ps, loginSession)
 }
 
-func (s *LoginState) ResetAccount(m MetaContext, username string) (err error) {
-	return s.resetOrDelete(m, username, "nuke")
+func (s *LoginState) ResetAccount(username string) (err error) {
+	return s.resetOrDelete(username, "nuke")
 }
 
-func (s *LoginState) DeleteAccount(m MetaContext, username string) (err error) {
-	return s.resetOrDelete(m, username, "delete")
+func (s *LoginState) DeleteAccount(username string) (err error) {
+	return s.resetOrDelete(username, "delete")
 }
 
-func ResetAccountWithContext(m MetaContext, username string) error {
-	return ResetOrDeleteWithContext(m, username, "nuke")
+func ResetAccountWithContext(g *GlobalContext, lctx LoginContext, username string) error {
+	return ResetOrDeleteWithContext(g, lctx, username, "nuke")
 }
 
-func DeleteAccountWithContext(m MetaContext, username string) error {
-	return ResetOrDeleteWithContext(m, username, "delete")
+func DeleteAccountWithContext(g *GlobalContext, lctx LoginContext, username string) error {
+	return ResetOrDeleteWithContext(g, lctx, username, "delete")
 }
 
-func ResetOrDeleteWithContext(m MetaContext, username string, endpoint string) (err error) {
-	lctx := m.LoginContext()
+func ResetOrDeleteWithContext(g *GlobalContext, lctx LoginContext, username string, endpoint string) (err error) {
 	err = lctx.LoadLoginSession(username)
 	if err != nil {
 		return err
 	}
-	pdpka, err := ComputeLoginPackage(m, username)
+	pdpka, err := ComputeLoginPackage(lctx, username)
 	if err != nil {
 		return err
 	}
@@ -467,17 +464,17 @@ func ResetOrDeleteWithContext(m MetaContext, username string, endpoint string) (
 		SessionR:    lctx.LocalSession(),
 	}
 	pdpka.PopulateArgs(&arg.Args)
-	_, err = m.G().API.Post(arg)
+	_, err = g.API.Post(arg)
 	return err
 }
 
-func (s *LoginState) resetOrDelete(m MetaContext, username string, endpoint string) (err error) {
+func (s *LoginState) resetOrDelete(username string, endpoint string) (err error) {
 	return s.loginHandle(func(lctx LoginContext) error {
-		return ResetOrDeleteWithContext(m.WithLoginContext(lctx), username, endpoint)
+		return ResetOrDeleteWithContext(s.G(), lctx, username, endpoint)
 	}, nil, ("ResetAccount: " + endpoint))
 }
 
-func (s *LoginState) postLoginToServer(m MetaContext, eOu string, lp PDPKALoginPackage) (*loginAPIResult, error) {
+func (s *LoginState) postLoginToServer(lctx LoginContext, eOu string, lp PDPKALoginPackage) (*loginAPIResult, error) {
 
 	arg := APIArg{
 		Endpoint:    "login",
@@ -485,11 +482,10 @@ func (s *LoginState) postLoginToServer(m MetaContext, eOu string, lp PDPKALoginP
 		Args: HTTPArgs{
 			"email_or_username": S{eOu},
 		},
-		NetContext:     m.Ctx(),
 		AppStatusCodes: []int{SCOk, SCBadLoginPassword, SCBadLoginUserNotFound},
 	}
 	lp.PopulateArgs(&arg.Args)
-	res, err := m.G().API.Post(arg)
+	res, err := s.G().API.Post(arg)
 	if err != nil {
 		return nil, err
 	}
@@ -526,10 +522,9 @@ func (s *LoginState) postLoginToServer(m MetaContext, eOu string, lp PDPKALoginP
 	return &loginAPIResult{sessionID, csrfToken, uid, uname, PassphraseGeneration(ppGen)}, nil
 }
 
-func (s *LoginState) saveLoginState(m MetaContext, res *loginAPIResult, nilPPStreamOK bool) error {
-	lctx := m.LoginContext()
+func (s *LoginState) saveLoginState(lctx LoginContext, res *loginAPIResult, nilPPStreamOK bool) error {
 	lctx.SetStreamGeneration(res.ppGen, nilPPStreamOK)
-	return lctx.SaveState(res.sessionID, res.csrfToken, NewNormalizedUsername(res.username), res.uid, m.G().Env.GetDeviceIDForUsername(NewNormalizedUsername(res.username)))
+	return lctx.SaveState(res.sessionID, res.csrfToken, NewNormalizedUsername(res.username), res.uid, s.G().Env.GetDeviceIDForUsername(NewNormalizedUsername(res.username)))
 }
 
 func (r PostAuthProofRes) loginResult() (*loginAPIResult, error) {
@@ -553,47 +548,45 @@ type getSecretKeyFn func(*Keyrings, *User) (GenericKey, error)
 
 // pubkeyLoginHelper looks for a locally available private key and
 // tries to establish a session via public key signature.
-func (s *LoginState) pubkeyLoginHelper(m MetaContext, username string, getSecretKeyFn getSecretKeyFn) (err error) {
-	m.G().Log.CDebugf(m.Ctx(), "+ pubkeyLoginHelper()")
-	lctx := m.LoginContext()
+func (s *LoginState) pubkeyLoginHelper(lctx LoginContext, username string, getSecretKeyFn getSecretKeyFn) (err error) {
+	s.G().Log.Debug("+ pubkeyLoginHelper()")
 	defer func() {
 		if err != nil {
 			if e := lctx.SecretSyncer().Clear(); e != nil {
-				m.G().Log.CInfof(m.Ctx(), "error clearing secret syncer: %s", e)
+				s.G().Log.Info("error clearing secret syncer: %s", e)
 			}
 		}
-		m.G().Log.CDebugf(m.Ctx(), "- pubkeyLoginHelper() -> %s", ErrToOk(err))
+		s.G().Log.Debug("- pubkeyLoginHelper() -> %s", ErrToOk(err))
 	}()
 
 	nu := NewNormalizedUsername(username)
 
-	if _, err = m.G().Env.GetConfig().GetUserConfigForUsername(nu); err != nil {
-		m.G().Log.CDebugf(m.Ctx(), "| No Userconfig for %s: %s", username, err)
+	if _, err = s.G().Env.GetConfig().GetUserConfigForUsername(nu); err != nil {
+		s.G().Log.Debug("| No Userconfig for %s: %s", username, err)
 		return
 	}
 
 	var me *User
-	if me, err = LoadUser(NewLoadUserByNameArg(s.G(), username).WithLoginContext(lctx).WithNetContext(m.Ctx())); err != nil {
+	if me, err = LoadUser(NewLoadUserByNameArg(s.G(), username).WithLoginContext(lctx)); err != nil {
 		return
 	}
 
 	lctx.RunSecretSyncer(me.GetUID())
 	if !lctx.SecretSyncer().HasDevices() {
-		m.G().Log.CDebugf(m.Ctx(), "| No synced devices, pubkey login impossible.")
+		s.G().Log.Debug("| No synced devices, pubkey login impossible.")
 		err = NoDeviceError{Reason: "no synced devices during pubkey login"}
 		return err
 	}
 
 	var key GenericKey
-	if key, err = getSecretKeyFn(m.G().Keyrings, me); err != nil {
+	if key, err = getSecretKeyFn(s.G().Keyrings, me); err != nil {
 		return err
 	}
 
-	return s.pubkeyLoginWithKey(m, me, key)
+	return s.pubkeyLoginWithKey(lctx, me, key)
 }
 
-func (s *LoginState) pubkeyLoginWithKey(m MetaContext, me *User, key GenericKey) error {
-	lctx := m.LoginContext()
+func (s *LoginState) pubkeyLoginWithKey(lctx LoginContext, me *User, key GenericKey) error {
 	if err := lctx.LoadLoginSession(me.GetName()); err != nil {
 		return err
 	}
@@ -618,7 +611,7 @@ func (s *LoginState) pubkeyLoginWithKey(m MetaContext, me *User, key GenericKey)
 		sig: sig,
 		key: key,
 	}
-	pres, err := PostAuthProof(m.Ctx(), m.G(), arg)
+	pres, err := PostAuthProof(context.TODO(), s.G(), arg)
 	if err != nil {
 		return err
 	}
@@ -628,18 +621,17 @@ func (s *LoginState) pubkeyLoginWithKey(m MetaContext, me *User, key GenericKey)
 		return err
 	}
 
-	return s.saveLoginState(m, res, true)
+	return s.saveLoginState(lctx, res, true)
 }
 
-func (s *LoginState) checkLoggedIn(m MetaContext, username string, force bool) (loggedIn bool, err error) {
-	m.G().Log.CDebugf(m.Ctx(), "+ checkedLoggedIn()")
-	defer func() { m.G().Log.CDebugf(m.Ctx(), "- checkedLoggedIn() -> %t, %s", loggedIn, ErrToOk(err)) }()
-	lctx := m.LoginContext()
+func (s *LoginState) checkLoggedIn(lctx LoginContext, username string, force bool) (loggedIn bool, err error) {
+	s.G().Log.Debug("+ checkedLoggedIn()")
+	defer func() { s.G().Log.Debug("- checkedLoggedIn() -> %t, %s", loggedIn, ErrToOk(err)) }()
 
 	var loggedInTmp bool
 	if loggedInTmp, err = lctx.LoggedInLoad(); err != nil {
-		m.G().Log.CDebugf(m.Ctx(), "| Session failed to load")
-		return loggedIn, err
+		s.G().Log.Debug("| Session failed to load")
+		return
 	}
 
 	nu1 := lctx.LocalSession().GetUsername()
@@ -650,13 +642,13 @@ func (s *LoginState) checkLoggedIn(m MetaContext, username string, force bool) (
 	}
 
 	if !force && loggedInTmp {
-		s.G().Log.CDebugf(m.Ctx(), "| Our session token is still valid; we're logged in")
+		s.G().Log.Debug("| Our session token is still valid; we're logged in")
 		loggedIn = true
 	}
-	return loggedIn, err
+	return
 }
 
-func (s *LoginState) switchUser(m MetaContext, username string) error {
+func (s *LoginState) switchUser(lctx LoginContext, username string) error {
 	if len(username) == 0 {
 		// this isn't an error
 		return nil
@@ -665,44 +657,44 @@ func (s *LoginState) switchUser(m MetaContext, username string) error {
 		return errors.New("invalid username provided to switchUser")
 	}
 	nu := NewNormalizedUsername(username)
-	if err := m.G().Env.GetConfigWriter().SwitchUser(nu); err != nil {
+	if err := s.G().Env.GetConfigWriter().SwitchUser(nu); err != nil {
 		if _, ok := err.(UserNotFoundError); ok {
-			m.G().Log.Debug("| No user %s found; clearing out config", username)
+			s.G().Log.Debug("| No user %s found; clearing out config", username)
 			return nil
 		}
-		m.G().Log.Debug("| Can't switch user to %s: %s", username, err)
+		s.G().Log.Debug("| Can't switch user to %s: %s", username, err)
 		return err
 	}
 
-	m.LoginContext().EnsureUsername(nu)
+	lctx.EnsureUsername(nu)
 
-	m.G().Log.CDebugf(m.Ctx(), "| Successfully switched user to %s", username)
+	s.G().Log.Debug("| Successfully switched user to %s", username)
 	return nil
 }
 
 // Like pubkeyLoginHelper, but ignores most errors.
-func (s *LoginState) tryPubkeyLoginHelper(m MetaContext, username string, getSecretKeyFn getSecretKeyFn) (loggedIn bool, err error) {
-	if err = s.pubkeyLoginHelper(m, username, getSecretKeyFn); err == nil {
-		m.G().Log.CDebugf(m.Ctx(), "| Pubkey login succeeded")
+func (s *LoginState) tryPubkeyLoginHelper(lctx LoginContext, username string, getSecretKeyFn getSecretKeyFn) (loggedIn bool, err error) {
+	if err = s.pubkeyLoginHelper(lctx, username, getSecretKeyFn); err == nil {
+		s.G().Log.Debug("| Pubkey login succeeded")
 		loggedIn = true
-		return loggedIn, err
+		return
 	}
 
 	if _, ok := err.(CanceledError); ok {
-		m.G().Log.CDebugf(m.Ctx(), "| Canceled pubkey login, so cancel login")
-		return loggedIn, err
+		s.G().Log.Debug("| Canceled pubkey login, so cancel login")
+		return
 	}
 
-	m.G().Log.CDebugf(m.Ctx(), "| Public key login failed, falling back: %s", err)
+	s.G().Log.Debug("| Public key login failed, falling back: %s", err)
 	err = nil
-	return loggedIn, err
+	return
 }
 
-func (s *LoginState) tryPassphrasePromptLogin(m MetaContext, username string, secretUI SecretUI) (err error) {
+func (s *LoginState) tryPassphrasePromptLogin(lctx LoginContext, username string, secretUI SecretUI) (err error) {
 	retryMsg := ""
 	retryCount := 3
 	for i := 0; i < retryCount; i++ {
-		err = s.passphraseLogin(m, username, "", secretUI, retryMsg)
+		err = s.passphraseLogin(lctx, username, "", secretUI, retryMsg)
 
 		if err == nil {
 			return
@@ -717,18 +709,18 @@ func (s *LoginState) tryPassphrasePromptLogin(m MetaContext, username string, se
 	return
 }
 
-func (s *LoginState) getEmailOrUsername(m MetaContext, username *string, loginUI LoginUI) (err error) {
+func (s *LoginState) getEmailOrUsername(lctx LoginContext, username *string, loginUI LoginUI) (err error) {
 	if len(*username) != 0 {
 		return
 	}
 
-	*username = m.G().Env.GetEmailOrUsername()
+	*username = s.G().Env.GetEmailOrUsername()
 	if len(*username) != 0 {
 		return
 	}
 
 	if loginUI != nil {
-		if *username, err = loginUI.GetEmailOrUsername(m.Ctx(), 0); err != nil {
+		if *username, err = loginUI.GetEmailOrUsername(context.TODO(), 0); err != nil {
 			*username = ""
 			return
 		}
@@ -743,24 +735,22 @@ func (s *LoginState) getEmailOrUsername(m MetaContext, username *string, loginUI
 	}
 
 	// username set, so redo config
-	if err = m.G().ConfigureConfig(); err != nil {
+	if err = s.G().ConfigureConfig(); err != nil {
 		return
 	}
-	return s.switchUser(m, *username)
+	return s.switchUser(lctx, *username)
 }
 
-func (s *LoginState) verifyPlaintextPassphraseForLoggedInUser(m MetaContext, passphrase string) (err error) {
-	m.G().Log.CDebugf(m.Ctx(), "+ LoginState.verifyPlaintextPassphraseForLoggedInUser")
+func (s *LoginState) verifyPlaintextPassphraseForLoggedInUser(lctx LoginContext, passphrase string) (err error) {
+	s.G().Log.Debug("+ LoginState.verifyPlaintextPassphraseForLoggedInUser")
 	defer func() {
-		m.G().Log.CDebugf(m.Ctx(), "- LoginState.verifyPlaintextPassphraseForLoggedInUser -> %s", ErrToOk(err))
+		s.G().Log.Debug("- LoginState.verifyPlaintextPassphraseForLoggedInUser -> %s", ErrToOk(err))
 	}()
 
 	var username string
-	if err = s.getEmailOrUsername(m, &username, nil); err != nil {
+	if err = s.getEmailOrUsername(lctx, &username, nil); err != nil {
 		return
 	}
-
-	lctx := m.LoginContext()
 
 	// For a login reattempt
 	lctx.ClearStreamCache()
@@ -770,44 +760,42 @@ func (s *LoginState) verifyPlaintextPassphraseForLoggedInUser(m MetaContext, pas
 
 	// Pass nil SecretUI (since we don't want to trigger the UI)
 	// and also no retry message.
-	err = s.passphraseLogin(m, username, passphrase, nil, "")
+	err = s.passphraseLogin(lctx, username, passphrase, nil, "")
 
 	return
 }
 
-func (s *LoginState) passphraseLogin(m MetaContext, username, passphrase string, secretUI SecretUI, retryMsg string) (err error) {
-	m.G().Log.CDebugf(m.Ctx(), "+ LoginState#passphraseLogin (username=%s)", username)
+func (s *LoginState) passphraseLogin(lctx LoginContext, username, passphrase string, secretUI SecretUI, retryMsg string) (err error) {
+	s.G().Log.Debug("+ LoginState#passphraseLogin (username=%s)", username)
 	defer func() {
-		m.G().Log.CDebugf(m.Ctx(), "- LoginState#passphraseLogin -> %s", ErrToOk(err))
+		s.G().Log.Debug("- LoginState#passphraseLogin -> %s", ErrToOk(err))
 	}()
-
-	lctx := m.LoginContext()
 
 	if err = lctx.LoadLoginSession(username); err != nil {
 		return
 	}
 
-	storeSecret, err := s.stretchPassphraseIfNecessary(m, username, passphrase, secretUI, retryMsg)
+	storeSecret, err := s.stretchPassphraseIfNecessary(lctx, username, passphrase, secretUI, retryMsg)
 	if err != nil {
 		return err
 	}
 
-	lp, err := ComputeLoginPackage(m, username)
+	lp, err := ComputeLoginPackage(lctx, username)
 	if err != nil {
 		return err
 	}
 
-	res, err := s.postLoginToServer(m, username, lp)
+	res, err := s.postLoginToServer(lctx, username, lp)
 	if err != nil {
 		lctx.ClearStreamCache()
 		return err
 	}
 
-	if err := s.saveLoginState(m, res, false); err != nil {
+	if err := s.saveLoginState(lctx, res, false); err != nil {
 		return err
 	}
 
-	m.G().Log.CDebugf(m.Ctx(), "passphraseLogin success")
+	s.G().Log.Debug("passphraseLogin success")
 
 	// If storeSecret is set and there is a device ID, then try to store the secret.
 	//
@@ -815,68 +803,66 @@ func (s *LoginState) passphraseLogin(m MetaContext, username, passphrase string,
 	//
 	// Can get here without a device ID during device provisioning as this is used to establish a login
 	// session before the device keys are generated.
-	if storeSecret && !m.G().Env.GetDeviceIDForUsername(NewNormalizedUsername(res.username)).IsNil() {
+	if storeSecret && !s.G().Env.GetDeviceIDForUsername(NewNormalizedUsername(res.username)).IsNil() {
 
-		err = s.doStoreSecret(m, res)
+		err = s.doStoreSecret(lctx, res)
 		if err != nil {
-			m.G().Log.CDebugf(m.Ctx(), "| LoginState#passphraseLogin: emergency logout")
+			s.G().Log.Debug("| LoginState#passphraseLogin: emergency logout")
 			tmpErr := lctx.Logout()
 			if tmpErr != nil {
-				m.G().Log.CDebugf(m.Ctx(), "error in emergency logout: %s", tmpErr)
+				s.G().Log.Debug("error in emergency logout: %s", tmpErr)
 			}
 			return err
 		}
 	} else if !storeSecret {
-		m.G().Log.CDebugf(m.Ctx(), "| LoginState#passphraseLogin: not storing secret because storeSecret false")
-	} else if m.G().Env.GetDeviceIDForUsername(NewNormalizedUsername(res.username)).IsNil() {
-		m.G().Log.CDebugf(m.Ctx(), "| LoginState#passphraseLogin: not storing secret because no device id for username %q", res.username)
+		s.G().Log.Debug("| LoginState#passphraseLogin: not storing secret because storeSecret false")
+	} else if s.G().Env.GetDeviceIDForUsername(NewNormalizedUsername(res.username)).IsNil() {
+		s.G().Log.Debug("| LoginState#passphraseLogin: not storing secret because no device id for username %q", res.username)
 	}
 
-	if repairErr := RunBug3964Repairman(m); repairErr != nil {
-		m.G().Log.CDebugf(m.Ctx(), "In Bug 3964 repair: %s", repairErr)
+	if repairErr := RunBug3964Repairman(s.G(), lctx, lctx.PassphraseStreamCache().PassphraseStream()); repairErr != nil {
+		s.G().Log.Debug("In Bug 3964 repair: %s", repairErr)
 	}
 
 	return nil
 }
 
-func (s *LoginState) doStoreSecret(m MetaContext, res *loginAPIResult) (err error) {
+func (s *LoginState) doStoreSecret(lctx LoginContext, res *loginAPIResult) (err error) {
 
-	defer m.G().CTrace(m.Ctx(), "LoginState#doStoreSecret", func() error { return err })()
-	lctx := m.LoginContext()
+	defer s.G().Trace("LoginState#doStoreSecret", func() error { return err })()
 	pps := lctx.PassphraseStreamCache().PassphraseStream()
 	if pps == nil {
 		return errors.New("nil passphrase stream")
 	}
-	lks := NewLKSec(pps, res.uid, m.G())
-	secret, err := lks.GetSecret(m)
+	lks := NewLKSec(pps, res.uid, s.G())
+	secret, err := lks.GetSecret(lctx)
 	if err != nil {
-		m.G().Log.CDebugf(m.Ctx(), "error getting lksec secret for SecretStore: %s", err)
+		s.G().Log.Debug("error getting lksec secret for SecretStore: %s", err)
 		return err
 	}
 
-	secretStore := NewSecretStore(m.G(), NewNormalizedUsername(res.username))
+	secretStore := NewSecretStore(s.G(), NewNormalizedUsername(res.username))
 	if secretStore == nil {
-		m.G().Log.CDebugf(m.Ctx(), "secret store requested, but unable to create one")
+		s.G().Log.Debug("secret store requested, but unable to create one")
 		return nil
 	}
 	storeSecretErr := secretStore.StoreSecret(secret)
 	if storeSecretErr != nil {
 		// Ignore any errors storing the secret.
-		m.G().Log.CDebugf(m.Ctx(), "(ignoring) StoreSecret error: %s", storeSecretErr)
+		s.G().Log.Debug("(ignoring) StoreSecret error: %s", storeSecretErr)
 		return nil
 	}
 
 	return nil
 }
 
-func (s *LoginState) stretchPassphraseIfNecessary(m MetaContext, un string, pp string, ui SecretUI, retry string) (storeSecret bool, err error) {
-	s.G().Log.CDebugf(m.Ctx(), "+ stretchPassphraseIfNecessary (%s)", un)
+func (s *LoginState) stretchPassphraseIfNecessary(lctx LoginContext, un string, pp string, ui SecretUI, retry string) (storeSecret bool, err error) {
+	s.G().Log.Debug("+ stretchPassphraseIfNecessary (%s)", un)
 	defer func() {
-		s.G().Log.CDebugf(m.Ctx(), "- stretchPassphraseIfNecessary -> %s", ErrToOk(err))
+		s.G().Log.Debug("- stretchPassphraseIfNecessary -> %s", ErrToOk(err))
 	}()
-	lctx := m.LoginContext()
 	if lctx.PassphraseStreamCache().Valid() {
-		m.G().Log.CDebugf(m.Ctx(), "| stretchPassphraseIfNecessary: passphrase stream cached")
+		s.G().Log.Debug("| stretchPassphraseIfNecessary: passphrase stream cached")
 		// already have stretched passphrase cached
 		return false, nil
 	}
@@ -886,8 +872,8 @@ func (s *LoginState) stretchPassphraseIfNecessary(m MetaContext, un string, pp s
 			return false, NoUIError{"secret"}
 		}
 
-		m.G().Log.CDebugf(m.Ctx(), "| stretchPassphraseIfNecessary: getting keybase passphrase via ui")
-		res, err := GetKeybasePassphrase(m, ui, un, retry)
+		s.G().Log.Debug("| stretchPassphraseIfNecessary: getting keybase passphrase via ui")
+		res, err := GetKeybasePassphrase(s.G(), ui, un, retry)
 		if err != nil {
 			return false, err
 		}
@@ -903,23 +889,23 @@ func (s *LoginState) stretchPassphraseIfNecessary(m MetaContext, un string, pp s
 	return storeSecret, nil
 }
 
-func (s *LoginState) verifyPassphraseWithServer(m MetaContext, ui SecretUI) error {
+func (s *LoginState) verifyPassphraseWithServer(ui SecretUI) error {
 	return s.loginHandle(func(lctx LoginContext) error {
-		return s.loginWithPromptHelper(m.WithLoginContext(lctx), m.G().Env.GetUsername().String(), nil, ui, true)
+		return s.loginWithPromptHelper(lctx, s.G().Env.GetUsername().String(), nil, ui, true)
 	}, nil, "LoginState - verifyPassphrase")
 }
 
-func (s *LoginState) loginWithPromptHelper(m MetaContext, username string, loginUI LoginUI, secretUI SecretUI, force bool) (err error) {
+func (s *LoginState) loginWithPromptHelper(lctx LoginContext, username string, loginUI LoginUI, secretUI SecretUI, force bool) (err error) {
 	var loggedIn bool
-	if loggedIn, err = s.checkLoggedIn(m, username, force); err != nil || loggedIn {
+	if loggedIn, err = s.checkLoggedIn(lctx, username, force); err != nil || loggedIn {
 		return
 	}
 
-	if err = s.switchUser(m, username); err != nil {
+	if err = s.switchUser(lctx, username); err != nil {
 		return
 	}
 
-	if err = s.getEmailOrUsername(m, &username, loginUI); err != nil {
+	if err = s.getEmailOrUsername(lctx, &username, loginUI); err != nil {
 		return
 	}
 
@@ -928,17 +914,17 @@ func (s *LoginState) loginWithPromptHelper(m MetaContext, username string, login
 			Me:      me,
 			KeyType: DeviceSigningKeyType,
 		}
-		return keyrings.GetSecretKeyWithoutPrompt(m, ska)
+		return keyrings.GetSecretKeyWithoutPrompt(lctx, ska)
 	}
 
 	// If we're forcing a login to check our passphrase (as in when we're called
 	// from verifyPassphraseWithServer), then don't use public key login at all. See issue #510.
 	if !force {
-		if loggedIn, err = s.tryPubkeyLoginHelper(m, username, getSecretKeyFn); err != nil || loggedIn {
+		if loggedIn, err = s.tryPubkeyLoginHelper(lctx, username, getSecretKeyFn); err != nil || loggedIn {
 			return
 		}
 	}
-	return s.tryPassphrasePromptLogin(m, username, secretUI)
+	return s.tryPassphrasePromptLogin(lctx, username, secretUI)
 }
 
 // loginHandle creates a loginReq from a loginHandler and puts it
@@ -1035,75 +1021,75 @@ func (s *LoginState) requests() {
 	}
 }
 
-func (s *LoginState) loginWithStoredSecret(m MetaContext, username string) error {
-	if loggedIn, err := s.checkLoggedIn(m, username, false); err != nil {
+func (s *LoginState) loginWithStoredSecret(lctx LoginContext, username string) error {
+	if loggedIn, err := s.checkLoggedIn(lctx, username, false); err != nil {
 		return err
 	} else if loggedIn {
 		return nil
 	}
 
-	if err := s.switchUser(m, username); err != nil {
+	if err := s.switchUser(lctx, username); err != nil {
 		return err
 	}
 
 	getSecretKeyFn := func(keyrings *Keyrings, me *User) (GenericKey, error) {
-		secretRetriever := NewSecretStore(m.G(), me.GetNormalizedName())
+		secretRetriever := NewSecretStore(s.G(), me.GetNormalizedName())
 		ska := SecretKeyArg{
 			Me:      me,
 			KeyType: DeviceSigningKeyType,
 		}
-		key, err := keyrings.GetSecretKeyWithStoredSecret(m, ska, me, secretRetriever)
+		key, err := keyrings.GetSecretKeyWithStoredSecret(lctx, ska, me, secretRetriever)
 		if err != nil {
 			return nil, SecretStoreError{Msg: err.Error()}
 		}
 		return key, nil
 	}
-	return s.pubkeyLoginHelper(m, username, getSecretKeyFn)
+	return s.pubkeyLoginHelper(lctx, username, getSecretKeyFn)
 }
 
-func (s *LoginState) loginWithPassphrase(m MetaContext, username, passphrase string, storeSecret bool) error {
-	if loggedIn, err := s.checkLoggedIn(m, username, false); err != nil {
+func (s *LoginState) loginWithPassphrase(lctx LoginContext, username, passphrase string, storeSecret bool) error {
+	if loggedIn, err := s.checkLoggedIn(lctx, username, false); err != nil {
 		return err
 	} else if loggedIn {
 		return nil
 	}
 
-	if err := s.switchUser(m, username); err != nil {
+	if err := s.switchUser(lctx, username); err != nil {
 		return err
 	}
 
 	getSecretKeyFn := func(keyrings *Keyrings, me *User) (GenericKey, error) {
 		var secretStorer SecretStorer
 		if storeSecret {
-			secretStorer = NewSecretStore(m.G(), me.GetNormalizedName())
+			secretStorer = NewSecretStore(s.G(), me.GetNormalizedName())
 		}
-		key, err := keyrings.GetSecretKeyWithPassphrase(m, me, passphrase, secretStorer)
+		key, err := keyrings.GetSecretKeyWithPassphrase(lctx, me, passphrase, secretStorer)
 		if err != nil {
 			return nil, SecretStoreError{Msg: err.Error()}
 		}
 		return key, nil
 	}
-	if loggedIn, err := s.tryPubkeyLoginHelper(m, username, getSecretKeyFn); err != nil {
+	if loggedIn, err := s.tryPubkeyLoginHelper(lctx, username, getSecretKeyFn); err != nil {
 		return err
 	} else if loggedIn {
 		return nil
 	}
 
-	return s.passphraseLogin(m, username, passphrase, nil, "")
+	return s.passphraseLogin(lctx, username, passphrase, nil, "")
 }
 
-func (s *LoginState) loginWithKey(m MetaContext, user *User, key GenericKey) error {
-	if loggedIn, err := s.checkLoggedIn(m, user.GetName(), false); err != nil {
+func (s *LoginState) loginWithKey(lctx LoginContext, user *User, key GenericKey) error {
+	if loggedIn, err := s.checkLoggedIn(lctx, user.GetName(), false); err != nil {
 		return err
 	} else if loggedIn {
 		return nil
 	}
 
-	if err := s.switchUser(m, user.GetName()); err != nil {
+	if err := s.switchUser(lctx, user.GetName()); err != nil {
 		return err
 	}
 
-	return s.pubkeyLoginWithKey(m, user, key)
+	return s.pubkeyLoginWithKey(lctx, user, key)
 }
 
 func (s *LoginState) logout(a LoginContext) error {
@@ -1301,39 +1287,4 @@ func IsLoggedIn(g *GlobalContext, lih LoggedInHelper) (ret bool, uid keybase1.UI
 		uid = lih.GetUID()
 	}
 	return ret, uid, err
-}
-
-// UnverifiedPassphraseStream takes a passphrase as a parameter and
-// also the salt from the Account and computes a Triplesec and
-// a passphrase stream.  It's not verified through a Login.
-func UnverifiedPassphraseStream(m MetaContext, passphrase string) (tsec Triplesec, ret *PassphraseStream, err error) {
-	username := m.G().Env.GetUsername().String()
-	lctx := m.LoginContext()
-	var salt []byte
-	if lctx != nil {
-		if len(username) > 0 {
-			err = lctx.LoadLoginSession(username)
-			if err != nil {
-				return nil, nil, err
-			}
-		}
-		salt, err = lctx.LoginSession().Salt()
-	} else {
-		aerr := m.G().LoginState().Account(func(a *Account) {
-			if len(username) > 0 {
-				err = a.LoadLoginSession(username)
-				if err != nil {
-					return
-				}
-			}
-			salt, err = a.LoginSession().Salt()
-		}, "skb - salt")
-		if aerr != nil {
-			return nil, nil, aerr
-		}
-	}
-	if err != nil {
-		return nil, nil, err
-	}
-	return StretchPassphrase(m.G(), passphrase, salt)
 }

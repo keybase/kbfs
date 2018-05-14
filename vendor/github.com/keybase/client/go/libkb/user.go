@@ -4,7 +4,6 @@
 package libkb
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -110,18 +109,6 @@ func (u *User) GetNormalizedName() NormalizedUsername { return NewNormalizedUser
 func (u *User) GetName() string                       { return u.name }
 func (u *User) GetUID() keybase1.UID                  { return u.id }
 func (u *User) GetStatus() keybase1.StatusCode        { return u.status }
-
-func (u *User) GetSalt() (salt []byte, err error) {
-	saltHex, err := u.basics.AtKey("salt").GetString()
-	if err != nil {
-		return nil, err
-	}
-	salt, err = hex.DecodeString(saltHex)
-	if err != nil {
-		return nil, err
-	}
-	return salt, nil
-}
 
 func (u *User) GetIDVersion() (int64, error) {
 	return u.basics.AtKey("id_version").GetInt64()
@@ -362,8 +349,8 @@ func (u *User) StoreTopLevel(ctx context.Context) error {
 	return err
 }
 
-func (u *User) SyncedSecretKey(m MetaContext) (ret *SKB, err error) {
-	if lctx := m.LoginContext(); lctx != nil {
+func (u *User) SyncedSecretKey(lctx LoginContext) (ret *SKB, err error) {
+	if lctx != nil {
 		return u.getSyncedSecretKeyLogin(lctx)
 	}
 	return u.GetSyncedSecretKey()
@@ -728,7 +715,7 @@ func (u *User) SigningKeyPub() (GenericKey, error) {
 		Me:      u,
 		KeyType: DeviceSigningKeyType,
 	}
-	lockedKey, err := u.G().Keyrings.GetSecretKeyLocked(NewMetaContextTODO(u.G()), arg)
+	lockedKey, err := u.G().Keyrings.GetSecretKeyLocked(nil, arg)
 	if err != nil {
 		return nil, err
 	}

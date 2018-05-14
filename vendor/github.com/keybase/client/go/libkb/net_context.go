@@ -27,9 +27,7 @@ func WithLogTag(ctx context.Context, k string) context.Context {
 		ctx = logger.NewContextWithLogTags(ctx, newTags)
 	}
 
-	// Only add a new FOO=abcdDE333EX log tag if one didn't
-	// already exist in this context.
-	if _, found := ctx.Value(tagKey).(string); !found {
+	if _, found := ctx.Value(tagKey).(withLogTagKey); !found {
 		tag := RandStringB64(3)
 		ctx = context.WithValue(ctx, tagKey, tag)
 	}

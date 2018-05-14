@@ -20,14 +20,10 @@ type RegisterUpdateUIArg struct {
 type RegisterRekeyUIArg struct {
 }
 
-type RegisterHomeUIArg struct {
-}
-
 type RegisterGregorFirehoseArg struct {
 }
 
-type RegisterGregorFirehoseFilteredArg struct {
-	Systems []string `codec:"systems" json:"systems"`
+type RegisterHomeUIArg struct {
 }
 
 type DelegateUiCtlInterface interface {
@@ -35,12 +31,8 @@ type DelegateUiCtlInterface interface {
 	RegisterSecretUI(context.Context) error
 	RegisterUpdateUI(context.Context) error
 	RegisterRekeyUI(context.Context) error
-	RegisterHomeUI(context.Context) error
 	RegisterGregorFirehose(context.Context) error
-	// registerGregorFirehoseFilter allows a client to register for a filtered
-	// firehose, limited to only the OOBMs of the systems provided.
-	// Like the firehose handler, but less pressure.
-	RegisterGregorFirehoseFiltered(context.Context, []string) error
+	RegisterHomeUI(context.Context) error
 }
 
 func DelegateUiCtlProtocol(i DelegateUiCtlInterface) rpc.Protocol {
@@ -91,17 +83,6 @@ func DelegateUiCtlProtocol(i DelegateUiCtlInterface) rpc.Protocol {
 				},
 				MethodType: rpc.MethodCall,
 			},
-			"registerHomeUI": {
-				MakeArg: func() interface{} {
-					ret := make([]RegisterHomeUIArg, 1)
-					return &ret
-				},
-				Handler: func(ctx context.Context, args interface{}) (ret interface{}, err error) {
-					err = i.RegisterHomeUI(ctx)
-					return
-				},
-				MethodType: rpc.MethodCall,
-			},
 			"registerGregorFirehose": {
 				MakeArg: func() interface{} {
 					ret := make([]RegisterGregorFirehoseArg, 1)
@@ -113,18 +94,13 @@ func DelegateUiCtlProtocol(i DelegateUiCtlInterface) rpc.Protocol {
 				},
 				MethodType: rpc.MethodCall,
 			},
-			"registerGregorFirehoseFiltered": {
+			"registerHomeUI": {
 				MakeArg: func() interface{} {
-					ret := make([]RegisterGregorFirehoseFilteredArg, 1)
+					ret := make([]RegisterHomeUIArg, 1)
 					return &ret
 				},
 				Handler: func(ctx context.Context, args interface{}) (ret interface{}, err error) {
-					typedArgs, ok := args.(*[]RegisterGregorFirehoseFilteredArg)
-					if !ok {
-						err = rpc.NewTypeError((*[]RegisterGregorFirehoseFilteredArg)(nil), args)
-						return
-					}
-					err = i.RegisterGregorFirehoseFiltered(ctx, (*typedArgs)[0].Systems)
+					err = i.RegisterHomeUI(ctx)
 					return
 				},
 				MethodType: rpc.MethodCall,
@@ -157,21 +133,12 @@ func (c DelegateUiCtlClient) RegisterRekeyUI(ctx context.Context) (err error) {
 	return
 }
 
-func (c DelegateUiCtlClient) RegisterHomeUI(ctx context.Context) (err error) {
-	err = c.Cli.Call(ctx, "keybase.1.delegateUiCtl.registerHomeUI", []interface{}{RegisterHomeUIArg{}}, nil)
-	return
-}
-
 func (c DelegateUiCtlClient) RegisterGregorFirehose(ctx context.Context) (err error) {
 	err = c.Cli.Call(ctx, "keybase.1.delegateUiCtl.registerGregorFirehose", []interface{}{RegisterGregorFirehoseArg{}}, nil)
 	return
 }
 
-// registerGregorFirehoseFilter allows a client to register for a filtered
-// firehose, limited to only the OOBMs of the systems provided.
-// Like the firehose handler, but less pressure.
-func (c DelegateUiCtlClient) RegisterGregorFirehoseFiltered(ctx context.Context, systems []string) (err error) {
-	__arg := RegisterGregorFirehoseFilteredArg{Systems: systems}
-	err = c.Cli.Call(ctx, "keybase.1.delegateUiCtl.registerGregorFirehoseFiltered", []interface{}{__arg}, nil)
+func (c DelegateUiCtlClient) RegisterHomeUI(ctx context.Context) (err error) {
+	err = c.Cli.Call(ctx, "keybase.1.delegateUiCtl.registerHomeUI", []interface{}{RegisterHomeUIArg{}}, nil)
 	return
 }

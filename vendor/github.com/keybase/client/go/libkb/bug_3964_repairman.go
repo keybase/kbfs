@@ -16,15 +16,14 @@ func newBug3964Repairman(g *GlobalContext) *bug3964Repairman {
 	return &bug3964Repairman{Contextified: NewContextified(g)}
 }
 
-func (b *bug3964Repairman) attemptRepair(m MetaContext, lksec *LKSec, dkm DeviceKeyMap) (ran bool, serverHalfSet *LKSecServerHalfSet, err error) {
-	defer m.CTrace("bug3964Repairman#attemptRepair", func() error { return err })()
+func (b *bug3964Repairman) attemptRepair(lctx LoginContext, lksec *LKSec, dkm DeviceKeyMap) (ran bool, serverHalfSet *LKSecServerHalfSet, err error) {
+	defer b.G().Trace("bug3964Repairman#attemptRepair", func() error { return err })()
 	var oldKeyring, newKeyring *SKBKeyringFile
-	lctx := m.LoginContext()
 	oldKeyring, err = lctx.Keyring()
 	if err != nil {
 		return false, nil, err
 	}
-	newKeyring, serverHalfSet, err = oldKeyring.Bug3964Repair(m, lksec, dkm)
+	newKeyring, serverHalfSet, err = oldKeyring.Bug3964Repair(lctx, lksec, dkm)
 	if err != nil {
 		return false, nil, err
 	}
@@ -32,16 +31,16 @@ func (b *bug3964Repairman) attemptRepair(m MetaContext, lksec *LKSec, dkm Device
 		return false, nil, nil
 	}
 	if err = newKeyring.Save(); err != nil {
-		m.CDebugf("Error saving new keyring: %s", err)
+		b.G().Log.Debug("Error saving new keyring: %s", err)
 		return false, nil, err
 	}
 	lctx.ClearKeyring()
 	return true, serverHalfSet, err
 }
 
-func (b *bug3964Repairman) loadLKSecServerDetails(m MetaContext, lksec *LKSec) (ret DeviceKeyMap, err error) {
-	defer m.CTrace("bug3964Repairman#loadLKSecServerDetails", func() error { return err })()
-	ret, err = lksec.LoadServerDetails(m)
+func (b *bug3964Repairman) loadLKSecServerDetails(lctx LoginContext, lksec *LKSec) (ret DeviceKeyMap, err error) {
+	defer b.G().Trace("bug3964Repairman#loadLKSecServerDetails", func() error { return err })()
+	ret, err = lksec.LoadServerDetails(lctx)
 	if err != nil {
 		return nil, err
 	}
@@ -75,21 +74,20 @@ func (b *bug3964Repairman) saveRepairmanVisit(nun NormalizedUsername) (err error
 	return err
 }
 
-func (b *bug3964Repairman) postToServer(m MetaContext, serverHalfSet *LKSecServerHalfSet, ppgen PassphraseGeneration, nun NormalizedUsername) (err error) {
-	defer m.G().CTrace(m.Ctx(), "bug3964Repairman#postToServer", func() error { return err })()
+func (b *bug3964Repairman) postToServer(lctx LoginContext, serverHalfSet *LKSecServerHalfSet, ppgen PassphraseGeneration, nun NormalizedUsername) (err error) {
+	defer b.G().Trace("bug3964Repairman#postToServer", func() error { return err })()
 	if serverHalfSet == nil {
 		return errors.New("internal error --- had nil server half set")
 	}
-	_, err = m.G().API.Post(APIArg{
+	_, err = b.G().API.Post(APIArg{
 		Endpoint:    "user/bug_3964_repair",
 		SessionType: APISessionTypeREQUIRED,
 		Args: HTTPArgs{
-			"device_id":         S{Val: m.G().Env.GetDeviceIDForUsername(nun).String()},
+			"device_id":         S{Val: b.G().Env.GetDeviceIDForUsername(nun).String()},
 			"ppgen":             I{Val: int(ppgen)},
 			"lks_server_halves": S{Val: serverHalfSet.EncodeToHexList()},
 		},
-		SessionR:   m.LoginContext().LocalSession(),
-		NetContext: m.Ctx(),
+		SessionR: lctx.LocalSession(),
 	})
 	return err
 }
@@ -153,25 +151,23 @@ func (b *bug3964Repairman) fixLKSClientHalf(lctx LoginContext, lksec *LKSec, ppg
 }
 
 // Run the engine
-func (b *bug3964Repairman) Run(m MetaContext) (err error) {
-	defer m.G().CTrace(m.Ctx(), "bug3964Repairman#Run", func() error { return err })()
-	lctx := m.LoginContext()
-	pps := lctx.PassphraseStreamCache().PassphraseStream()
+func (b *bug3964Repairman) Run(lctx LoginContext, pps *PassphraseStream) (err error) {
+	defer b.G().Trace("bug3964Repairman#Run", func() error { return err })()
 
 	var lksec *LKSec
 	var ran bool
 	var dkm DeviceKeyMap
 	var ss bool
 	var serverHalfSet *LKSecServerHalfSet
-	nun := m.G().Env.GetUsername()
+	nun := b.G().Env.GetUsername()
 
-	if m.G().TestOptions.NoBug3964Repair {
-		m.G().Log.CDebugf(m.Ctx(), "| short circuit due to test options")
+	if b.G().TestOptions.NoBug3964Repair {
+		b.G().Log.Debug("| short circuit due to test options")
 		return nil
 	}
 
 	if pps == nil {
-		m.G().Log.CDebugf(m.Ctx(), "| Can't run repairman without a passphrase stream")
+		b.G().Log.Debug("| Can't run repairman without a passphrase stream")
 		return nil
 	}
 
@@ -181,23 +177,23 @@ func (b *bug3964Repairman) Run(m MetaContext) (err error) {
 
 	if ss {
 		// This logline is asserted in testing in bug_3964_repairman_test
-		m.G().Log.CDebugf(m.Ctx(), "| Repairman already visited after file update; bailing out")
+		b.G().Log.Debug("| Repairman already visited after file update; bailing out")
 		return nil
 	}
 
 	// This logline is asserted in testing in bug_3964_repairman_test
-	m.G().Log.CDebugf(m.Ctx(), "| Repairman wasn't short-circuited")
+	b.G().Log.Debug("| Repairman wasn't short-circuited")
 
-	lksec, err = pps.ToLKSec(m.G(), lctx.GetUID())
+	lksec, err = pps.ToLKSec(b.G(), lctx.GetUID())
 	if err != nil {
 		return err
 	}
 
-	if dkm, err = b.loadLKSecServerDetails(m, lksec); err != nil {
+	if dkm, err = b.loadLKSecServerDetails(lctx, lksec); err != nil {
 		return err
 	}
 
-	if ran, serverHalfSet, err = b.attemptRepair(m, lksec, dkm); err != nil {
+	if ran, serverHalfSet, err = b.attemptRepair(lctx, lksec, dkm); err != nil {
 		return err
 	}
 
@@ -205,7 +201,7 @@ func (b *bug3964Repairman) Run(m MetaContext) (err error) {
 		return err
 	}
 
-	m.G().Log.CDebugf(m.Ctx(), "| SKB keyring repair completed; edits=%v", ran)
+	b.G().Log.Debug("| SKB keyring repair completed; edits=%v", ran)
 
 	if !ran {
 		b.saveRepairmanVisit(nun)
@@ -217,20 +213,20 @@ func (b *bug3964Repairman) Run(m MetaContext) (err error) {
 	}
 
 	if ussErr := b.updateSecretStore(nun, lksec); ussErr != nil {
-		m.G().Log.CWarningf(m.Ctx(), "Error in secret store manipulation: %s", ussErr)
+		b.G().Log.Warning("Error in secret store manipulation: %s", ussErr)
 	} else {
 		b.saveRepairmanVisit(nun)
 	}
 
-	err = b.postToServer(m, serverHalfSet, pps.Generation(), nun)
+	err = b.postToServer(lctx, serverHalfSet, pps.Generation(), nun)
 
 	return err
 }
 
-func RunBug3964Repairman(m MetaContext) error {
-	err := newBug3964Repairman(m.G()).Run(m)
+func RunBug3964Repairman(g *GlobalContext, lctx LoginContext, pps *PassphraseStream) error {
+	err := newBug3964Repairman(g).Run(lctx, pps)
 	if err != nil {
-		m.G().Log.CDebugf(m.Ctx(), "Error running Bug 3964 repairman: %s", err)
+		g.Log.Debug("Error running Bug 3964 repairman: %s", err)
 	}
 	return err
 }
