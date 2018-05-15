@@ -67,14 +67,13 @@ build_script:
 #  - go list ./... | find /V "vendor" > testlist.txt
 
   # Keep the list below in sync with the result of
-  #   find . \( -path ./vendor -o -path ./.git \) -prune -o -type d | sort
+  #
+  #   for x in $(find . -mindepth 1 \( -wholename ./vendor -o -wholename ./.git \) -prune -o -type d -print); do [ -n "$(ls -A $x/*.go 2>/dev/null)" ] && echo $x; done | sort
   - echo github.com/keybase/kbfs/cache > testlist.txt
   # dokan dir is tested above.
-  - echo github.com/keybase/kbfs/dokan/dokan_header >> testlist.txt
   - echo github.com/keybase/kbfs/dokan/winacl >> testlist.txt
   - echo github.com/keybase/kbfs/env >> testlist.txt
   - echo github.com/keybase/kbfs/fsrpc >> testlist.txt
-  # no .go files in genprotocol.
   - echo github.com/keybase/kbfs/ioutil >> testlist.txt
   - echo github.com/keybase/kbfs/kbfsblock >> testlist.txt
   - echo github.com/keybase/kbfs/kbfscodec >> testlist.txt
@@ -96,11 +95,10 @@ build_script:
   - echo github.com/keybase/kbfs/libhttpserver >> testlist.txt
   - echo github.com/keybase/kbfs/libkbfs >> testlist.txt
   - echo github.com/keybase/kbfs/libmime >> testlist.txt
-  - echo github.com/keybase/kbfs/libmime/builder >> testlist.txt
   - echo github.com/keybase/kbfs/libpages >> testlist.txt
   - echo github.com/keybase/kbfs/libpages/config >> testlist.txt
   - echo github.com/keybase/kbfs/metricsutil >> testlist.txt
-  # no .go files in packaging or protocol.
+  - echo github.com/keybase/kbfs/protocol/kbgitkbfs1 >> testlist.txt
   - echo github.com/keybase/kbfs/redirector >> testlist.txt
   - echo github.com/keybase/kbfs/simplefs >> testlist.txt
   - echo github.com/keybase/kbfs/stderrutils >> testlist.txt
