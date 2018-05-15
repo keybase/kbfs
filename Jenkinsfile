@@ -284,12 +284,6 @@ def runNixTest(prefix) {
     //   for x in $(find . -mindepth 1 \( -wholename ./vendor -o -wholename ./.git \) -prune -o -type d -print); do [ -n "$(ls -A $x/*_test.go 2>/dev/null)" ] && echo $x; done | sort
 
     tests = [:]
-    tests[prefix+'cache'] = {
-        dir('cache') {
-            sh 'go test -race -c'
-            sh './cache.test -test.timeout 30s'
-        }
-    }
 
     // dokan is Windows-only.
 
