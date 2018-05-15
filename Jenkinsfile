@@ -280,7 +280,8 @@ def runNixTest(prefix) {
     sh 'go install github.com/keybase/kbfs/...'
 
     // Keep the list below in sync with the result of
-    //   find . \( -path ./vendor -o -path ./.git \) -prune -o -type d | sort
+    //
+    //   for x in $(find . -mindepth 1 \( -wholename ./vendor -o -wholename ./.git \) -prune -o -type d -print); do [ -n "$(ls -A $x/*.go 2>/dev/null)" ] && echo $x; done | sort
 
     tests = [:]
     tests[prefix+'cache'] = {
@@ -304,8 +305,6 @@ def runNixTest(prefix) {
             sh './fsrpc.test -test.timeout 30s'
         }
     }
-
-    // No .go files in genprotocol.
 
     tests[prefix+'ioutil'] = {
         dir('ioutil') {
@@ -427,12 +426,6 @@ def runNixTest(prefix) {
             sh './libmime.test -test.timeout 30s'
         }
     }
-    tests[prefix+'libmime_builder'] = {
-        dir('libmime/builder') {
-            sh 'go test -race -c'
-            sh './builder.test -test.timeout 30s'
-        }
-    }
     tests[prefix+'libpages'] = {
         dir('libpages') {
             sh 'go test -race -c'
@@ -451,7 +444,12 @@ def runNixTest(prefix) {
             sh './metricsutil.test -test.timeout 30s'
         }
     }
-    // no .go files in packaging or protocol.
+    tests[prefix+'protocol_kbgitkbfs1'] = {
+        dir('protocol/kbgitkbfs1') {
+            sh 'go test -race -c'
+            sh './kbgitkbfs1.test -test.timeout 30s'
+        }
+    }
     tests[prefix+'redirector'] = {
         dir(redirector') {
             sh 'go test -race -c'
