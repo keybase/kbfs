@@ -68,41 +68,25 @@ build_script:
 
   # Keep the list below in sync with the result of
   #
-  #   for x in $(find . -mindepth 1 \( -wholename ./vendor -o -wholename ./.git \) -prune -o -type d -print); do [ -n "$(ls -A $x/*.go 2>/dev/null)" ] && echo $x; done | sort
-  - echo github.com/keybase/kbfs/cache > testlist.txt
+  #   for x in $(find . -mindepth 1 \( -wholename ./vendor -o -wholename ./.git \) -prune -o -type d -print); do [ -n "$(ls -A $x/*_test.go 2>/dev/null)" ] && echo $x; done | sort
   # dokan dir is tested above.
-  - echo github.com/keybase/kbfs/dokan/winacl >> testlist.txt
-  - echo github.com/keybase/kbfs/env >> testlist.txt
-  - echo github.com/keybase/kbfs/fsrpc >> testlist.txt
-  - echo github.com/keybase/kbfs/ioutil >> testlist.txt
   - echo github.com/keybase/kbfs/kbfsblock >> testlist.txt
   - echo github.com/keybase/kbfs/kbfscodec >> testlist.txt
   - echo github.com/keybase/kbfs/kbfscrypto >> testlist.txt
-  - echo github.com/keybase/kbfs/kbfsdokan >> testlist.txt
-  # kbfsfuse is non-Windows-only.
   - echo github.com/keybase/kbfs/kbfsgit >> testlist.txt
-  - echo github.com/keybase/kbfs/kbfsgit/git-remote-keybase >> testlist.txt
   - echo github.com/keybase/kbfs/kbfshash >> testlist.txt
   - echo github.com/keybase/kbfs/kbfsmd >> testlist.txt
   - echo github.com/keybase/kbfs/kbfssync >> testlist.txt
-  - echo github.com/keybase/kbfs/kbfstool >> testlist.txt
   - echo github.com/keybase/kbfs/kbpagesconfig >> testlist.txt
-  - echo github.com/keybase/kbfs/kbpagesd >> testlist.txt
   - echo github.com/keybase/kbfs/libdokan >> testlist.txt
   - echo github.com/keybase/kbfs/libfs >> testlist.txt
   # libfuse is non-Windows-only.
   - echo github.com/keybase/kbfs/libgit >> testlist.txt
   - echo github.com/keybase/kbfs/libhttpserver >> testlist.txt
   - echo github.com/keybase/kbfs/libkbfs >> testlist.txt
-  - echo github.com/keybase/kbfs/libmime >> testlist.txt
   - echo github.com/keybase/kbfs/libpages >> testlist.txt
   - echo github.com/keybase/kbfs/libpages/config >> testlist.txt
-  - echo github.com/keybase/kbfs/metricsutil >> testlist.txt
-  - echo github.com/keybase/kbfs/protocol/kbgitkbfs1 >> testlist.txt
-  - echo github.com/keybase/kbfs/redirector >> testlist.txt
   - echo github.com/keybase/kbfs/simplefs >> testlist.txt
-  - echo github.com/keybase/kbfs/stderrutils >> testlist.txt
-  - echo github.com/keybase/kbfs/sysutils >> testlist.txt
   # test dir is tested below.
   - echo github.com/keybase/kbfs/tlf >> testlist.txt
 # TODO: Run the below tests with env KEYBASE_TEST_BSERVER_ADDR=tempdir.
