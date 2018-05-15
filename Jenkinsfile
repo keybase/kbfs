@@ -439,7 +439,7 @@ def runNixTest(prefix) {
         }
     }
     tests[prefix+'metricsutil'] = {
-        dir(metricsutil') {
+        dir('metricsutil') {
             sh 'go test -race -c'
             sh './metricsutil.test -test.timeout 30s'
         }
@@ -451,7 +451,7 @@ def runNixTest(prefix) {
         }
     }
     tests[prefix+'redirector'] = {
-        dir(redirector') {
+        dir('redirector') {
             sh 'go test -race -c'
             sh './redirector.test -test.timeout 30s'
         }
@@ -463,13 +463,13 @@ def runNixTest(prefix) {
         }
     }
     tests[prefix+'stderrutils'] = {
-        dir(redirector') {
+        dir('stderrutils') {
             sh 'go test -race -c'
             sh './stderrutils.test -test.timeout 30s'
         }
     }
     tests[prefix+'sysutils'] = {
-        dir(redirector') {
+        dir('sysutils') {
             sh 'go test -race -c'
             sh './sysutils.test -test.timeout 30s'
         }
