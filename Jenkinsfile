@@ -281,7 +281,7 @@ def runNixTest(prefix) {
 
     // Keep the list below in sync with the result of
     //
-    //   for x in $(find . -mindepth 1 \( -wholename ./vendor -o -wholename ./.git \) -prune -o -type d -print); do [ -n "$(ls -A $x/*.go 2>/dev/null)" ] && echo $x; done | sort
+    //   for x in $(find . -mindepth 1 \( -wholename ./vendor -o -wholename ./.git \) -prune -o -type d -print); do [ -n "$(ls -A $x/*_test.go 2>/dev/null)" ] && echo $x; done | sort
 
     tests = [:]
     tests[prefix+'cache'] = {
@@ -293,25 +293,6 @@ def runNixTest(prefix) {
 
     // dokan is Windows-only.
 
-    tests[prefix+'env'] = {
-        dir('env') {
-            sh 'go test -race -c'
-            sh './env.test -test.timeout 30s'
-        }
-    }
-    tests[prefix+'fsrpc'] = {
-        dir('fsrpc') {
-            sh 'go test -race -c'
-            sh './fsrpc.test -test.timeout 30s'
-        }
-    }
-
-    tests[prefix+'ioutil'] = {
-        dir('ioutil') {
-            sh 'go test -race -c'
-            sh './ioutil.test -test.timeout 30s'
-        }
-    }
     tests[prefix+'kbfsblock'] = {
         dir('kbfsblock') {
             sh 'go test -race -c'
@@ -330,25 +311,10 @@ def runNixTest(prefix) {
             sh './kbfscrypto.test -test.timeout 30s'
         }
     }
-
-    // kbfsdokan is Windows-only.
-
-    tests[prefix+'kbfsfuse'] = {
-        dir('kbfsfuse') {
-            sh 'go test -race -c'
-            sh './kbfsfuse.test -test.timeout 10m'
-        }
-    }
     tests[prefix+'kbfsgit'] = {
         dir('kbfsgit') {
             sh 'go test -race -c'
             sh './kbfsgit.test -test.timeout 30s'
-        }
-    }
-    tests[prefix+'kbfsgit_git-remote-keybase'] = {
-        dir('kbfsgit/git-remote-keybase') {
-            sh 'go test -race -c'
-            sh './git-remote-keybase.test -test.timeout 30s'
         }
     }
     tests[prefix+'kbfshash'] = {
@@ -369,22 +335,10 @@ def runNixTest(prefix) {
             sh './kbfssync.test -test.timeout 30s'
         }
     }
-    tests[prefix+'kbfstool'] = {
-        dir('kbfstool') {
-            sh 'go test -race -c'
-            sh './kbfstool.test -test.timeout 30s'
-        }
-    }
     tests[prefix+'kbpagesconfig'] = {
         dir('kbpagesconfig') {
             sh 'go test -race -c'
             sh './kbpagesconfig.test -test.timeout 30s'
-        }
-    }
-    tests[prefix+'kbpagesd'] = {
-        dir('kbpagesd') {
-            sh 'go test -race -c'
-            sh './kbpagesd.test -test.timeout 30s'
         }
     }
 
@@ -420,12 +374,6 @@ def runNixTest(prefix) {
             sh './libkbfs.test -test.timeout 5m'
         }
     }
-    tests[prefix+'libmime'] = {
-        dir('libmime') {
-            sh 'go test -race -c'
-            sh './libmime.test -test.timeout 30s'
-        }
-    }
     tests[prefix+'libpages'] = {
         dir('libpages') {
             sh 'go test -race -c'
@@ -438,40 +386,10 @@ def runNixTest(prefix) {
             sh './config.test -test.timeout 30s'
         }
     }
-    tests[prefix+'metricsutil'] = {
-        dir('metricsutil') {
-            sh 'go test -race -c'
-            sh './metricsutil.test -test.timeout 30s'
-        }
-    }
-    tests[prefix+'protocol_kbgitkbfs1'] = {
-        dir('protocol/kbgitkbfs1') {
-            sh 'go test -race -c'
-            sh './kbgitkbfs1.test -test.timeout 30s'
-        }
-    }
-    tests[prefix+'redirector'] = {
-        dir('redirector') {
-            sh 'go test -race -c'
-            sh './redirector.test -test.timeout 30s'
-        }
-    }
     tests[prefix+'simplefs'] = {
         dir('simplefs') {
             sh 'go test -c'
             sh './simplefs.test -test.timeout 2m'
-        }
-    }
-    tests[prefix+'stderrutils'] = {
-        dir('stderrutils') {
-            sh 'go test -race -c'
-            sh './stderrutils.test -test.timeout 30s'
-        }
-    }
-    tests[prefix+'sysutils'] = {
-        dir('sysutils') {
-            sh 'go test -race -c'
-            sh './sysutils.test -test.timeout 30s'
         }
     }
     tests[prefix+'test_race'] = {
