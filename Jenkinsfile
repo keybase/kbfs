@@ -314,7 +314,7 @@ def runNixTest(prefix) {
     tests[prefix+'kbfsgit'] = {
         dir('kbfsgit') {
             sh 'go test -race -c'
-            sh './kbfsgit.test -test.timeout 30s'
+            sh './kbfsgit.test -test.timeout 10m'
         }
     }
     tests[prefix+'kbfshash'] = {
