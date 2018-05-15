@@ -359,7 +359,7 @@ def runNixTest(prefix) {
     tests[prefix+'libgit'] = {
         dir('libgit') {
             sh 'go test -race -c'
-            sh './libgit.test -test.timeout 30s'
+            sh './libgit.test -test.timeout 10m'
         }
     }
     tests[prefix+'libhttpserver'] = {
