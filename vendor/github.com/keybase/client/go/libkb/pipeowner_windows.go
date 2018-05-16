@@ -1,8 +1,9 @@
-// Copyright 2015 Keybase, Inc. All rights reserved. Use of
+// Copyright 2018 Keybase, Inc. All rights reserved. Use of
 // this source code is governed by the included BSD license.
 
-package libkb
+// +build windows
 
+package libkb
 
 import (
 	"syscall"
@@ -11,12 +12,14 @@ import (
 )
 
 var (
-	modkernel32        = syscall.NewLazyDLL("kernel32.dll")
+	modkernel32        = windows.NewLazyDLL("kernel32.dll")
 	procWaitNamedPipeW = modkernel32.NewProc("WaitNamedPipeW")
 )
 
 const ERROR_PIPE_BUSY = 231
+
 type _PipeBusyError struct{}
+
 var PipeBusyError _PipeBusyError
 
 func (e _PipeBusyError) Error() string {
@@ -29,13 +32,9 @@ func waitNamedPipe(name string, timeout uint32) (err error) {
 		return e1
 	}
 
-	r1, _, e2 := syscall.Syscall(procWaitNamedPipeW.Addr(), 2, uintptr(unsafe.Pointer(rawName)), uintptr(timeout), 0)
+	r1, _, e2 := procWaitNamedPipeW.Call(2, uintptr(unsafe.Pointer(rawName)), uintptr(timeout), 0)
 	if r1 == 0 {
-		if e2 != 0 {
-			err = error(e2)
-		} else {
-			err = syscall.EINVAL
-		}
+		return e2
 	}
 	return
 }
@@ -68,7 +67,7 @@ func GetFileUserSid(name string) (*windows.SID, error) {
 	return userSID, nil
 }
 
-func Pipeowner(name string) (bool, error){
+func IsPipeowner(name string) (bool, error) {
 	userSid, err := currentProcessUserSid()
 	if err != nil {
 		return false, err
@@ -83,7 +82,7 @@ func Pipeowner(name string) (bool, error){
 		// If this returns with no error, there is a pipe available.
 		err2 := waitNamedPipe(name, 1000)
 		if err2 != nil {
-			return false, err	// return original busy error
+			return false, err // return original busy error
 		}
 		fileSid, err = GetFileUserSid(name)
 	}
