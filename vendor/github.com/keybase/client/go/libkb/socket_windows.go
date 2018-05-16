@@ -69,15 +69,6 @@ func (s SocketInfo) DialSocket() (ret net.Conn, err error) {
 		return nil, errors.New("bad npipe result; nil npipe.PipeConn but no error")
 	}
 
-	// Test ownership
-	owner, err := Pipeowner(s.dialFiles[0])
-	if err != nil {
-		return nil, err
-	}
-	if ! owner {
-		return nil, errors.New("failed to verify pipe ownership")
-	}
-	
 	// Success case
 	return pipe, err
 }
