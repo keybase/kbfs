@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/golang-lru"
 	"github.com/keybase/client/go/libkb"
@@ -37,6 +38,9 @@ type Server struct {
 
 	tokens *lru.Cache
 	fs     *lru.Cache
+
+	startedLock sync.RWMutex
+	started     bool
 }
 
 const tokenByteSize = 16
@@ -146,58 +150,27 @@ func (s *Server) serve(w http.ResponseWriter, req *http.Request) {
 		s.handleBadRequest(w)
 		return
 	}
-	http.StripPrefix(toStrip, http.FileServer(fs)).ServeHTTP(w, req)
-}
-
-func overrideMimeType(ext, mimeType string) (newExt, newMimeType string) {
-	// Send text/plain for all HTML and JS files to avoid them being executed
-	// by the frontend WebView.
-	lower := strings.ToLower(mimeType)
-	if strings.Contains(lower, "javascript") ||
-		strings.Contains(lower, "html") {
-		return ext, "text/plain"
-	}
-	return ext, mimeType
-}
-
-// NOTE: if you change anything here, make sure to change
-// keybase/client:shared/fs/utils/ext-list.js:patchedExtToFileViewTypes too.
-var additionalMimeTypes = map[string]string{
-	".go":    "text/plain",
-	".py":    "text/plain",
-	".zsh":   "text/plain",
-	".fish":  "text/plain",
-	".cs":    "text/plain",
-	".rb":    "text/plain",
-	".m":     "text/plain",
-	".mm":    "text/plain",
-	".swift": "text/plain",
-	".flow":  "text/plain",
-	".php":   "text/plain",
-	".pl":    "text/plain",
-	".sh":    "text/plain",
-	".js":    "text/plain",
-	".json":  "text/plain",
-	".sql":   "text/plain",
-	".rs":    "text/plain",
-	".xml":   "text/plain",
-	".tex":   "text/plain",
-	".pub":   "text/plain",
+	http.StripPrefix(toStrip, http.FileServer(fs)).ServeHTTP(
+		newContentTypeOverridingResponseWriter(w), req)
 }
 
 const portStart = 16723
 const portEnd = 18000
 const requestPathRoot = "/files/"
 
-func (s *Server) startServer() (err error) {
-	s.server = libkb.NewHTTPSrv(
-		s.g, libkb.NewPortRangeListenerSource(portStart, portEnd))
+func (s *Server) idempotentlyStart() (err error) {
+	s.startedLock.Lock()
+	defer s.startedLock.Unlock()
+	if s.started {
+		return nil
+	}
 	// Have to start this first to populate the ServeMux object.
 	if err = s.server.Start(); err != nil {
 		return err
 	}
 	s.server.Handle(requestPathRoot,
 		http.StripPrefix(requestPathRoot, http.HandlerFunc(s.serve)))
+	s.started = true
 	return nil
 }
 
@@ -210,9 +183,14 @@ func (s *Server) monitorAppState(ctx context.Context) {
 		case state = <-s.g.AppState.NextUpdate(&state):
 			switch state {
 			case keybase1.AppState_FOREGROUND:
-				s.startServer()
+				s.idempotentlyStart()
 			case keybase1.AppState_BACKGROUND:
-				s.server.Stop()
+				func() {
+					s.startedLock.Lock()
+					defer s.startedLock.Unlock()
+					s.started = false
+					s.server.Stop()
+				}()
 			}
 		}
 	}
@@ -221,26 +199,34 @@ func (s *Server) monitorAppState(ctx context.Context) {
 // New creates and starts a new server.
 func New(g *libkb.GlobalContext, config libkbfs.Config) (
 	s *Server, err error) {
-	s = &Server{g: g, config: config}
-	s.logger = config.MakeLogger("HTTP")
+	s = &Server{
+		g:      g,
+		config: config,
+		logger: config.MakeLogger("HTTP"),
+		server: libkb.NewHTTPSrv(
+			g, libkb.NewPortRangeListenerSource(portStart, portEnd)),
+	}
 	if s.tokens, err = lru.New(tokenCacheSize); err != nil {
 		return nil, err
 	}
 	if s.fs, err = lru.New(fsCacheSize); err != nil {
 		return nil, err
 	}
-	if err = s.startServer(); err != nil {
+	if err = s.idempotentlyStart(); err != nil {
 		return nil, err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	go s.monitorAppState(ctx)
 	s.cancel = cancel
-	libmime.Patch(additionalMimeTypes, overrideMimeType)
+	libmime.Patch(additionalMimeTypes)
 	return s, nil
 }
 
 // Address returns the address that the server is listening on.
 func (s *Server) Address() (string, error) {
+	if err := s.idempotentlyStart(); err != nil {
+		return "", err
+	}
 	return s.server.Addr()
 }
 

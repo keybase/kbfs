@@ -52,6 +52,7 @@ const (
 	TeamApplication_SALTPACK            TeamApplication = 3
 	TeamApplication_GIT_METADATA        TeamApplication = 4
 	TeamApplication_SEITAN_INVITE_TOKEN TeamApplication = 5
+	TeamApplication_STELLAR_RELAY       TeamApplication = 6
 )
 
 func (o TeamApplication) DeepCopy() TeamApplication { return o }
@@ -62,6 +63,7 @@ var TeamApplicationMap = map[string]TeamApplication{
 	"SALTPACK":            3,
 	"GIT_METADATA":        4,
 	"SEITAN_INVITE_TOKEN": 5,
+	"STELLAR_RELAY":       6,
 }
 
 var TeamApplicationRevMap = map[TeamApplication]string{
@@ -70,10 +72,43 @@ var TeamApplicationRevMap = map[TeamApplication]string{
 	3: "SALTPACK",
 	4: "GIT_METADATA",
 	5: "SEITAN_INVITE_TOKEN",
+	6: "STELLAR_RELAY",
 }
 
 func (e TeamApplication) String() string {
 	if v, ok := TeamApplicationRevMap[e]; ok {
+		return v
+	}
+	return ""
+}
+
+type TeamStatus int
+
+const (
+	TeamStatus_NONE      TeamStatus = 0
+	TeamStatus_LIVE      TeamStatus = 1
+	TeamStatus_DELETED   TeamStatus = 2
+	TeamStatus_ABANDONED TeamStatus = 3
+)
+
+func (o TeamStatus) DeepCopy() TeamStatus { return o }
+
+var TeamStatusMap = map[string]TeamStatus{
+	"NONE":      0,
+	"LIVE":      1,
+	"DELETED":   2,
+	"ABANDONED": 3,
+}
+
+var TeamStatusRevMap = map[TeamStatus]string{
+	0: "NONE",
+	1: "LIVE",
+	2: "DELETED",
+	3: "ABANDONED",
+}
+
+func (e TeamStatus) String() string {
+	if v, ok := TeamStatusRevMap[e]; ok {
 		return v
 	}
 	return ""
@@ -814,6 +849,7 @@ type TeamSigChainState struct {
 	UserLog          map[UserVersion][]UserLogPoint                    `codec:"userLog" json:"userLog"`
 	SubteamLog       map[TeamID][]SubteamLogPoint                      `codec:"subteamLog" json:"subteamLog"`
 	PerTeamKeys      map[PerTeamKeyGeneration]PerTeamKey               `codec:"perTeamKeys" json:"perTeamKeys"`
+	PerTeamKeyCTime  UnixTime                                          `codec:"perTeamKeyCTime" json:"perTeamKeyCTime"`
 	LinkIDs          map[Seqno]LinkID                                  `codec:"linkIDs" json:"linkIDs"`
 	StubbedLinks     map[Seqno]bool                                    `codec:"stubbedLinks" json:"stubbedLinks"`
 	ActiveInvites    map[TeamInviteID]TeamInvite                       `codec:"activeInvites" json:"activeInvites"`
@@ -908,6 +944,7 @@ func (o TeamSigChainState) DeepCopy() TeamSigChainState {
 			}
 			return ret
 		})(o.PerTeamKeys),
+		PerTeamKeyCTime: o.PerTeamKeyCTime.DeepCopy(),
 		LinkIDs: (func(x map[Seqno]LinkID) map[Seqno]LinkID {
 			if x == nil {
 				return nil
@@ -2272,6 +2309,13 @@ type SetTarsDisabledArg struct {
 	Disabled bool   `codec:"disabled" json:"disabled"`
 }
 
+type UploadTeamAvatarArg struct {
+	Teamname             string         `codec:"teamname" json:"teamname"`
+	Filename             string         `codec:"filename" json:"filename"`
+	Crop                 *ImageCropRect `codec:"crop,omitempty" json:"crop,omitempty"`
+	SendChatNotification bool           `codec:"sendChatNotification" json:"sendChatNotification"`
+}
+
 type TeamsInterface interface {
 	TeamCreate(context.Context, TeamCreateArg) (TeamCreateResult, error)
 	TeamCreateWithSettings(context.Context, TeamCreateWithSettingsArg) (TeamCreateResult, error)
@@ -2316,6 +2360,7 @@ type TeamsInterface interface {
 	TeamDebug(context.Context, TeamID) (TeamDebugRes, error)
 	GetTarsDisabled(context.Context, string) (bool, error)
 	SetTarsDisabled(context.Context, SetTarsDisabledArg) error
+	UploadTeamAvatar(context.Context, UploadTeamAvatarArg) error
 }
 
 func TeamsProtocol(i TeamsInterface) rpc.Protocol {
@@ -2962,6 +3007,22 @@ func TeamsProtocol(i TeamsInterface) rpc.Protocol {
 				},
 				MethodType: rpc.MethodCall,
 			},
+			"uploadTeamAvatar": {
+				MakeArg: func() interface{} {
+					ret := make([]UploadTeamAvatarArg, 1)
+					return &ret
+				},
+				Handler: func(ctx context.Context, args interface{}) (ret interface{}, err error) {
+					typedArgs, ok := args.(*[]UploadTeamAvatarArg)
+					if !ok {
+						err = rpc.NewTypeError((*[]UploadTeamAvatarArg)(nil), args)
+						return
+					}
+					err = i.UploadTeamAvatar(ctx, (*typedArgs)[0])
+					return
+				},
+				MethodType: rpc.MethodCall,
+			},
 		},
 	}
 }
@@ -3177,5 +3238,10 @@ func (c TeamsClient) GetTarsDisabled(ctx context.Context, name string) (res bool
 
 func (c TeamsClient) SetTarsDisabled(ctx context.Context, __arg SetTarsDisabledArg) (err error) {
 	err = c.Cli.Call(ctx, "keybase.1.teams.setTarsDisabled", []interface{}{__arg}, nil)
+	return
+}
+
+func (c TeamsClient) UploadTeamAvatar(ctx context.Context, __arg UploadTeamAvatarArg) (err error) {
+	err = c.Cli.Call(ctx, "keybase.1.teams.uploadTeamAvatar", []interface{}{__arg}, nil)
 	return
 }
