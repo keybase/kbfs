@@ -646,3 +646,17 @@ func TestCopyProgress(t *testing.T) {
 	err = sfs.SimpleFSWait(ctx, opid)
 	require.NoError(t, err)
 }
+
+func TestMkdirAll(t *testing.T) {
+	ctx := context.Background()
+	sfs := newSimpleFS(libkb.NewGlobalContext().Init(), libkbfs.MakeTestConfigOrBust(t, "jdoe"))
+	defer closeSimpleFS(ctx, t, sfs)
+
+	dirPath := keybase1.NewPathWithKbfs(`/private/jdoe/new-dir`)
+	err := sfs.SimpleFSMkdirAll(ctx, dirPath)
+	require.NoError(t, err)
+	s, err := sfs.SimpleFSStat(ctx, dirPath)
+	require.NoError(t, err)
+	require.Equal(t, "new-dir", s.Name)
+	require.Equal(t, keybase1.DirentType_DIR, s.DirentType)
+}

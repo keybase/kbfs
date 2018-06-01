@@ -1325,3 +1325,17 @@ func (k *SimpleFS) SimpleFSGetHTTPAddressAndToken(ctx context.Context) (
 
 	return resp, nil
 }
+
+// SimpleFSMkdirAll makes all dirs in the path.
+func (k *SimpleFS) SimpleFSMkdirAll(ctx context.Context, path keybase1.Path) (err error) {
+	opID, err := k.SimpleFSMakeOpid(ctx)
+	if err != nil {
+		return err
+	}
+	return k.SimpleFSOpen(ctx, keybase1.SimpleFSOpenArg{
+		OpID:  opID,
+		Dest:  path,
+		Flags: keybase1.OpenFlags_DIRECTORY,
+	})
+	// No need to close.
+}
