@@ -90,7 +90,7 @@ func verifyMerkleNodes(
 	}
 
 	if !bytes.Equal(leafBytes, nodes[len(nodes)-1]) {
-		return errors.New("Expected leaf didn't match found leaf")
+		return errors.Errorf("Expected leaf didn't match found leaf: expected=%x, found=%x", nodes[len(nodes)-1], leafBytes)
 	}
 
 	return nil
