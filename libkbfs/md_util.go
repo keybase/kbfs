@@ -442,7 +442,7 @@ func encryptMDPrivateData(
 	return nil
 }
 
-func getFileBlockForMD(ctx context.Context, bcache BlockCache, bops BlockOps,
+func getFileBlockForMD(ctx context.Context, bcache BlockCacheSimple, bops BlockOps,
 	ptr BlockPointer, tlfID tlf.ID, rmdWithKeys KeyMetadata) (
 	*FileBlock, error) {
 	// We don't have a convenient way to fetch the block from here via
@@ -465,7 +465,7 @@ func getFileBlockForMD(ctx context.Context, bcache BlockCache, bops BlockOps,
 }
 
 func reembedBlockChanges(ctx context.Context, codec kbfscodec.Codec,
-	bcache BlockCache, bops BlockOps, mode InitMode, tlfID tlf.ID,
+	bcache BlockCacheSimple, bops BlockOps, mode InitMode, tlfID tlf.ID,
 	pmd *PrivateMetadata, rmdWithKeys KeyMetadata, log logger.Logger) error {
 	info := pmd.Changes.Info
 	if info.BlockPointer == zeroPtr {
