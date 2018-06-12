@@ -63,4 +63,24 @@ func TestReembedBlockChanges(t *testing.T) {
 	// nil for bops and rmdWithKeys.
 	err = reembedBlockChanges(ctx, codec, bcache, nil, mode, tlfID, &pmd, nil, logger.NewTestLogger(t))
 	require.NoError(t, err)
+
+	// We expect to get changes back, except with the implicit ref
+	// block added.
+	expectedCO, err := newCreateOp("file", oldDir, File)
+	require.NoError(t, err)
+	expectedCO.AddRefBlock(ptr)
+	expectedChanges := BlockChanges{
+		Ops: opsList{expectedCO},
+	}
+
+	expectedPmd := PrivateMetadata{
+		Changes: expectedChanges,
+
+		cachedChanges: BlockChanges{
+			Info: BlockInfo{
+				BlockPointer: ptr,
+			},
+		},
+	}
+	require.Equal(t, expectedPmd, pmd)
 }
