@@ -401,7 +401,7 @@ type BlockChanges struct {
 	// bug such that omitempty,omitemptycheckstruct doesn't work
 	// on BlockInfo. Use omitemptyrecursive once we use a version
 	// of go-codec that supports it.
-	Info BlockInfo `codec:"p,omitempty"`
+	Info BlockInfo `codec:"p"`
 	// An ordered list of operations completed in this update
 	Ops opsList `codec:"o,omitempty"`
 	// Estimate the number of bytes that this set of changes will take to encode
