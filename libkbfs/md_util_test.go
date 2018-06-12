@@ -58,6 +58,9 @@ func TestReembedBlockChanges(t *testing.T) {
 			},
 		},
 	}
+
+	// We make the cache always return a block, so we can pass in
+	// nil for bops and rmdWithKeys.
 	err = reembedBlockChanges(ctx, codec, bcache, nil, mode, tlfID, &pmd, nil, logger.NewTestLogger(t))
 	require.NoError(t, err)
 }
