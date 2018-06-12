@@ -396,6 +396,11 @@ func (fb FolderBranch) String() string {
 type BlockChanges struct {
 	// If this is set, the actual changes are stored in a block (where
 	// the block contains a serialized version of BlockChanges)
+	//
+	// TODO: The old version of go-codec we have vendored has a
+	// bug such that omitempty,omitemptycheckstruct doesn't work
+	// on BlockInfo. Use omitemptyrecursive once we use a version
+	// of go-codec that supports it.
 	Info BlockInfo `codec:"p,omitempty"`
 	// An ordered list of operations completed in this update
 	Ops opsList `codec:"o,omitempty"`
