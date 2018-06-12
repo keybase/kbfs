@@ -29,6 +29,13 @@ func (testBlockCache) Put(ptr BlockPointer, tlf tlf.ID, block Block,
 	return errors.New("Shouldn't be called")
 }
 
+type blockChangesNoInfo struct {
+	// An ordered list of operations completed in this update
+	Ops opsList `codec:"o,omitempty"`
+	// Estimate the number of bytes that this set of changes will take to encode
+	sizeEstimate uint64
+}
+
 func TestReembedBlockChanges(t *testing.T) {
 	codec := kbfscodec.NewMsgpack()
 	RegisterOps(codec)
@@ -37,7 +44,7 @@ func TestReembedBlockChanges(t *testing.T) {
 	co, err := newCreateOp("file", oldDir, File)
 	require.NoError(t, err)
 
-	changes := BlockChanges{
+	changes := blockChangesNoInfo{
 		Ops: opsList{co},
 	}
 
@@ -73,10 +80,7 @@ func TestReembedBlockChanges(t *testing.T) {
 		Ops: opsList{expectedCO},
 	}
 
-	// In particular, Info should be empty. Note that old clients
-	// rely on the fact that encoded BlockChanges always have an
-	// encoded Info, which then clobbers any existing one on
-	// decode. (See comments for BlockChanges.)
+	// In particular, Info should be empty.
 	expectedPmd := PrivateMetadata{
 		Changes: expectedChanges,
 
