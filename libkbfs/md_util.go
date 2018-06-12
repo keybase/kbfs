@@ -510,24 +510,29 @@ func reembedBlockChanges(ctx context.Context, codec kbfscodec.Codec,
 		return err
 	}
 
-	// This relies on encoded BlockChanges always having an
-	// encoded Info, which would then clobber the one in
-	// pmd.Changes.
-	err = codec.Decode(buf, &pmd.Changes)
+	var unembeddedChanges BlockChanges
+	err = codec.Decode(buf, &unembeddedChanges)
 	if err != nil {
 		return err
 	}
 
+	// We rely on at most one of Info or Ops being non-empty in
+	// crChains.addOps.
+	if unembeddedChanges.Info.IsInitialized() {
+		return errors.New("Unembedded BlockChangesInfo unexpectedly has an initialized Info")
+	}
+
 	// The changes block pointers are implicit ref blocks.
-	pmd.Changes.Ops[0].AddRefBlock(info.BlockPointer)
+	unembeddedChanges.Ops[0].AddRefBlock(info.BlockPointer)
 	iptrs, err := fd.getIndirectFileBlockInfos(ctx)
 	if err != nil {
 		return err
 	}
 	for _, iptr := range iptrs {
-		pmd.Changes.Ops[0].AddRefBlock(iptr.BlockPointer)
+		unembeddedChanges.Ops[0].AddRefBlock(iptr.BlockPointer)
 	}
 
+	pmd.Changes = unembeddedChanges
 	pmd.cachedChanges.Info = info
 	return nil
 }
