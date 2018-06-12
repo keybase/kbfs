@@ -397,10 +397,12 @@ type BlockChanges struct {
 	// If this is set, the actual changes are stored in a block (where
 	// the block contains a serialized version of BlockChanges)
 	//
-	// TODO: The old version of go-codec we have vendored has a
-	// bug such that omitempty,omitemptycheckstruct doesn't work
-	// on BlockInfo. Use omitemptyrecursive once we use a version
-	// of go-codec that supports it.
+	// Ideally, we'd omit Info if it's empty. However, old clients
+	// rely on encoded BlockChanges always having an encoded Info,
+	// so that decoding into an existing BlockChanges object
+	// clobbers any existing Info, so we can't omit Info until all
+	// clients have upgraded to a version that explicitly clears
+	// Info on decode. (See comments in reembedBlockChanges.)
 	Info BlockInfo `codec:"p"`
 	// An ordered list of operations completed in this update
 	Ops opsList `codec:"o,omitempty"`

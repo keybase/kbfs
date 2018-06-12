@@ -73,6 +73,10 @@ func TestReembedBlockChanges(t *testing.T) {
 		Ops: opsList{expectedCO},
 	}
 
+	// In particular, Info should be empty. Note that old clients
+	// rely on the fact that encoded BlockChanges always have an
+	// encoded Info, which then clobbers any existing one on
+	// decode. (See comments for BlockChanges.)
 	expectedPmd := PrivateMetadata{
 		Changes: expectedChanges,
 

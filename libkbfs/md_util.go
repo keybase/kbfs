@@ -510,6 +510,9 @@ func reembedBlockChanges(ctx context.Context, codec kbfscodec.Codec,
 		return err
 	}
 
+	// This relies on encoded BlockChanges always having an
+	// encoded Info, which would then clobber the one in
+	// pmd.Changes.
 	err = codec.Decode(buf, &pmd.Changes)
 	if err != nil {
 		return err
