@@ -402,7 +402,8 @@ type BlockChanges struct {
 	// so that decoding into an existing BlockChanges object
 	// clobbers any existing Info, so we can't omit Info until all
 	// clients have upgraded to a version that explicitly clears
-	// Info on decode.
+	// Info on decode, and we've verified that there's nothing
+	// else that relies on Info always being filled.
 	Info BlockInfo `codec:"p"`
 	// An ordered list of operations completed in this update
 	Ops opsList `codec:"o,omitempty"`
