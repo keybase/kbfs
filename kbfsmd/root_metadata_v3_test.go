@@ -51,7 +51,7 @@ func TestRootMetadataVersionV3(t *testing.T) {
 	check(tlf.Public, tlf.TeamKeying, ImplicitTeamsVer)
 }
 
-func TestRootMetadataRevisionV3(t *testing.T) {
+func TestRootMetadataHardcodedV3(t *testing.T) {
 	tlfID := tlf.FakeID(1, tlf.Private)
 
 	uid := keybase1.MakeTestUID(1)
@@ -68,6 +68,8 @@ func TestRootMetadataRevisionV3(t *testing.T) {
 
 	codec := kbfscodec.NewMsgpack()
 
+	// The TLF{Writer,Reader}KeyBundleIDs should be encoded as
+	// nils (0xc0) and not omitted.
 	expectedBuf := []byte{
 		0x86, 0xa5, 0x46, 0x6c, 0x61, 0x67,
 		0x73, 0x0, 0xb1, 0x4c, 0x61, 0x73, 0x74, 0x4d, 0x6f,

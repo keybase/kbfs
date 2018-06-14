@@ -52,7 +52,7 @@ func TestRootMetadataVersionV2(t *testing.T) {
 	require.Equal(t, PreExtraMetadataVer, rmd.Version())
 }
 
-func TestRootMetadataRevisionV2(t *testing.T) {
+func TestRootMetadataHardcodedV2(t *testing.T) {
 	tlfID := tlf.FakeID(1, tlf.Private)
 
 	uid := keybase1.MakeTestUID(1)
