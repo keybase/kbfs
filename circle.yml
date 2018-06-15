@@ -106,7 +106,6 @@ jobs:
     - save_cache:
         key: v1-dep-{{ .Branch }}-{{ epoch }}
         paths:
-        - ~/.gradle
         - ~/downloads
         - ~/.cache/yarn
         - /tmp/go-android/bin
