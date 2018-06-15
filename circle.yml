@@ -1,56 +1,53 @@
-# This configuration was automatically generated from a CircleCI 1.0 config.
-# It should include any build commands you had along with commands that CircleCI
-# inferred from your project structure. We strongly recommend you read all the
-# comments in this file to understand the structure of CircleCI 2.0, as the idiom
-# for configuration has changed substantially in 2.0 to allow arbitrary jobs rather
-# than the prescribed lifecycle of 1.0. In general, we recommend using this generated
-# configuration as a reference rather than using it in production, though in most
-# cases it should duplicate the execution of your original 1.0 config.
+# -----------------------------------------------------------------------------
+#
+#   REMINDER: If you edit this file, you'll most likely also want to edit
+#   circle.yml in the client repository!
+#
+# -----------------------------------------------------------------------------
 version: 2
 jobs:
   build:
-    working_directory: ~/keybase/kbfs/.
+    working_directory: ~/kbfs
     parallelism: 1
     shell: /bin/bash --login
-    # CircleCI 2.0 does not support environment variables that refer to each other the same way as 1.0 did.
-    # If any of these refer to each other, rewrite them so that they don't or see https://circleci.com/docs/2.0/env-vars/#interpolating-environment-variables-to-set-other-environment-variables .
     environment:
-      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
-      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
-      GOPATH: $HOME/go-path
-      PATH: $GOROOT/bin:$PATH
-      _JAVA_OPTIONS: -Xms512m -Xmx2048m
-      GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError"
-      REACT_NATIVE_MAX_WORKERS: 1
+      GOVERSION: 1.10.3
+
+      # Some node dependencies break without this.
       CXX: g++-4.8
-      ANDROID_NDK_HOME: ${ANDROID_NDK}
-    # In CircleCI 1.0 we used a pre-configured image with a large number of languages and other packages.
-    # In CircleCI 2.0 you can now specify your own image, or use one of our pre-configured images.
-    # The following configuration line tells CircleCI to use the specified docker image as the runtime environment for you job.
-    # We have selected a pre-built image that mirrors the build environment we use on
-    # the 1.0 platform, but we recommend you choose an image more tailored to the needs
-    # of each job. For more information on choosing an image (or alternatively using a
-    # VM instead of a container) see https://circleci.com/docs/2.0/executor-types/
-    # To see the list of pre-built images that CircleCI provides for most common languages see
-    # https://circleci.com/docs/2.0/circleci-images/
+
+    # TODO: Consider picking a better docker image.
+    #
+    # For more information on choosing an image (or alternatively
+    # using a VM instead of a container) see
+    # https://circleci.com/docs/2.0/executor-types/ To see the list of
+    # pre-built images that CircleCI provides for most common
+    # languages see https://circleci.com/docs/2.0/circleci-images/
     docker:
     - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
       command: /sbin/init
+
     steps:
-    # Machine Setup
-    #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
-    # The following `checkout` command checks out your code to your working directory. In 1.0 we did this implicitly. In 2.0 you can choose where in the course of a job your code should be checked out.
-    - checkout
-    # Prepare for artifact and test results  collection equivalent to how it was done on 1.0.
-    # In many cases you can simplify this from what is generated here.
-    # 'See docs on artifact collection here https://circleci.com/docs/2.0/artifacts/'
-    - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-    # This is based on your 1.0 configuration file or project settings
     - run:
-        working_directory: ~/keybase/kbfs/.
-        command: nvm install 5.7.0 && nvm alias default 5.7.0
-    # Dependencies
-    #   This would typically go in either a build or a build-and-test job when using workflows
+        name: Update PATH and Define Environment Variable at Runtime
+        command: |
+          echo 'export GOPATH=$HOME/go-path' >> $BASH_ENV
+          echo 'export PATH=$HOME/.yarn/bin:$GOROOT/bin:$PATH' >> $BASH_ENV
+
+          # Some node dependencies break without this.
+          echo 'export ANDROID_NDK=$ANDROID_HOME/ndk-bundle' >> $BASH_ENV
+          echo 'export ANDROID_NDK_HOME=$ANDROID_HOME/ndk-bundle' >> $BASH_ENV
+
+          source $BASH_ENV
+
+    - checkout
+
+    # Install node and java.
+    #
+    # TODO: Upgrade node?
+    - run: nvm install 8 && nvm alias default 8
+    - run: sudo update-alternatives --set java /usr/lib/jvm/jdk1.8.0/bin/java; sudo update-alternatives --set javac /usr/lib/jvm/jdk1.8.0/bin/javac; echo -e "export JAVA_HOME=/usr/lib/jvm/jdk1.8.0" >> $BASH_ENV
+
     # Restore the dependency cache
     - restore_cache:
         keys:
@@ -60,60 +57,59 @@ jobs:
         - v1-dep-master-
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
         - v1-dep-
-    # This is based on your 1.0 configuration file or project settings
-    - run: sudo rm -rf $HOME/go*
-    - run: sudo rm -rf /usr/local/go*
-    - run: wget -nv https://storage.googleapis.com/golang/go1.9.linux-amd64.tar.gz -O $HOME/go.tar.gz
-    - run: mkdir $HOME/go-path
-    - run: (cd $HOME; tar -xzvf go.tar.gz)
-    - run: sudo mv $HOME/go /usr/local
-    - run: (cd $HOME; git clone https://github.com/keybase/client.git)
-    - run: mkdir -p $GOPATH/src/github.com/keybase
-    - run: ln -s $HOME/client $GOPATH/src/github.com/keybase/client
-    - run: if ! $(grep -q "Revision=24.4.1" $ANDROID_HOME/tools/source.properties); then echo y | android update sdk -u -a -t "tools"; fi
-    - run: if [ ! -e $ANDROID_HOME/build-tools/23.0.2 ]; then echo y | android update sdk -u -a -t "build-tools-23.0.2"; fi
-    - run: if [ ! -d "/usr/local/android-sdk-linux/extras/android/m2repository/com/android/support/design/24.1.0" ]; then echo y | android update sdk --no-ui --all --filter "extra-android-m2repository"; fi
-    - run: mkdir /usr/local/android-sdk-linux/licenses
-    - run: if [[ ! -e "$ANDROID_HOME/ndk_bundle" ]]; then wget -nv http://dl.google.com/android/repository/android-ndk-r11c-linux-x86_64.zip -O android-ndk-r11c-linux-x86_64.zip && unzip -o android-ndk-r11c-linux-x86_64.zip -d "$ANDROID_HOME" && mv "$ANDROID_HOME/android-ndk-r11c" "$ANDROID_HOME/ndk-bundle"; fi
-    - run: echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > /usr/local/android-sdk-linux/licenses/android-sdk-license
+
+    # - run: nvm ls-remote
     - run: sudo apt-key adv --fetch-keys http://dl.yarnpkg.com/debian/pubkey.gpg
     - run: echo "deb http://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
     - run: sudo apt-get update -qq
+    # - run: sudo apt-cache show yarn
     - run: sudo apt-get install -y -qq yarn=1.0.2-1
-    # This is based on your 1.0 configuration file or project settings
-    - run: yarn install --pure-lockfile
-    - run: yarn global add react-native-cli
+    - run: sudo rm -rf /usr/local/go*
+    - run: mkdir -p ~/downloads ~/go-path
+    - run: ls "$HOME/downloads"
+    - run: ls "$ANDROID_HOME"
+
+    - run: if [[ ! -e "$HOME/downloads/go.$GOVERSION.tar.gz" ]]; then wget -nv https://storage.googleapis.com/golang/go$GOVERSION.linux-amd64.tar.gz -O $HOME/downloads/go.$GOVERSION.tar.gz ; fi
+    - run: cd $HOME && tar -xzvf downloads/go.$GOVERSION.tar.gz
+    - run: sudo mv $HOME/go /usr/local
+
+    - run: if ! $(grep -q "Revision=24.4.1" $ANDROID_HOME/tools/source.properties); then echo y | android update sdk -u -a -t "tools"; fi
+    - run: if [ ! -e $ANDROID_HOME/build-tools/23.0.2 ]; then echo y | android update sdk -u -a -t "build-tools-23.0.2"; fi
+
+    # Android Support Repository, revision 35 / Local Maven repository for Support Libraries
+    - run: if [ ! -d "/usr/local/android-sdk-linux/extras/android/m2repository/com/android/support/design/24.1.0" ]; then echo y | android update sdk --no-ui --all --filter "extra-android-m2repository"; fi
+
+    # Accept android licenses
+    - run: mkdir -p /usr/local/android-sdk-linux/licenses
+    - run: if [[ ! -e "$ANDROID_HOME/ndk-bundle" ]]; then wget -nv http://dl.google.com/android/repository/android-ndk-r11c-linux-x86_64.zip -O android-ndk-r11c-linux-x86_64.zip && unzip -o android-ndk-r11c-linux-x86_64.zip -d "$ANDROID_HOME" && mv "$ANDROID_HOME/android-ndk-r11c" "$ANDROID_HOME/ndk-bundle"; fi
+    - run: echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > /usr/local/android-sdk-linux/licenses/android-sdk-license
+    - run: echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> /usr/local/android-sdk-linux/licenses/android-sdk-license
+
+    # Install Yarn
+    - run:
+        working_directory: shared
+        command: yarn install --pure-lockfile --ignore-engines --prefer-offline
+    - run:
+        working_directory: shared
+        command: yarn global add react-native-cli
+    - run: mkdir -p $GOPATH/src/github.com/keybase
     - run: ln -s $HOME/kbfs $GOPATH/src/github.com/keybase/kbfs
-    - run: (cd $GOPATH/src/github.com/keybase/client/shared; LOCAL_KBFS=1 yarn run rn-gobuild-android)
-    - run: ls -la $GOPATH/src/github.com/keybase/client/shared/react-native/android/keybaselib/keybaselib.aar
+    - run:
+        working_directory: shared
+        environment:
+          LOCAL_KBFS: 1
+        command: yarn run rn-gobuild-android
+
     # Save dependency cache
     - save_cache:
         key: v1-dep-{{ .Branch }}-{{ epoch }}
         paths:
-        # This is a broad list of cache paths to include many possible development environments
-        # You can probably delete some of these entries
-        - vendor/bundle
-        - ~/virtualenvs
-        - ~/.m2
-        - ~/.ivy2
-        - ~/.bundle
-        - ~/.go_workspace
         - ~/.gradle
-        - ~/.cache/bower
-        # These cache paths were specified in the 1.0 config
+        - ~/downloads
+        - ~/.cache/yarn
+        - /tmp/go-android/bin
+        - /tmp/go-android/pkg
         - /usr/local/android-sdk-linux/tools
+        - /usr/local/android-sdk-linux/ndk-bundle
         - /usr/local/android-sdk-linux/build-tools/23.0.2
-    # Test
-    #   This would typically be a build job when using workflows, possibly combined with build
-    # This is based on your 1.0 configuration file or project settings
-    - run: echo "Only testing builds"
-    # Teardown
-    #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
-    # Save test results
-    - store_test_results:
-        path: /tmp/circleci-test-results
-    # Save artifacts
-    - store_artifacts:
-        path: /tmp/circleci-artifacts
-    - store_artifacts:
-        path: /tmp/circleci-test-results
+        - /usr/local/android-sdk-linux/extras/android/m2repository
