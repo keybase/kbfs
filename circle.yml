@@ -43,9 +43,7 @@ jobs:
     - checkout
 
     # Install node and java.
-    #
-    # TODO: Upgrade node?
-    - run: nvm install 8 && nvm alias default 8
+    - run: nvm install 10 && nvm alias default 10
     - run: sudo update-alternatives --set java /usr/lib/jvm/jdk1.8.0/bin/java; sudo update-alternatives --set javac /usr/lib/jvm/jdk1.8.0/bin/javac; echo -e "export JAVA_HOME=/usr/lib/jvm/jdk1.8.0" >> $BASH_ENV
 
     # Restore the dependency cache
@@ -88,7 +86,7 @@ jobs:
     # Clone client and install Yarn
     - run: mkdir -p $GOPATH/src/github.com/keybase
     - run: git clone https://github.com/keybase/client.git $HOME/client
-    - run: ln -s $HOME/client $GOPATH/src/github.com/keybase/client
+    - run: ln -s $HOME/client $GOPwATH/src/github.com/keybase/client
     - run:
         working_directory: ../client/shared
         command: yarn install --pure-lockfile --ignore-engines --prefer-offline
