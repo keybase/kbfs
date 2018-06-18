@@ -60,8 +60,8 @@ jobs:
     - run: sudo apt-key adv --fetch-keys http://dl.yarnpkg.com/debian/pubkey.gpg
     - run: echo "deb http://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
     - run: sudo apt-get update -qq
-    # - run: sudo apt-cache show yarn
-    - run: sudo apt-get install -y -qq yarn=1.0.2-1
+    - run: sudo apt-cache show yarn
+    - run: sudo apt-get install -y -qq yarn=1.7.0-1
     - run: sudo rm -rf /usr/local/go*
     - run: mkdir -p ~/downloads ~/go-path
     - run: ls "$HOME/downloads"
@@ -86,7 +86,7 @@ jobs:
     # Clone client and install Yarn
     - run: mkdir -p $GOPATH/src/github.com/keybase
     - run: git clone https://github.com/keybase/client.git $HOME/client
-    - run: ln -s $HOME/client $GOPwATH/src/github.com/keybase/client
+    - run: ln -s $HOME/client $GOPATH/src/github.com/keybase/client
     - run:
         working_directory: ../client/shared
         command: yarn install --pure-lockfile --ignore-engines --prefer-offline
