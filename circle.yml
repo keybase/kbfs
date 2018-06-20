@@ -90,14 +90,6 @@ jobs:
     - run: git clone https://github.com/keybase/client.git $HOME/client
     - run: ln -s $HOME/client $GOPATH/src/github.com/keybase/client
 
-    # Install JS dependencies.
-    - run:
-        working_directory: ../client/shared
-        command: yarn install --pure-lockfile --ignore-engines --prefer-offline
-    - run:
-        working_directory: ../client/shared
-        command: yarn global add react-native-cli
-
     ##
     ## Build.
     ##
@@ -109,7 +101,7 @@ jobs:
         working_directory: ../client/shared
         environment:
           LOCAL_KBFS: 1
-        command: yarn run rn-gobuild-android
+        command: ./react-native/gobuild.sh android
 
     - run: ls -la $GOPATH/src/github.com/keybase/client/shared/react-native/android/keybaselib/keybaselib.aar
 
