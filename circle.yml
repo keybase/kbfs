@@ -85,10 +85,12 @@ jobs:
     - run: echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > /usr/local/android-sdk-linux/licenses/android-sdk-license
     - run: echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> /usr/local/android-sdk-linux/licenses/android-sdk-license
 
-    # Clone client and install Yarn
+    # Clone client.
     - run: mkdir -p $GOPATH/src/github.com/keybase
     - run: git clone https://github.com/keybase/client.git $HOME/client
     - run: ln -s $HOME/client $GOPATH/src/github.com/keybase/client
+
+    # Install JS dependencies.
     - run:
         working_directory: ../client/shared
         command: yarn install --pure-lockfile --ignore-engines --prefer-offline
