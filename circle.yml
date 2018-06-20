@@ -13,9 +13,6 @@ jobs:
     environment:
       GOVERSION: 1.10.3
 
-      # Some node dependencies break without this.
-      CXX: g++-4.8
-
     # TODO: Consider picking a better docker image.
     #
     # For more information on choosing an image (or alternatively
@@ -38,15 +35,9 @@ jobs:
           echo 'export GOPATH=$HOME/go-path' >> $BASH_ENV
           echo 'export PATH=$GOROOT/bin:$PATH' >> $BASH_ENV
 
-          # Some node dependencies break without this.
-          echo 'export ANDROID_NDK=$ANDROID_HOME/ndk-bundle' >> $BASH_ENV
-          echo 'export ANDROID_NDK_HOME=$ANDROID_HOME/ndk-bundle' >> $BASH_ENV
-
           source $BASH_ENV
 
-    # Install node and java.
-    # - run: nvm ls-remote
-    - run: nvm install 10 && nvm alias default 10
+    # Configure java.
     - run: sudo update-alternatives --set java /usr/lib/jvm/jdk1.8.0/bin/java; sudo update-alternatives --set javac /usr/lib/jvm/jdk1.8.0/bin/javac; echo -e "export JAVA_HOME=/usr/lib/jvm/jdk1.8.0" >> $BASH_ENV
 
     # Restore the dependency cache
