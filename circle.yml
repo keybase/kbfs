@@ -36,7 +36,7 @@ jobs:
         name: Update PATH and Define Environment Variable at Runtime
         command: |
           echo 'export GOPATH=$HOME/go-path' >> $BASH_ENV
-          echo 'export PATH=$HOME/.yarn/bin:$GOROOT/bin:$PATH' >> $BASH_ENV
+          echo 'export PATH=$GOROOT/bin:$PATH' >> $BASH_ENV
 
           # Some node dependencies break without this.
           echo 'export ANDROID_NDK=$ANDROID_HOME/ndk-bundle' >> $BASH_ENV
@@ -45,6 +45,7 @@ jobs:
           source $BASH_ENV
 
     # Install node and java.
+    # - run: nvm ls-remote
     - run: nvm install 10 && nvm alias default 10
     - run: sudo update-alternatives --set java /usr/lib/jvm/jdk1.8.0/bin/java; sudo update-alternatives --set javac /usr/lib/jvm/jdk1.8.0/bin/javac; echo -e "export JAVA_HOME=/usr/lib/jvm/jdk1.8.0" >> $BASH_ENV
 
@@ -58,12 +59,6 @@ jobs:
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
         - v1-dep-
 
-    # - run: nvm ls-remote
-    - run: sudo apt-key adv --fetch-keys http://dl.yarnpkg.com/debian/pubkey.gpg
-    - run: echo "deb http://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-    - run: sudo apt-get update -qq
-    # - run: sudo apt-cache show yarn
-    - run: sudo apt-get install -y -qq yarn=1.7.0-1
     - run: sudo rm -rf /usr/local/go*
     - run: mkdir -p ~/downloads ~/go-path
     - run: ls "$HOME/downloads"
@@ -110,7 +105,6 @@ jobs:
         key: v1-dep-{{ .Branch }}-{{ epoch }}
         paths:
         - ~/downloads
-        - ~/.cache/yarn
         - /tmp/go-android/bin
         - /tmp/go-android/pkg
         - /usr/local/android-sdk-linux/tools
