@@ -257,7 +257,7 @@ func (k *SimpleFS) favoriteList(ctx context.Context, path keybase1.Path, t tlf.T
 		}
 		res[len(res)-1].Writable, err = libfs.IsWriter(ctx, k.config.KBPKI(), handle)
 		if err != nil {
-			k.log.Errorf("libfs.IsWriter: %q %v", pname, err)
+			k.log.Errorf("libfs.IsWriter: %q %+v", pname, err)
 			continue
 		}
 	}
