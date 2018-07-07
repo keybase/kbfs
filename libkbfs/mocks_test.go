@@ -2973,6 +2973,16 @@ func (mr *MockReporterMockRecorder) NotifySyncStatus(ctx, status interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NotifySyncStatus", reflect.TypeOf((*MockReporter)(nil).NotifySyncStatus), ctx, status)
 }
 
+// SuppressNotifications mocks base method
+func (m *MockReporter) SuppressNotifications(ctx context.Context, nextSuppressIn time.Duration) {
+	m.ctrl.Call(m, "SuppressNotifications", ctx, nextSuppressIn)
+}
+
+// SuppressNotifications indicates an expected call of SuppressNotifications
+func (mr *MockReporterMockRecorder) SuppressNotifications(ctx, nextSuppressIn interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SuppressNotifications", reflect.TypeOf((*MockReporter)(nil).SuppressNotifications), ctx, nextSuppressIn)
+}
+
 // Shutdown mocks base method
 func (m *MockReporter) Shutdown() {
 	m.ctrl.Call(m, "Shutdown")

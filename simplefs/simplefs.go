@@ -1379,3 +1379,8 @@ func (k *SimpleFS) SimpleFSFolderEditHistory(
 	// Now get the edit history.
 	return k.config.KBFSOps().GetEditHistory(ctx, node.GetFolderBranch())
 }
+
+func (k *SimpleFS) SimpleFSSuppressNotifications(ctx context.Context, nextSuppressIn int) error {
+	k.config.Reporter().SuppressNotifications(ctx, time.Second*time.Duration(nextSuppressIn))
+	return nil
+}
