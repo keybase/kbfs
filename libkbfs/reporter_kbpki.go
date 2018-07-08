@@ -234,8 +234,8 @@ func (r *ReporterKBPKI) NotifySyncStatus(ctx context.Context,
 
 // SuppressNotifications implements the Reporter interface for ReporterKBPKI.
 func (r *ReporterKBPKI) SuppressNotifications(
-	ctx context.Context, nextSuppressIn time.Duration) {
-	r.suppressCh <- nextSuppressIn * 2
+	ctx context.Context, suppressDuration time.Duration) {
+	r.suppressCh <- suppressDuration
 }
 
 // Shutdown implements the Reporter interface for ReporterKBPKI.

@@ -100,8 +100,8 @@ func (r *ReporterSimple) NotifySyncStatus(_ context.Context,
 }
 
 // SuppressNotifications implements the Reporter interface for ReporterSimple.
-func (k *ReporterSimple) SuppressNotifications(
-	ctx context.Context, nextSuppressIn time.Duration) {
+func (r *ReporterSimple) SuppressNotifications(
+	_ context.Context, _ time.Duration) {
 	// ignore notifications
 }
 
