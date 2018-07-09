@@ -83,6 +83,7 @@ type ReporterKBPKI struct {
 	notifySyncBuffer chan *keybase1.FSPathSyncStatus
 	suppressCh       chan time.Duration
 	canceler         func()
+	ctx              context.Context
 }
 
 // NewReporterKBPKI creates a new ReporterKBPKI.
@@ -95,9 +96,8 @@ func NewReporterKBPKI(config Config, maxErrors, bufSize int) *ReporterKBPKI {
 		notifySyncBuffer: make(chan *keybase1.FSPathSyncStatus, bufSize),
 		suppressCh:       make(chan time.Duration, 1),
 	}
-	var ctx context.Context
-	ctx, r.canceler = context.WithCancel(context.Background())
-	go r.send(ctx)
+	r.ctx, r.canceler = context.WithCancel(context.Background())
+	go r.send()
 	return r
 }
 
@@ -238,6 +238,7 @@ func (r *ReporterKBPKI) SuppressNotifications(
 	select {
 	case r.suppressCh <- suppressDuration:
 	case <-ctx.Done():
+	case <-r.ctx.Done():
 	}
 }
 
@@ -250,7 +251,7 @@ func (r *ReporterKBPKI) Shutdown() {
 
 // send takes notifications out of notifyBuffer and notifySyncBuffer
 // and sends them to the keybase daemon.
-func (r *ReporterKBPKI) send(ctx context.Context) {
+func (r *ReporterKBPKI) send() {
 	suppressTimer := time.NewTimer(0)
 	suppressed := false
 	var stagedNotification *keybase1.FSNotification
@@ -264,9 +265,9 @@ func (r *ReporterKBPKI) send(ctx context.Context) {
 			}
 			if suppressed {
 				stagedNotification = notification
-			} else if err := r.config.KeybaseService().Notify(ctx,
+			} else if err := r.config.KeybaseService().Notify(r.ctx,
 				notification); err != nil {
-				r.log.CDebugf(ctx, "ReporterDaemon: error sending "+
+				r.log.CDebugf(r.ctx, "ReporterDaemon: error sending "+
 					"notification: %s", err)
 			}
 		case status, ok := <-r.notifySyncBuffer:
@@ -275,9 +276,9 @@ func (r *ReporterKBPKI) send(ctx context.Context) {
 			}
 			if suppressed {
 				stagedStatus = status
-			} else if err := r.config.KeybaseService().NotifySyncStatus(ctx,
+			} else if err := r.config.KeybaseService().NotifySyncStatus(r.ctx,
 				status); err != nil {
-				r.log.CDebugf(ctx, "ReporterDaemon: error sending "+
+				r.log.CDebugf(r.ctx, "ReporterDaemon: error sending "+
 					"sync status: %s", err)
 			}
 		case suppressFor, ok := <-r.suppressCh:
@@ -288,17 +289,17 @@ func (r *ReporterKBPKI) send(ctx context.Context) {
 			suppressed = true
 		case <-suppressTimer.C:
 			if stagedNotification != nil {
-				if err := r.config.KeybaseService().Notify(ctx,
+				if err := r.config.KeybaseService().Notify(r.ctx,
 					stagedNotification); err != nil {
-					r.log.CDebugf(ctx, "ReporterDaemon: error sending "+
+					r.log.CDebugf(r.ctx, "ReporterDaemon: error sending "+
 						"notification: %s", err)
 				}
 				stagedNotification = nil
 			}
 			if stagedStatus != nil {
-				if err := r.config.KeybaseService().NotifySyncStatus(ctx,
+				if err := r.config.KeybaseService().NotifySyncStatus(r.ctx,
 					stagedStatus); err != nil {
-					r.log.CDebugf(ctx, "ReporterDaemon: error sending "+
+					r.log.CDebugf(r.ctx, "ReporterDaemon: error sending "+
 						"sync status: %s", err)
 				}
 				stagedStatus = nil
