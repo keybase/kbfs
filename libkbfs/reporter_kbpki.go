@@ -241,9 +241,6 @@ func (r *ReporterKBPKI) SuppressNotifications(
 // Shutdown implements the Reporter interface for ReporterKBPKI.
 func (r *ReporterKBPKI) Shutdown() {
 	r.canceler()
-	close(r.notifyBuffer)
-	close(r.notifySyncBuffer)
-	close(r.suppressCh)
 }
 
 // send takes notifications out of notifyBuffer and notifySyncBuffer
@@ -302,6 +299,8 @@ func (r *ReporterKBPKI) send(ctx context.Context) {
 				stagedStatus = nil
 			}
 			suppressed = false
+		case <-ctx.Done():
+			return
 		}
 	}
 }
