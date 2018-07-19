@@ -31,7 +31,7 @@ var testLRUTime = makeTime([]byte{
 
 var testMetaDb = DiskBlockCacheMetadata{
 	TlfID:            tlf.FakeID(1, tlf.Public),
-	LRUTime:          testLRUTime,
+	LRUTime:          legacyEncodedTime{testLRUTime},
 	BlockSize:        0xface,
 	FinishedPrefetch: true,
 }

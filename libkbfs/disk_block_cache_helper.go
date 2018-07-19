@@ -15,13 +15,17 @@ type diskBlockCacheEntry struct {
 	ServerHalf kbfscrypto.BlockCryptKeyServerHalf
 }
 
+type legacyEncodedTime struct {
+	time.Time
+}
+
 // DiskBlockCacheMetadata packages the metadata needed to make decisions on
 // cache eviction.
 type DiskBlockCacheMetadata struct {
 	// the TLF ID for the block
 	TlfID tlf.ID
 	// the last time the block was used
-	LRUTime time.Time
+	LRUTime legacyEncodedTime
 	// the size of the block
 	BlockSize uint32
 	// whether the block has triggered prefetches
