@@ -15,6 +15,9 @@ type diskBlockCacheEntry struct {
 	ServerHalf kbfscrypto.BlockCryptKeyServerHalf
 }
 
+// Wrap time.Time so that go-codec falls back to using
+// time.Time.MarshalBinary instead of its new msgpack timestamp
+// extension encoding.
 type legacyEncodedTime struct {
 	time.Time
 }
