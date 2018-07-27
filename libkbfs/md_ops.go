@@ -734,6 +734,13 @@ func (md *MDOpsStandard) processMetadata(ctx context.Context,
 	checker := merkleBasedTeamChecker{md.config.KBPKI(), md, rmds, irmd, false}
 	err = rmds.IsValidAndSigned(ctx, md.config.Codec(), checker, extra)
 	if err != nil {
+		md.log.CDebugf(ctx, "Signature failed: %+v", err)
+		md.log.CDebugf(ctx, "RMDS: %#v", rmds)
+		buf, _ := md.config.Codec().Encode(rmds.MD)
+		md.log.CDebugf(ctx, "Encoded buffer: %v", buf)
+		md.log.CDebugf(ctx, "Siginfo: %#v", rmds.SigInfo)
+		verifyErr := kbfscrypto.Verify(buf, rmds.SigInfo)
+		md.log.CDebugf(ctx, "Second verify error=%+v", verifyErr)
 		return ImmutableRootMetadata{}, MDMismatchError{
 			rmds.MD.RevisionNumber(), handle.GetCanonicalPath(),
 			rmds.MD.TlfID(), err,
