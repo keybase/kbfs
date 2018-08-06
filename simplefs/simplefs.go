@@ -1755,7 +1755,7 @@ func (k *SimpleFS) SimpleFSDumpDebuggingInfo(ctx context.Context) error {
 }
 
 // SimpleFSSyncStatus - Get sync status.
-func (k *SimpleFS) SimpleFSSyncStatus(ctx context.Context) (keybase1.FSSyncStatus, error) {
+func (k *SimpleFS) SimpleFSSyncStatus(ctx context.Context, filter keybase1.ListFilter) (keybase1.FSSyncStatus, error) {
 	ctx = k.makeContext(ctx)
 	jServer, jErr := libkbfs.GetJournalServer(k.config)
 	if jErr != nil {
@@ -1769,6 +1769,18 @@ func (k *SimpleFS) SimpleFSSyncStatus(ctx context.Context) (keybase1.FSSyncStatu
 		k.log.CDebugf(ctx, "Error setting unflushed paths: %+v; "+
 			"sending empty response", err)
 		return keybase1.FSSyncStatus{}, nil
+	}
+
+	var syncingPaths []string
+	if filter == keybase1.ListFilter_NO_FILTER {
+		syncingPaths = status.UnflushedPaths
+	} else {
+		for _, p := range status.UnflushedPaths {
+			if isFiltered(filter, p) {
+				continue
+			}
+			syncingPaths = append(syncingPaths, p)
+		}
 	}
 
 	k.log.CDebugf(ctx, "Sending sync status response with %d syncing bytes",
