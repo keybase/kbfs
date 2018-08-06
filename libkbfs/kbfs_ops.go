@@ -353,10 +353,21 @@ func (fs *KBFSOpsStandard) getOpsIfExists(
 	return fs.ops[fb]
 }
 
+func (fs *KBFSOpsStandard) getFavoritesOpFromContextWithDefault(ctx context.Context, defaultFop FavoritesOp) FavoritesOp {
+	if ctxFop, ok := ctx.Value(CtxKeyFavoritesOp{}).(FavoritesOp); ok {
+		fs.deferLog.CDebugf(ctx, "getOps: Using FavoritesOp from ctx: %s", ctxFop)
+		return ctxFop
+	}
+	fs.deferLog.CDebugf(ctx, "getOps: Using default FavoritesOp: %s", defaultFop)
+	return defaultFop
+}
+
 func (fs *KBFSOpsStandard) getOps(ctx context.Context,
-	fb FolderBranch, fop FavoritesOp) *folderBranchOps {
+	fb FolderBranch, defaultFop FavoritesOp) *folderBranchOps {
 	ops := fs.getOpsNoAdd(ctx, fb)
-	if err := ops.doFavoritesOp(ctx, fs.favs, fop, nil); err != nil {
+	if err := ops.doFavoritesOp(ctx, fs.favs,
+		fs.getFavoritesOpFromContextWithDefault(ctx, defaultFop),
+		nil); err != nil {
 		// Failure to favorite shouldn't cause a failure.  Just log
 		// and move on.
 		fs.log.CDebugf(ctx, "Couldn't add favorite: %v", err)
@@ -370,9 +381,12 @@ func (fs *KBFSOpsStandard) getOpsByNode(ctx context.Context,
 }
 
 func (fs *KBFSOpsStandard) getOpsByHandle(ctx context.Context,
-	handle *TlfHandle, fb FolderBranch, fop FavoritesOp) *folderBranchOps {
+	handle *TlfHandle, fb FolderBranch,
+	defaultFop FavoritesOp) *folderBranchOps {
 	ops := fs.getOpsNoAdd(ctx, fb)
-	if err := ops.doFavoritesOp(ctx, fs.favs, fop, handle); err != nil {
+	if err := ops.doFavoritesOp(ctx, fs.favs,
+		fs.getFavoritesOpFromContextWithDefault(ctx, defaultFop),
+		handle); err != nil {
 		// Failure to favorite shouldn't cause a failure.  Just log
 		// and move on.
 		fs.log.CDebugf(ctx, "Couldn't add favorite: %v", err)
@@ -730,7 +744,9 @@ func (fs *KBFSOpsStandard) getMaybeCreateRootNode(
 		return nil, EntryInfo{}, err
 	}
 
-	if err := ops.doFavoritesOp(ctx, fs.favs, FavoritesOpAdd, h); err != nil {
+	if err := ops.doFavoritesOp(ctx, fs.favs,
+		fs.getFavoritesOpFromContextWithDefault(ctx, FavoritesOpAdd),
+		h); err != nil {
 		// Failure to favorite shouldn't cause a failure.  Just log
 		// and move on.
 		fs.log.CDebugf(ctx, "Couldn't add favorite: %v", err)

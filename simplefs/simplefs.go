@@ -72,6 +72,9 @@ type newFSFunc func(
 func defaultNewFS(ctx context.Context, config libkbfs.Config,
 	tlfHandle *libkbfs.TlfHandle, branch libkbfs.BranchName, subdir string) (
 	billy.Filesystem, error) {
+	// Prevent from automatically adding favorites in all simpleFS operations.
+	ctx = context.WithValue(ctx,
+		libkbfs.CtxKeyFavoritesOp{}, libkbfs.FavoritesOpNoChange)
 	return libfs.NewFS(
 		ctx, config, tlfHandle, branch, subdir, "", keybase1.MDPriorityNormal)
 }

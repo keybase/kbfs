@@ -705,6 +705,27 @@ const (
 	FavoritesOpNoChange
 )
 
+func (o FavoritesOp) String() string {
+	switch o {
+	case FavoritesOpAdd:
+		return "Add"
+	case FavoritesOpAddNewlyCreated:
+		return "AddNewlyCreated"
+	case FavoritesOpRemove:
+		return "Remove"
+	case FavoritesOpNoChange:
+		return "NoChange"
+	default:
+		return "Unknown"
+	}
+}
+
+// CtxKeyFavoritesOp is the context key which when present, controls whether an
+// operation should result in adding a TLF into favorites. Explicit favorites
+// related calls (e.g. AddFavorite and DeleteFavorite) are not affected by
+// this.
+type CtxKeyFavoritesOp struct{}
+
 // RekeyResult represents the result of an rekey operation.
 type RekeyResult struct {
 	DidRekey      bool
