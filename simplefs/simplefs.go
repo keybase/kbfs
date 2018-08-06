@@ -1787,7 +1787,7 @@ func (k *SimpleFS) SimpleFSSyncStatus(ctx context.Context, filter keybase1.ListF
 		status.UnflushedBytes)
 	return keybase1.FSSyncStatus{
 		TotalSyncingBytes: status.UnflushedBytes,
-		SyncingPaths:      status.UnflushedPaths,
+		SyncingPaths:      syncingPaths,
 		EndEstimate:       keybase1.ToTimePtr(status.EndEstimate),
 	}, nil
 }
