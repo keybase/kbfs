@@ -114,5 +114,6 @@ func main() {
 
 		os.Exit(err.Code)
 	}
+	fmt.Fprintf(os.Stderr, "kbfsfuse exiting with code=0")
 	os.Exit(0)
 }
