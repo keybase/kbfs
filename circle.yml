@@ -7,7 +7,7 @@
 version: 2
 jobs:
   build:
-    working_directory: ~/go-path/github.com/keybase/kbfs
+    working_directory: ~/go-path/src/github.com/keybase/kbfs
     parallelism: 1
 
     docker:
