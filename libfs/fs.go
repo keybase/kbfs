@@ -280,7 +280,6 @@ func (fs *FS) lookupParentWithDepth(
 			return nil, "", "", err
 		}
 
-		fmt.Printf("SONGGAO parts=%#+v\n", parts)
 		switch ei.Type {
 		case libkbfs.Sym:
 			if depth == maxSymlinkLevels {
