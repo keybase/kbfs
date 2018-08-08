@@ -11,7 +11,7 @@ jobs:
     parallelism: 1
 
     docker:
-    - image: keybaseprivate/circleci-kbfs:80acb37b198332c05f88ee9659e49de5afe63793dd152b694346eb98d3c97a22
+    - image: keybaseprivate/circleci-kbfs@sha256:80acb37b198332c05f88ee9659e49de5afe63793dd152b694346eb98d3c97a22
       command: /sbin/init
 
     steps:
