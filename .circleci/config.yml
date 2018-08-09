@@ -29,6 +29,7 @@ jobs:
     # this step, e.g. of /tmp/go-android/pkg.
     - run:
         environment:
+          LOCAL_CLIENT: 0
           LOCAL_KBFS: 1
           KEYBASE_BUILD: kbfsci
           DEST_DIR: /tmp
