@@ -15,8 +15,8 @@ jobs:
       command: /sbin/init
 
     steps:
-    # Clone client.
-    - run: git clone --depth=1 https://github.com/keybase/client.git $GOPATH/src/github.com/keybase/client
+    # Get gobuild.sh.
+    - run: wget https://raw.githubusercontent.com/keybase/client/akalin/gobuild-oot/shared/react-native/gobuild.sh -O /tmp/gobuild.sh
 
     ##
     ## Build.
@@ -27,9 +27,8 @@ jobs:
     # TODO: Investigate whether we can do some caching to speed up
     # this step, e.g. of /tmp/go-android/pkg.
     - run:
-        working_directory: ../client/shared
         environment:
           LOCAL_KBFS: 1
-        command: ./react-native/gobuild.sh android
+        command: env KEYBASE_BUILD=kbfsci DEST_DIR=/tmp /tmp/gobuild.sh android
 
-    - run: ls -la $GOPATH/src/github.com/keybase/client/shared/react-native/android/keybaselib/keybaselib.aar
+    - run: ls -la /tmp/keybaselib.aar
