@@ -16,7 +16,7 @@ jobs:
 
     steps:
     # Clone client.
-    - run: git clone https://github.com/keybase/client.git $GOPATH/src/github.com/keybase/client
+    - run: git clone --depth=1 https://github.com/keybase/client.git $GOPATH/src/github.com/keybase/client
 
     ##
     ## Build.
