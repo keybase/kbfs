@@ -15,8 +15,9 @@ jobs:
       command: /sbin/init
 
     steps:
-    # Get gobuild.sh.
+    # Get gobuild.sh and make it executable.
     - run: wget https://raw.githubusercontent.com/keybase/client/akalin/gobuild-oot/shared/react-native/gobuild.sh -O /tmp/gobuild.sh
+    - run: chmod a+x /tmp/gobuild.sh
 
     ##
     ## Build.
