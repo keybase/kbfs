@@ -16,6 +16,7 @@ jobs:
 
     steps:
     # Get gobuild.sh and make it executable.
+    # TODO: Change akalin/gobuild-oot to master.
     - run: wget https://raw.githubusercontent.com/keybase/client/akalin/gobuild-oot/shared/react-native/gobuild.sh -O /tmp/gobuild.sh
     - run: chmod a+x /tmp/gobuild.sh
 
