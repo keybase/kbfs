@@ -24,6 +24,8 @@ jobs:
 
     - checkout
 
+    # TODO: Investigate whether we can do some caching to speed up
+    # this step.
     - run:
         working_directory: ../client/shared
         environment:
