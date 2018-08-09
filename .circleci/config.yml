@@ -30,6 +30,8 @@ jobs:
     - run:
         environment:
           LOCAL_KBFS: 1
-        command: env KEYBASE_BUILD=kbfsci DEST_DIR=/tmp /tmp/gobuild.sh android
+          KEYBASE_BUILD: kbfsci
+          DEST_DIR: /tmp
+        command: /tmp/gobuild.sh android
 
     - run: ls -la /tmp/keybaselib.aar
