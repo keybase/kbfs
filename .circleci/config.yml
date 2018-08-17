@@ -11,7 +11,6 @@ jobs:
 
     docker:
     - image: keybaseprivate/circleci-kbfs@sha256:6e95999341a551ca9d175f497abc6f99e42583d977e26489471a86895327cd28
-      command: /sbin/init
 
     steps:
     # Get gobuild.sh and make it executable.
