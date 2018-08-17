@@ -17,10 +17,6 @@ jobs:
     - run: wget https://raw.githubusercontent.com/keybase/client/master/shared/react-native/gobuild.sh -O /tmp/gobuild.sh
     - run: chmod a+x /tmp/gobuild.sh
 
-    ##
-    ## Build.
-    ##
-
     - checkout
 
     # TODO: Investigate whether we can do some caching to speed up
@@ -31,6 +27,9 @@ jobs:
           LOCAL_KBFS: 1
           KEYBASE_BUILD: kbfsci
           DEST_DIR: /tmp
-        command: /tmp/gobuild.sh android
-
-    - run: ls -la /tmp/keybaselib.aar
+        command: |
+          cd /tmp
+          wget https://raw.githubusercontent.com/keybase/client/master/shared/react-native/gobuild.sh -O gobuild.sh
+          chmod a+x gobuild.sh
+          ./gobuild.sh android
+          ls -la keybaselib.aar
