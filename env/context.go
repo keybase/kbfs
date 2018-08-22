@@ -22,8 +22,15 @@ const (
 	kbfsSocketFile = "kbfsd.sock"
 )
 
+// AppStateUpdater is an interface for things that need to listen to
+// app state changes.
+type AppStateUpdater interface {
+	NextAppStateUpdate(lastState *keybase1.AppState) chan keybase1.AppState
+}
+
 // Context defines the environment for this package
 type Context interface {
+	AppStateUpdater
 	GetRunMode() libkb.RunMode
 	GetLogDir() string
 	GetDataDir() string
@@ -32,7 +39,6 @@ type Context interface {
 	// TODO: Remove this once kbfs removes all its dependencies on
 	// GlobalContext.
 	GetGlobalContext() *libkb.GlobalContext
-	NextAppStateUpdate(lastState *keybase1.AppState) chan keybase1.AppState
 	CheckService() error
 	GetSocket(clearError bool) (net.Conn, rpc.Transporter, bool, error)
 	NewRPCLogFactory() rpc.LogFactory
