@@ -10,9 +10,11 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 
 	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc/rpc"
 )
 
@@ -27,7 +29,11 @@ type Context interface {
 	GetDataDir() string
 	GetMountDir() (string, error)
 	ConfigureSocketInfo() (err error)
+	// TODO: Remove this once kbfs removes all its dependencies on
+	// GlobalContext.
 	GetGlobalContext() *libkb.GlobalContext
+	NextAppStateUpdate(lastState *keybase1.AppState) chan keybase1.AppState
+	CheckService() error
 	GetSocket(clearError bool) (net.Conn, rpc.Transporter, bool, error)
 	NewRPCLogFactory() rpc.LogFactory
 	GetKBFSSocket(clearError bool) (net.Conn, rpc.Transporter, bool, error)
@@ -95,6 +101,39 @@ func (c *KBFSContext) GetRunMode() libkb.RunMode {
 // GetGlobalContext returns the libkb global context.
 func (c *KBFSContext) GetGlobalContext() *libkb.GlobalContext {
 	return c.g
+}
+
+// NextAppStateUpdate returns a channel that triggers when the app
+// state changes.
+func (c *KBFSContext) NextAppStateUpdate(lastState *keybase1.AppState) chan keybase1.AppState {
+	return c.g.AppState.NextUpdate(lastState)
+}
+
+// CheckService checks if the service is running and returns nil if
+// so, and an error otherwise.
+func (c *KBFSContext) CheckService() error {
+	// Trying to dial the service seems like the best
+	// platform-agnostic way of seeing if the service is up.
+	// Stat-ing the socket file, for example, doesn't work for
+	// Windows named pipes.
+	s, err := libkb.NewSocket(c.g)
+	if err != nil {
+		return err
+	}
+	conn, err := s.DialSocket()
+	if err != nil {
+		if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
+			return errors.New(
+				"Keybase isn't running. Open the Keybase app.")
+		}
+		return errors.New(
+			"Keybase isn't running. Try `run_keybase`.")
+	}
+	err = conn.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // GetSocket returns a socket
