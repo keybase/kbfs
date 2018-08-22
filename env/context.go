@@ -130,10 +130,10 @@ func (c *KBFSContext) CheckService() error {
 	if err != nil {
 		if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
 			return errors.New(
-				"Keybase isn't running. Open the Keybase app.")
+				"keybase isn't running; open the Keybase app")
 		}
 		return errors.New(
-			"Keybase isn't running. Try `run_keybase`.")
+			"keybase isn't running; try `run_keybase`")
 	}
 	err = conn.Close()
 	if err != nil {
