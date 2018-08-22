@@ -111,9 +111,9 @@ func newTestRPCLogFactory(t testLogger) rpc.LogFactory {
 	return rpc.NewSimpleLogFactory(testLogOutput{t}, nil)
 }
 
-type TestAppStateUpdater struct{}
+type testAppStateUpdater struct{}
 
-func (tasu TestAppStateUpdater) NextAppStateUpdate(lastState *keybase1.AppState) chan keybase1.AppState {
+func (tasu testAppStateUpdater) NextAppStateUpdate(lastState *keybase1.AppState) chan keybase1.AppState {
 	return make(chan keybase1.AppState)
 }
 
@@ -129,7 +129,7 @@ func MakeTestConfigOrBustLoggedInWithMode(
 		return log
 	})
 
-	kbfsOps := NewKBFSOpsStandard(TestAppStateUpdater{}, config)
+	kbfsOps := NewKBFSOpsStandard(testAppStateUpdater{}, config)
 	config.SetKBFSOps(kbfsOps)
 	config.SetNotifier(kbfsOps)
 
@@ -237,7 +237,7 @@ func ConfigAsUserWithMode(config *ConfigLocal,
 	c.SetMetadataVersion(config.MetadataVersion())
 	c.SetRekeyWithPromptWaitTime(config.RekeyWithPromptWaitTime())
 
-	kbfsOps := NewKBFSOpsStandard(TestAppStateUpdater{}, c)
+	kbfsOps := NewKBFSOpsStandard(testAppStateUpdater{}, c)
 	c.SetKBFSOps(kbfsOps)
 	c.SetNotifier(kbfsOps)
 
