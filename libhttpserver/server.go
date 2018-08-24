@@ -173,7 +173,6 @@ func (s *Server) restart() (err error) {
 
 func (s *Server) monitorAppState(ctx context.Context) {
 	state := keybase1.AppState_FOREGROUND
-loop:
 	for {
 		select {
 		case <-ctx.Done():
@@ -189,7 +188,7 @@ loop:
 			// future. So, we just restart the server under FOREGROUND instead
 			// of trying to listen on all state updates.
 			if state != keybase1.AppState_FOREGROUND {
-				continue loop
+				continue
 			}
 			if err := s.restart(); err != nil {
 				s.logger.Warning("(Re)starting server failed: %v", err)
