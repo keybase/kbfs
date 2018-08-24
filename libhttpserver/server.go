@@ -173,23 +173,23 @@ func (s *Server) restart() (err error) {
 
 func (s *Server) monitorAppState(ctx context.Context) {
 	state := keybase1.AppState_FOREGROUND
+loop:
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case state = <-s.g.AppState.NextUpdate(&state):
-			// Due to the way NextUpdate is designed, it's possilbe we miss an
+			// Due to the way NextUpdate is designed, it's possible we miss an
 			// update if processing the last update takes too long. So it's
 			// possible to get consecutive FOREGROUND updates even if there are
 			// other states in-between. Since libkb/appstate.go already
 			// deduplicates, it'll never actually send consecutive identical
 			// states to us. In addition, apart from FOREGROUND/BACKGROUND,
-			// there are other possible states too, and potentiall more in the
-			// future. Due to above two reasons, we just restart the server
-			// under FOURGROUND instead of trying to listen on all state
-			// updates.
+			// there are other possible states too, and potentially more in the
+			// future. So, we just restart the server under FOREGROUND instead
+			// of trying to listen on all state updates.
 			if state != keybase1.AppState_FOREGROUND {
-				break
+				continue loop
 			}
 			if err := s.restart(); err != nil {
 				s.logger.Warning("(Re)starting server failed: %v", err)
