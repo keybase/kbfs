@@ -36,7 +36,8 @@ type EmptyAppStateUpdater struct{}
 
 // NextAppStateUpdate implements AppStateUpdater.
 func (easu EmptyAppStateUpdater) NextAppStateUpdate(lastState *keybase1.AppState) <-chan keybase1.AppState {
-	return make(chan keybase1.AppState)
+	// Receiving on a nil channel blocks forever.
+	return nil
 }
 
 // Context defines the environment for this package
