@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/golang-lru"
+	"github.com/keybase/client/go/kbhttp"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -39,7 +40,7 @@ type Server struct {
 	fs     *lru.Cache
 
 	serverLock sync.RWMutex
-	server     *libkb.HTTPSrv
+	server     *kbhttp.Srv
 }
 
 const tokenByteSize = 16
@@ -204,8 +205,8 @@ func New(g *libkb.GlobalContext, config libkbfs.Config) (
 		g:      g,
 		config: config,
 		logger: config.MakeLogger("HTTP"),
-		server: libkb.NewHTTPSrv(
-			g, libkb.NewPortRangeListenerSource(portStart, portEnd)),
+		server: kbhttp.NewSrv(
+			g.GetLog(), libkb.NewPortRangeListenerSource(portStart, portEnd)),
 	}
 	if s.tokens, err = lru.New(tokenCacheSize); err != nil {
 		return nil, err
