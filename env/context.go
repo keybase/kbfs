@@ -36,9 +36,6 @@ type Context interface {
 	GetDataDir() string
 	GetMountDir() (string, error)
 	ConfigureSocketInfo() (err error)
-	// TODO: Remove this once kbfs removes all its dependencies on
-	// GlobalContext.
-	GetGlobalContext() *libkb.GlobalContext
 	CheckService() error
 	GetSocket(clearError bool) (net.Conn, rpc.Transporter, bool, error)
 	NewRPCLogFactory() rpc.LogFactory
@@ -102,11 +99,6 @@ func (c *KBFSContext) GetMountDir() (string, error) {
 // GetRunMode returns run mode
 func (c *KBFSContext) GetRunMode() libkb.RunMode {
 	return c.g.GetRunMode()
-}
-
-// GetGlobalContext returns the libkb global context.
-func (c *KBFSContext) GetGlobalContext() *libkb.GlobalContext {
-	return c.g
 }
 
 // NextAppStateUpdate returns a channel that triggers when the app
