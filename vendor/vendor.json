@@ -214,6 +214,24 @@
 			"revisionTime": "2018-08-28T18:44:39Z"
 		},
 		{
+			"checksumSHA1": "QGxdU2vqMh0fvJ/oXyCik/WZdf0=",
+			"path": "github.com/keybase/client/go/kbconst",
+			"revision": "adfba6190cfe7a03369a53c137837854cdc81d42",
+			"revisionTime": "2018-08-28T18:44:39Z"
+		},
+		{
+			"checksumSHA1": "kU5excBxuurP0pDkEZFF3ZFYlgw=",
+			"path": "github.com/keybase/client/go/kbhttp",
+			"revision": "adfba6190cfe7a03369a53c137837854cdc81d42",
+			"revisionTime": "2018-08-28T18:44:39Z"
+		},
+		{
+			"checksumSHA1": "7DHjUlM/cuxNxp9xLUnMDzIzNRY=",
+			"path": "github.com/keybase/client/go/kbun",
+			"revision": "adfba6190cfe7a03369a53c137837854cdc81d42",
+			"revisionTime": "2018-08-28T18:44:39Z"
+		},
+		{
 			"checksumSHA1": "16MjUmeOk4zXDB9yiWZM1pHfNFM=",
 			"path": "github.com/keybase/client/go/kex2",
 			"revision": "adfba6190cfe7a03369a53c137837854cdc81d42",
