@@ -323,35 +323,33 @@
 		},
 		{
 			"checksumSHA1": "VJk3rOWfxEV9Ilig5lgzH1qg8Ss=",
-			"origin": "github.com/keybase/client/go/vendor/github.com/keybase/go-crypto/brainpool",
 			"path": "github.com/keybase/go-crypto/brainpool",
-			"revision": "75e99ce9f804b4b5518cf237da5ae544a31579b6",
-			"revisionTime": "2017-01-27T17:30:55Z"
+			"revision": "c84d7cbef16bcd1cd873e1d5793b18865f443ba0",
+			"revisionTime": "2018-08-07T16:30:25Z"
 		},
 		{
-			"checksumSHA1": "rnRjEJs5luF+DIXp2J6LFcQk8Gg=",
-			"origin": "github.com/keybase/client/go/vendor/github.com/keybase/go-crypto/cast5",
+			"checksumSHA1": "XYywPER9kpyLEjaLzDFS43CKGEM=",
 			"path": "github.com/keybase/go-crypto/cast5",
-			"revision": "75e99ce9f804b4b5518cf237da5ae544a31579b6",
-			"revisionTime": "2017-01-27T17:30:55Z"
+			"revision": "c84d7cbef16bcd1cd873e1d5793b18865f443ba0",
+			"revisionTime": "2018-08-07T16:30:25Z"
 		},
 		{
-			"checksumSHA1": "F5++ZQS5Vt7hd6lxPCKTffvph1A=",
+			"checksumSHA1": "6ZY7OPH1dlleun/jMHixi1M3SaY=",
 			"path": "github.com/keybase/go-crypto/curve25519",
-			"revision": "b5f4c79208fa609f364833f8c356535100d602ad",
-			"revisionTime": "2017-05-22T12:28:10Z"
+			"revision": "c84d7cbef16bcd1cd873e1d5793b18865f443ba0",
+			"revisionTime": "2018-08-07T16:30:25Z"
 		},
 		{
-			"checksumSHA1": "IvrDXwIixB5yPPbo6tq1/1cSn78=",
+			"checksumSHA1": "idJx0ckgd1LwSffToTmxF+bvCk8=",
 			"path": "github.com/keybase/go-crypto/ed25519",
-			"revision": "3535216ff45ffdef1adba71fdcb3fcdebbe49322",
-			"revisionTime": "2017-03-08T15:50:15Z"
+			"revision": "c84d7cbef16bcd1cd873e1d5793b18865f443ba0",
+			"revisionTime": "2018-08-07T16:30:25Z"
 		},
 		{
-			"checksumSHA1": "4+fslB6pCbplNq4viy6CrOkkY6Y=",
+			"checksumSHA1": "oFj+c+T9/0PTmvpz1Vlx1L6aI98=",
 			"path": "github.com/keybase/go-crypto/ed25519/internal/edwards25519",
-			"revision": "3535216ff45ffdef1adba71fdcb3fcdebbe49322",
-			"revisionTime": "2017-03-08T15:50:15Z"
+			"revision": "c84d7cbef16bcd1cd873e1d5793b18865f443ba0",
+			"revisionTime": "2018-08-07T16:30:25Z"
 		},
 		{
 			"checksumSHA1": "1TZ1Ym1XrMztVJB6ZvkWgxpY4w0=",
@@ -402,16 +400,10 @@
 			"revisionTime": "2018-08-07T16:30:25Z"
 		},
 		{
-			"checksumSHA1": "rE3pp7b3gfcmBregzpIvN5IdFhY=",
-			"path": "github.com/keybase/go-crypto/rsa",
-			"revision": "df314da3158786e5ea7ae99889366febe828fbd7",
-			"revisionTime": "2016-12-08T01:54:25Z"
-		},
-		{
 			"checksumSHA1": "orAH0wZ270S0Xef2B3DMnQFC+MI=",
 			"path": "github.com/keybase/go-crypto/ssh/terminal",
-			"revision": "80dd18f19f35c6b2e3b56254e397c36d07d9d285",
-			"revisionTime": "2017-11-30T13:45:51Z"
+			"revision": "c84d7cbef16bcd1cd873e1d5793b18865f443ba0",
+			"revisionTime": "2018-08-07T16:30:25Z"
 		},
 		{
 			"checksumSHA1": "+7f5OHMz0oyEHavDp0QpHDS4Zqc=",
