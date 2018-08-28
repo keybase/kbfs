@@ -14,6 +14,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/keybase/client/go/kbun"
 	libkb "github.com/keybase/client/go/libkb"
 	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 )
@@ -31,9 +32,9 @@ type TokenAuth struct {
 }
 
 type TokenKey struct {
-	UID      keybase1.UID             `json:"uid"`
-	Username libkb.NormalizedUsername `json:"username"`
-	KID      keybase1.KID             `json:"kid"`
+	UID      keybase1.UID            `json:"uid"`
+	Username kbun.NormalizedUsername `json:"username"`
+	KID      keybase1.KID            `json:"kid"`
 }
 
 type TokenBody struct {
@@ -56,7 +57,7 @@ type Token struct {
 	Tag          string      `json:"tag"`
 }
 
-func NewToken(uid keybase1.UID, username libkb.NormalizedUsername, kid keybase1.KID,
+func NewToken(uid keybase1.UID, username kbun.NormalizedUsername, kid keybase1.KID,
 	server, challenge string, now int64, expireIn int,
 	clientName, clientVersion string) *Token {
 	return &Token{
@@ -170,7 +171,7 @@ func (t Token) KID() keybase1.KID {
 	return t.Body.Key.KID
 }
 
-func (t Token) Username() libkb.NormalizedUsername {
+func (t Token) Username() kbun.NormalizedUsername {
 	return t.Body.Key.Username
 }
 

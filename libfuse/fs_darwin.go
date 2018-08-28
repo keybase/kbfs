@@ -117,7 +117,7 @@ func bundleResourcePath(path string) (string, error) {
 // disseminates renames into different TLF's trash.
 type Trash struct {
 	fs         *FS
-	kbusername libkb.NormalizedUsername
+	kbusername kbun.NormalizedUsername
 }
 
 // Lookup implements the fs.NodeRequestLookuper interface for *Trash

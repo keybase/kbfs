@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/keybase/client/go/kbun"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -163,7 +164,7 @@ func testCurrentSession(
 
 // Test that the session cache works and is invalidated as expected.
 func TestKeybaseDaemonSessionCache(t *testing.T) {
-	name := libkb.NormalizedUsername("fake username")
+	name := kbun.NormalizedUsername("fake username")
 	k := MakeLocalUserCryptPublicKeyOrBust(name)
 	v := MakeLocalUserVerifyingKeyOrBust(name)
 	session := SessionInfo{
@@ -202,7 +203,7 @@ func TestKeybaseDaemonSessionCache(t *testing.T) {
 
 func testLoadUserPlusKeys(
 	t *testing.T, client *fakeKeybaseClient, c *KeybaseDaemonRPC,
-	uid keybase1.UID, expectedName libkb.NormalizedUsername,
+	uid keybase1.UID, expectedName kbun.NormalizedUsername,
 	expectedCalled bool) {
 	client.loadUserPlusKeysCalled = false
 
@@ -216,7 +217,7 @@ func testLoadUserPlusKeys(
 
 func testIdentify(
 	t *testing.T, client *fakeKeybaseClient, c *KeybaseDaemonRPC,
-	uid keybase1.UID, expectedName libkb.NormalizedUsername,
+	uid keybase1.UID, expectedName kbun.NormalizedUsername,
 	expectedCalled bool) {
 	client.identifyCalled = false
 
@@ -332,7 +333,7 @@ func truncateNotificationTimestamps(
 }
 
 func TestKeybaseDaemonRPCEditList(t *testing.T) {
-	var userName1, userName2 libkb.NormalizedUsername = "u1", "u2"
+	var userName1, userName2 kbun.NormalizedUsername = "u1", "u2"
 	config1, _, ctx, cancel := kbfsOpsConcurInit(t, userName1, userName2)
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 	// kbfsOpsConcurInit turns off notifications, so turn them back on.

@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/client/go/kbun"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc/rpc"
@@ -48,7 +48,7 @@ func (cl *CounterLock) GetCount() int {
 	return cl.count
 }
 
-func kbfsOpsConcurInit(t *testing.T, users ...libkb.NormalizedUsername) (
+func kbfsOpsConcurInit(t *testing.T, users ...kbun.NormalizedUsername) (
 	*ConfigLocal, keybase1.UID, context.Context, context.CancelFunc) {
 	return kbfsOpsInitNoMocks(t, users...)
 }
@@ -2387,7 +2387,7 @@ func (snc *stallingNodeCache) PathFromNode(node Node) path {
 // Test that a lookup that straddles a sync from the same file doesn't
 // have any races.  Regression test for KBFS-1717.
 func TestKBFSOpsLookupSyncRace(t *testing.T) {
-	var userName1, userName2 libkb.NormalizedUsername = "u1", "u2"
+	var userName1, userName2 kbun.NormalizedUsername = "u1", "u2"
 	config1, _, ctx, cancel := kbfsOpsConcurInit(t, userName1, userName2)
 	defer kbfsConcurTestShutdown(t, config1, ctx, cancel)
 

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/keybase/client/go/kbun"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/go-codec/codec"
 )
@@ -69,7 +70,7 @@ var handleExtensionFinalizedRegex = regexp.MustCompile(
 )
 
 // String implements the fmt.Stringer interface for HandleExtensionType
-func (et HandleExtensionType) String(username libkb.NormalizedUsername) string {
+func (et HandleExtensionType) String(username kbun.NormalizedUsername) string {
 	switch et {
 	case HandleExtensionConflict:
 		return handleExtensionConflictString
@@ -83,7 +84,7 @@ func (et HandleExtensionType) String(username libkb.NormalizedUsername) string {
 }
 
 // parseHandleExtensionString parses an extension type and optional username from a string.
-func parseHandleExtensionString(s string) (HandleExtensionType, libkb.NormalizedUsername) {
+func parseHandleExtensionString(s string) (HandleExtensionType, kbun.NormalizedUsername) {
 	if handleExtensionConflictString == s {
 		return HandleExtensionConflict, ""
 	}
@@ -114,10 +115,10 @@ var handleExtensionRegex = regexp.MustCompile(
 
 // HandleExtension is information which identifies a particular extension.
 type HandleExtension struct {
-	Date     int64                    `codec:"date"`
-	Number   uint16                   `codec:"num"`
-	Type     HandleExtensionType      `codec:"type"`
-	Username libkb.NormalizedUsername `codec:"un,omitempty"`
+	Date     int64                   `codec:"date"`
+	Number   uint16                  `codec:"num"`
+	Type     HandleExtensionType     `codec:"type"`
+	Username kbun.NormalizedUsername `codec:"un,omitempty"`
 	codec.UnknownFieldSetHandler
 }
 
@@ -147,21 +148,21 @@ func (e HandleExtension) String() string {
 
 // NewHandleExtension returns a new HandleExtension struct
 // populated with the date from the given time and conflict number.
-func NewHandleExtension(extType HandleExtensionType, num uint16, un libkb.NormalizedUsername, now time.Time) (
+func NewHandleExtension(extType HandleExtensionType, num uint16, un kbun.NormalizedUsername, now time.Time) (
 	*HandleExtension, error) {
 	return newHandleExtension(extType, num, un, now)
 }
 
 // NewTestHandleExtensionStaticTime returns a new HandleExtension struct populated with
 // a static date for testing.
-func NewTestHandleExtensionStaticTime(extType HandleExtensionType, num uint16, un libkb.NormalizedUsername) (
+func NewTestHandleExtensionStaticTime(extType HandleExtensionType, num uint16, un kbun.NormalizedUsername) (
 	*HandleExtension, error) {
 	now := time.Unix(HandleExtensionStaticTestDate, 0)
 	return newHandleExtension(extType, num, un, now)
 }
 
 // Helper to instantiate a HandleExtension object.
-func newHandleExtension(extType HandleExtensionType, num uint16, un libkb.NormalizedUsername, now time.Time) (
+func newHandleExtension(extType HandleExtensionType, num uint16, un kbun.NormalizedUsername, now time.Time) (
 	*HandleExtension, error) {
 	if num == 0 {
 		return nil, errHandleExtensionInvalidNumber

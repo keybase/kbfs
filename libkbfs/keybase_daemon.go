@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/keybase/client/go/kbun"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -40,7 +41,7 @@ func (k keybaseDaemon) NewKeybaseService(config Config, params InitParams, ctx C
 			config, ctx, log, params.Debug, additionalProtocols), nil
 	}
 
-	users := []libkb.NormalizedUsername{
+	users := []kbun.NormalizedUsername{
 		"strib", "max", "chris", "akalin", "jzila", "alness",
 		"jinyang", "songgao", "taru", "zanderz",
 	}
@@ -72,7 +73,7 @@ func (k keybaseDaemon) NewKeybaseService(config Config, params InitParams, ctx C
 	localUID := localUsers[userIndex].UID
 	codec := config.Codec()
 
-	teams := MakeLocalTeams([]libkb.NormalizedUsername{"kbfs", "core", "dokan"})
+	teams := MakeLocalTeams([]kbun.NormalizedUsername{"kbfs", "core", "dokan"})
 	for i := range teams {
 		teams[i].Writers = make(map[keybase1.UID]bool)
 		teams[i].Readers = make(map[keybase1.UID]bool)

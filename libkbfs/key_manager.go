@@ -5,6 +5,7 @@
 package libkbfs
 
 import (
+	"github.com/keybase/client/go/kbun"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -210,7 +211,7 @@ func (km *KeyManagerStandard) getTLFCryptKey(ctx context.Context,
 
 func (km *KeyManagerStandard) getTLFCryptKeyParams(
 	ctx context.Context, kmd KeyMetadata,
-	keyGen kbfsmd.KeyGen, uid keybase1.UID, username libkb.NormalizedUsername,
+	keyGen kbfsmd.KeyGen, uid keybase1.UID, username kbun.NormalizedUsername,
 	flags getTLFCryptKeyFlags) (
 	clientHalf kbfscrypto.TLFCryptKeyClientHalf,
 	serverHalfID kbfscrypto.TLFCryptKeyServerHalfID,
