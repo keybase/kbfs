@@ -14,7 +14,6 @@ import (
 
 	"github.com/keybase/client/go/externals"
 	"github.com/keybase/client/go/kbun"
-	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfscodec"
 	"github.com/keybase/kbfs/tlf"
@@ -472,7 +471,7 @@ func splitAndNormalizeTLFName(name string, t tlf.Type) (
 // TODO: this function can likely be replaced with a call to
 // AssertionParseAndOnly when CORE-2967 and CORE-2968 are fixed.
 func normalizeAssertionOrName(s string, t tlf.Type) (string, error) {
-	if libkb.CheckUsername.F(s) {
+	if kbun.CheckUsername(s) {
 		return kbun.NewNormalizedUsername(s).String(), nil
 	}
 
