@@ -25,7 +25,9 @@ const (
 // AppStateUpdater is an interface for things that need to listen to
 // app state changes.
 type AppStateUpdater interface {
-	NextAppStateUpdate(lastState *keybase1.AppState) chan keybase1.AppState
+	// NextAppStateUpdate returns a channel that is sent on when
+	// the app state changes.
+	NextAppStateUpdate(lastState *keybase1.AppState) <-chan keybase1.AppState
 }
 
 // EmptyAppStateUpdater is an implementation of AppStateUpdater that
@@ -33,7 +35,7 @@ type AppStateUpdater interface {
 type EmptyAppStateUpdater struct{}
 
 // NextAppStateUpdate implements AppStateUpdater.
-func (easu EmptyAppStateUpdater) NextAppStateUpdate(lastState *keybase1.AppState) chan keybase1.AppState {
+func (easu EmptyAppStateUpdater) NextAppStateUpdate(lastState *keybase1.AppState) <-chan keybase1.AppState {
 	return make(chan keybase1.AppState)
 }
 
@@ -110,9 +112,8 @@ func (c *KBFSContext) GetRunMode() libkb.RunMode {
 	return c.g.GetRunMode()
 }
 
-// NextAppStateUpdate returns a channel that triggers when the app
-// state changes.
-func (c *KBFSContext) NextAppStateUpdate(lastState *keybase1.AppState) chan keybase1.AppState {
+// NextAppStateUpdate implements AppStateUpdater.
+func (c *KBFSContext) NextAppStateUpdate(lastState *keybase1.AppState) <-chan keybase1.AppState {
 	return c.g.AppState.NextUpdate(lastState)
 }
 
