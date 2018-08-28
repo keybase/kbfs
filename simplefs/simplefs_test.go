@@ -17,6 +17,7 @@ import (
 
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/env"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/libfs"
 	"github.com/keybase/kbfs/libkbfs"
@@ -126,19 +127,13 @@ func checkPendingOp(ctx context.Context,
 	}
 }
 
-type testAppStateUpdater struct{}
-
-func (tasu testAppStateUpdater) NextAppStateUpdate(lastState *keybase1.AppState) chan keybase1.AppState {
-	return make(chan keybase1.AppState)
-}
-
 func TestList(t *testing.T) {
 	ctx := context.Background()
 	config := libkbfs.MakeTestConfigOrBust(t, "jdoe")
 	clock := &libkbfs.TestClock{}
 	clock.Set(time.Now())
 	config.SetClock(clock)
-	sfs := newSimpleFS(testAppStateUpdater{}, config)
+	sfs := newSimpleFS(env.EmptyAppStateUpdater{}, config)
 	defer closeSimpleFS(ctx, t, sfs)
 
 	pathRoot := keybase1.NewPathWithKbfs(`/`)
@@ -351,7 +346,7 @@ func TestList(t *testing.T) {
 
 func TestListRecursive(t *testing.T) {
 	ctx := context.Background()
-	sfs := newSimpleFS(testAppStateUpdater{}, libkbfs.MakeTestConfigOrBust(t, "jdoe"))
+	sfs := newSimpleFS(env.EmptyAppStateUpdater{}, libkbfs.MakeTestConfigOrBust(t, "jdoe"))
 	defer closeSimpleFS(ctx, t, sfs)
 
 	// make a temp remote directory + files we will clean up later
@@ -430,7 +425,7 @@ func TestListRecursive(t *testing.T) {
 
 func TestCopyToLocal(t *testing.T) {
 	ctx := context.Background()
-	sfs := newSimpleFS(testAppStateUpdater{}, libkbfs.MakeTestConfigOrBust(t, "jdoe"))
+	sfs := newSimpleFS(env.EmptyAppStateUpdater{}, libkbfs.MakeTestConfigOrBust(t, "jdoe"))
 	defer closeSimpleFS(ctx, t, sfs)
 
 	// make a temp remote directory + file(s) we will clean up later
@@ -472,7 +467,7 @@ func TestCopyToLocal(t *testing.T) {
 
 func TestCopyRecursive(t *testing.T) {
 	ctx := context.Background()
-	sfs := newSimpleFS(testAppStateUpdater{}, libkbfs.MakeTestConfigOrBust(t, "jdoe"))
+	sfs := newSimpleFS(env.EmptyAppStateUpdater{}, libkbfs.MakeTestConfigOrBust(t, "jdoe"))
 	defer closeSimpleFS(ctx, t, sfs)
 
 	// make a temp local dest directory + files we will clean up later
@@ -573,7 +568,7 @@ func TestCopyRecursive(t *testing.T) {
 
 func TestCopyToRemote(t *testing.T) {
 	ctx := context.Background()
-	sfs := newSimpleFS(testAppStateUpdater{}, libkbfs.MakeTestConfigOrBust(t, "jdoe"))
+	sfs := newSimpleFS(env.EmptyAppStateUpdater{}, libkbfs.MakeTestConfigOrBust(t, "jdoe"))
 	defer closeSimpleFS(ctx, t, sfs)
 
 	// make a temp remote directory + file(s) we will clean up later
@@ -753,7 +748,7 @@ func TestCopyProgress(t *testing.T) {
 	clock.Set(start)
 	config.SetClock(clock)
 
-	sfs := newSimpleFS(testAppStateUpdater{}, config)
+	sfs := newSimpleFS(env.EmptyAppStateUpdater{}, config)
 	defer closeSimpleFS(ctx, t, sfs)
 
 	waitCh := make(chan struct{})
@@ -865,7 +860,7 @@ func TestCopyProgress(t *testing.T) {
 func TestTlfEditHistory(t *testing.T) {
 	ctx := context.Background()
 	sfs := newSimpleFS(
-		testAppStateUpdater{},
+		env.EmptyAppStateUpdater{},
 		libkbfs.MakeTestConfigOrBust(t, "jdoe"))
 	defer closeSimpleFS(ctx, t, sfs)
 
@@ -894,7 +889,7 @@ func (sr *subscriptionReporter) NotifyPathUpdated(
 func TestRefreshSubscription(t *testing.T) {
 	ctx := context.Background()
 	config := libkbfs.MakeTestConfigOrBust(t, "jdoe")
-	sfs := newSimpleFS(testAppStateUpdater{}, config)
+	sfs := newSimpleFS(env.EmptyAppStateUpdater{}, config)
 	defer closeSimpleFS(ctx, t, sfs)
 	sr := &subscriptionReporter{config.Reporter(), ""}
 	config.SetReporter(sr)
@@ -960,7 +955,7 @@ func TestGetRevisions(t *testing.T) {
 	clock.Set(start)
 	config.SetClock(clock)
 
-	sfs := newSimpleFS(testAppStateUpdater{}, config)
+	sfs := newSimpleFS(env.EmptyAppStateUpdater{}, config)
 	defer closeSimpleFS(ctx, t, sfs)
 
 	path := keybase1.NewPathWithKbfs(`/private/jdoe`)

@@ -10,7 +10,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/keybase/client/go/protocol/keybase1"
+	"github.com/keybase/kbfs/env"
 	"github.com/keybase/kbfs/ioutil"
 	"github.com/keybase/kbfs/libkbfs"
 	"github.com/keybase/kbfs/tlf"
@@ -53,17 +53,11 @@ func makeTestKBFSConfig(t *testing.T) (
 	return cfg, shutdown
 }
 
-type testAppStateUpdater struct{}
-
-func (tasu testAppStateUpdater) NextAppStateUpdate(lastState *keybase1.AppState) chan keybase1.AppState {
-	return make(chan keybase1.AppState)
-}
-
 func TestServerDefault(t *testing.T) {
 	kbfsConfig, shutdown := makeTestKBFSConfig(t)
 	defer shutdown()
 
-	s, err := New(testAppStateUpdater{}, kbfsConfig)
+	s, err := New(env.EmptyAppStateUpdater{}, kbfsConfig)
 	require.NoError(t, err)
 
 	addr, err := s.Address()

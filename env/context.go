@@ -28,6 +28,15 @@ type AppStateUpdater interface {
 	NextAppStateUpdate(lastState *keybase1.AppState) chan keybase1.AppState
 }
 
+// EmptyAppStateUpdater is an implementation of AppStateUpdater that
+// never returns an update, for testing.
+type EmptyAppStateUpdater struct{}
+
+// NextAppStateUpdate implements AppStateUpdater.
+func (easu EmptyAppStateUpdater) NextAppStateUpdate(lastState *keybase1.AppState) chan keybase1.AppState {
+	return make(chan keybase1.AppState)
+}
+
 // Context defines the environment for this package
 type Context interface {
 	AppStateUpdater
