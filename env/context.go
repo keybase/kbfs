@@ -25,8 +25,8 @@ const (
 // AppStateUpdater is an interface for things that need to listen to
 // app state changes.
 type AppStateUpdater interface {
-	// NextAppStateUpdate returns a channel that is sent on when
-	// the app state changes.
+	// NextAppStateUpdate returns a channel that app state changes
+	// are sent to.
 	NextAppStateUpdate(lastState *keybase1.AppState) <-chan keybase1.AppState
 }
 
