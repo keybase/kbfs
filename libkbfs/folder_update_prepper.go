@@ -225,7 +225,7 @@ func (fup *folderUpdatePrepper) prepUpdateForPath(
 				md.AddRefBlock(newInfo)
 			}
 
-			dirUnrefs := fup.blocks.GetDirtyDirUnrefs(
+			dirUnrefs := fup.blocks.getDirtyDirUnrefsLocked(
 				lState, currDD.rootBlockPointer())
 			for _, unref := range dirUnrefs {
 				md.AddUnrefBlock(unref)

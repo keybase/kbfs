@@ -1569,12 +1569,11 @@ func (fbo *folderBlockOps) GetDirtyDirBlockRefs(lState *lockState) []BlockRef {
 	return dirtyRefs
 }
 
-// GetDirtyDirUnrefs returns a list of block infos that need to be
+// getDirtyDirUnrefsLocked returns a list of block infos that need to be
 // unreferenced for the given directory.
-func (fbo *folderBlockOps) GetDirtyDirUnrefs(
+func (fbo *folderBlockOps) getDirtyDirUnrefsLocked(
 	lState *lockState, ptr BlockPointer) []BlockInfo {
-	fbo.blockLock.RLock(lState)
-	defer fbo.blockLock.RUnlock(lState)
+	fbo.blockLock.AssertRLocked(lState)
 	return fbo.dirtyDirs[ptr]
 }
 
