@@ -114,9 +114,9 @@ var handleExtensionRegex = regexp.MustCompile(
 
 // HandleExtension is information which identifies a particular extension.
 type HandleExtension struct {
-	Date     int64                   `codec:"date"`
-	Number   uint16                  `codec:"num"`
-	Type     HandleExtensionType     `codec:"type"`
+	Date     int64                     `codec:"date"`
+	Number   uint16                    `codec:"num"`
+	Type     HandleExtensionType       `codec:"type"`
 	Username kbname.NormalizedUsername `codec:"un,omitempty"`
 	codec.UnknownFieldSetHandler
 }
