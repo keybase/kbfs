@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/keybase/client/go/kbun"
+	kbname "github.com/keybase/client/go/kbun"
 	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
@@ -263,7 +263,7 @@ func (k *KeybaseServiceBase) getCachedUserInfo(uid keybase1.UID) UserInfo {
 func (k *KeybaseServiceBase) setCachedUserInfo(uid keybase1.UID, info UserInfo) {
 	k.userCacheLock.Lock()
 	defer k.userCacheLock.Unlock()
-	if info.Name == kbun.NormalizedUsername("") {
+	if info.Name == kbname.NormalizedUsername("") {
 		delete(k.userCache, uid)
 	} else {
 		k.userCache[uid] = info
@@ -302,7 +302,7 @@ func (k *KeybaseServiceBase) setCachedTeamInfo(
 	tid keybase1.TeamID, info TeamInfo) {
 	k.teamCacheLock.Lock()
 	defer k.teamCacheLock.Unlock()
-	if info.Name == kbun.NormalizedUsername("") {
+	if info.Name == kbname.NormalizedUsername("") {
 		delete(k.teamCache, tid)
 	} else {
 		k.teamCache[tid] = info
@@ -450,18 +450,18 @@ func ConvertIdentifyError(assertion string, err error) error {
 
 // Resolve implements the KeybaseService interface for KeybaseServiceBase.
 func (k *KeybaseServiceBase) Resolve(ctx context.Context, assertion string) (
-	kbun.NormalizedUsername, keybase1.UserOrTeamID, error) {
+	kbname.NormalizedUsername, keybase1.UserOrTeamID, error) {
 	res, err := k.identifyClient.Resolve3(ctx, assertion)
 	if err != nil {
-		return kbun.NormalizedUsername(""), keybase1.UserOrTeamID(""),
+		return kbname.NormalizedUsername(""), keybase1.UserOrTeamID(""),
 			ConvertIdentifyError(assertion, err)
 	}
-	return kbun.NewNormalizedUsername(res.Name), res.Id, nil
+	return kbname.NewNormalizedUsername(res.Name), res.Id, nil
 }
 
 // Identify implements the KeybaseService interface for KeybaseServiceBase.
 func (k *KeybaseServiceBase) Identify(ctx context.Context, assertion, reason string) (
-	kbun.NormalizedUsername, keybase1.UserOrTeamID, error) {
+	kbname.NormalizedUsername, keybase1.UserOrTeamID, error) {
 	// setting UseDelegateUI to true here will cause daemon to use
 	// registered identify ui providers instead of terminal if any
 	// are available.  If not, then it will use the terminal UI.
@@ -491,18 +491,18 @@ func (k *KeybaseServiceBase) Identify(ctx context.Context, assertion, reason str
 			"Ignoring error (%s) for user %s with no sigchain; "+
 				"error type=%T", err, res.Ul.Name, err)
 	default:
-		return kbun.NormalizedUsername(""), keybase1.UserOrTeamID(""),
+		return kbname.NormalizedUsername(""), keybase1.UserOrTeamID(""),
 			ConvertIdentifyError(assertion, err)
 	}
 
 	// This is required for every identify call. The userBreak
 	// function will take care of checking if res.TrackBreaks is nil
 	// or not.
-	name := kbun.NormalizedUsername(res.Ul.Name)
+	name := kbname.NormalizedUsername(res.Ul.Name)
 	if res.Ul.Id.IsUser() {
 		asUser, err := res.Ul.Id.AsUser()
 		if err != nil {
-			return kbun.NormalizedUsername(""), keybase1.UserOrTeamID(""), err
+			return kbname.NormalizedUsername(""), keybase1.UserOrTeamID(""), err
 		}
 		ei.userBreak(name, asUser, res.TrackBreaks)
 	}
@@ -536,7 +536,7 @@ func (k *KeybaseServiceBase) ResolveIdentifyImplicitTeam(
 	if err != nil {
 		return ImplicitTeamInfo{}, ConvertIdentifyError(assertions, err)
 	}
-	name := kbun.NormalizedUsername(res.DisplayName)
+	name := kbname.NormalizedUsername(res.DisplayName)
 
 	// This is required for every identify call. The userBreak
 	// function will take care of checking if res.TrackBreaks is nil
@@ -641,7 +641,7 @@ func (k *KeybaseServiceBase) checkForRevokedVerifyingKey(
 func (k *KeybaseServiceBase) LoadUserPlusKeys(ctx context.Context,
 	uid keybase1.UID, pollForKID keybase1.KID) (UserInfo, error) {
 	cachedUserInfo := k.getCachedUserInfo(uid)
-	if cachedUserInfo.Name != kbun.NormalizedUsername("") {
+	if cachedUserInfo.Name != kbname.NormalizedUsername("") {
 		if pollForKID == keybase1.KID("") {
 			return cachedUserInfo, nil
 		}
@@ -737,7 +737,7 @@ func (k *KeybaseServiceBase) LoadTeamPlusKeys(
 	}
 
 	cachedTeamInfo := k.getCachedTeamInfo(tid)
-	if cachedTeamInfo.Name != kbun.NormalizedUsername("") {
+	if cachedTeamInfo.Name != kbname.NormalizedUsername("") {
 		// If the cached team info doesn't satisfy our desires, don't
 		// use it.
 		satisfiesDesires := true
@@ -807,7 +807,7 @@ func (k *KeybaseServiceBase) LoadTeamPlusKeys(
 	}
 
 	info := TeamInfo{
-		Name:      kbun.NormalizedUsername(res.Name),
+		Name:      kbname.NormalizedUsername(res.Name),
 		TID:       res.Id,
 		CryptKeys: make(map[kbfsmd.KeyGen]kbfscrypto.TLFCryptKey),
 		Writers:   make(map[keybase1.UID]bool),
@@ -952,7 +952,7 @@ func (k *KeybaseServiceBase) processUserPlusKeys(
 	}
 
 	u := UserInfo{
-		Name: kbun.NewNormalizedUsername(
+		Name: kbname.NewNormalizedUsername(
 			upk.Current.Username),
 		UID:                    upk.Current.Uid,
 		VerifyingKeys:          verifyingKeys,
