@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 
 	"github.com/keybase/client/go/kbun"
-	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/go-framed-msgpack-rpc/rpc"

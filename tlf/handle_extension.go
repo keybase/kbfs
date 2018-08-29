@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/keybase/client/go/kbun"
-	"github.com/keybase/client/go/libkb"
 	"github.com/keybase/go-codec/codec"
 )
 
