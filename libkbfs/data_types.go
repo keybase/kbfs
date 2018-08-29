@@ -676,7 +676,7 @@ func SessionInfoFromProtocol(session keybase1.Session) (SessionInfo, error) {
 	cryptPublicKey := kbfscrypto.MakeCryptPublicKey(deviceSubkey.GetKID())
 	verifyingKey := kbfscrypto.MakeVerifyingKey(deviceSibkey.GetKID())
 	return SessionInfo{
-		Name:           libkb.NewNormalizedUsername(session.Username),
+		Name:           kbun.NewNormalizedUsername(session.Username),
 		UID:            keybase1.UID(session.Uid),
 		CryptPublicKey: cryptPublicKey,
 		VerifyingKey:   verifyingKey,

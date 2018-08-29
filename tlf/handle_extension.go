@@ -92,7 +92,7 @@ func parseHandleExtensionString(s string) (HandleExtensionType, kbun.NormalizedU
 	if len(m) < 2 {
 		return HandleExtensionUnknown, ""
 	}
-	return HandleExtensionFinalized, libkb.NewNormalizedUsername(m[1])
+	return HandleExtensionFinalized, kbun.NewNormalizedUsername(m[1])
 }
 
 // ErrHandleExtensionInvalidString is returned when a given string is not parsable as a

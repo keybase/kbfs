@@ -233,8 +233,8 @@ func testIdentify(
 func TestKeybaseDaemonUserCache(t *testing.T) {
 	uid1 := keybase1.UID("uid1")
 	uid2 := keybase1.UID("uid2")
-	name1 := libkb.NewNormalizedUsername("name1")
-	name2 := libkb.NewNormalizedUsername("name2")
+	name1 := kbun.NewNormalizedUsername("name1")
+	name2 := kbun.NewNormalizedUsername("name2")
 	users := map[keybase1.UID]UserInfo{
 		uid1: {Name: name1},
 		uid2: {Name: name2},

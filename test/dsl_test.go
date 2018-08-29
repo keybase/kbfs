@@ -250,7 +250,7 @@ func users(ns ...username) optionOp {
 	return func(o *opt) {
 		var a []string
 		for _, u := range ns {
-			username := libkb.NewNormalizedUsername(string(u))
+			username := kbun.NewNormalizedUsername(string(u))
 			o.usernames = append(o.usernames, username)
 			a = append(a, string(username))
 		}
@@ -505,7 +505,7 @@ func as(user username, fops ...fileOp) optionOp {
 	return func(o *opt) {
 		o.tb.Log("as:", user)
 		o.runInitOnce()
-		u := libkb.NewNormalizedUsername(string(user))
+		u := kbun.NewNormalizedUsername(string(user))
 		ctx := &ctx{
 			opt:      o,
 			user:     o.users[u],

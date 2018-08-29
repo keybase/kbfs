@@ -456,7 +456,7 @@ func (k *KeybaseServiceBase) Resolve(ctx context.Context, assertion string) (
 		return kbun.NormalizedUsername(""), keybase1.UserOrTeamID(""),
 			ConvertIdentifyError(assertion, err)
 	}
-	return libkb.NewNormalizedUsername(res.Name), res.Id, nil
+	return kbun.NewNormalizedUsername(res.Name), res.Id, nil
 }
 
 // Identify implements the KeybaseService interface for KeybaseServiceBase.
@@ -952,7 +952,7 @@ func (k *KeybaseServiceBase) processUserPlusKeys(
 	}
 
 	u := UserInfo{
-		Name: libkb.NewNormalizedUsername(
+		Name: kbun.NewNormalizedUsername(
 			upk.Current.Username),
 		UID:                    upk.Current.Uid,
 		VerifyingKeys:          verifyingKeys,

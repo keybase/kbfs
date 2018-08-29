@@ -21,7 +21,7 @@ import (
 type keybaseDaemon struct{}
 
 func (k keybaseDaemon) NewKeybaseService(config Config, params InitParams, ctx Context, log logger.Logger) (KeybaseService, error) {
-	localUser := libkb.NewNormalizedUsername(params.LocalUser)
+	localUser := kbun.NewNormalizedUsername(params.LocalUser)
 	if len(localUser) == 0 {
 		err := ctx.ConfigureSocketInfo()
 		if err != nil {
@@ -118,7 +118,7 @@ func (k keybaseDaemon) NewKeybaseService(config Config, params InitParams, ctx C
 
 func (k keybaseDaemon) NewCrypto(config Config, params InitParams, ctx Context, log logger.Logger) (Crypto, error) {
 	var crypto Crypto
-	localUser := libkb.NewNormalizedUsername(params.LocalUser)
+	localUser := kbun.NewNormalizedUsername(params.LocalUser)
 	if localUser == "" {
 		crypto = NewCryptoClientRPC(config, ctx)
 	} else {
@@ -133,7 +133,7 @@ func (k keybaseDaemon) NewCrypto(config Config, params InitParams, ctx Context, 
 func (k keybaseDaemon) NewChat(
 	config Config, params InitParams, ctx Context, log logger.Logger) (
 	chat Chat, err error) {
-	localUser := libkb.NewNormalizedUsername(params.LocalUser)
+	localUser := kbun.NewNormalizedUsername(params.LocalUser)
 	if localUser == "" {
 		chat = NewChatRPC(config, ctx)
 	} else {

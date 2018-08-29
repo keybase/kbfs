@@ -473,7 +473,7 @@ func splitAndNormalizeTLFName(name string, t tlf.Type) (
 // AssertionParseAndOnly when CORE-2967 and CORE-2968 are fixed.
 func normalizeAssertionOrName(s string, t tlf.Type) (string, error) {
 	if libkb.CheckUsername.F(s) {
-		return libkb.NewNormalizedUsername(s).String(), nil
+		return kbun.NewNormalizedUsername(s).String(), nil
 	}
 
 	// TODO: this fails for http and https right now (see CORE-2968).
