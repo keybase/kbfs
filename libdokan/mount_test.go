@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keybase/client/go/libkb"
+	"github.com/keybase/client/go/kbun"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/kbfs/dokan"
 	"github.com/keybase/kbfs/ioutil"
