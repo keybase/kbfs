@@ -197,8 +197,16 @@ func (fup *folderUpdatePrepper) prepUpdateForPath(
 	// in the path
 	currBlock := newBlock
 	var currDD *dirData
+	var undoFn func()
+	defer func() {
+		if undoFn != nil {
+			undoFn()
+		}
+	}()
 	if _, isDir := newBlock.(*DirBlock); isDir {
-		currDD = fup.blocks.newDirDataWithLBC(lState, dir, chargedTo, md, lbc)
+		newPath := dir.ChildPath(name, newBlockPtr)
+		currDD, undoFn = fup.blocks.newDirDataWithLBC(
+			lState, newPath, chargedTo, md, lbc)
 	}
 	currName := name
 	newPath := path{
@@ -206,7 +214,6 @@ func (fup *folderUpdatePrepper) prepUpdateForPath(
 		path:         make([]pathNode, 0, len(dir.path)),
 	}
 	bps := newBlockPutState(len(dir.path))
-	refPath := dir.ChildPathNoPtr(name)
 	var newDe DirEntry
 	doSetTime := true
 	now := fup.nowUnixNano()
@@ -230,6 +237,8 @@ func (fup *folderUpdatePrepper) prepUpdateForPath(
 			for _, unref := range dirUnrefs {
 				md.AddUnrefBlock(unref)
 			}
+			undoFn()
+			undoFn = nil
 		}
 
 		info, plainSize, err := fup.readyBlockMultiple(
@@ -257,7 +266,8 @@ func (fup *folderUpdatePrepper) prepUpdateForPath(
 				path:         dir.path[:prevIdx+1],
 			}
 
-			dd := fup.blocks.newDirDataWithLBC(
+			var dd *dirData
+			dd, undoFn = fup.blocks.newDirDataWithLBC(
 				lState, prevDir, chargedTo, md, lbc)
 			de, err = dd.lookup(ctx, currName)
 			if _, noExists := errors.Cause(err).(NoSuchNameError); noExists {
@@ -312,9 +322,6 @@ func (fup *folderUpdatePrepper) prepUpdateForPath(
 			md.AddRefBlock(info)
 		}
 
-		if len(refPath.path) > 1 {
-			refPath = *refPath.parentPath()
-		}
 		de.BlockInfo = info
 		de.PrevRevisions = de.PrevRevisions.addRevision(
 			md.Revision(), md.data.LastGCRevision)
@@ -837,6 +844,12 @@ func (fup *folderUpdatePrepper) makeSyncTree(
 	kmd KeyMetadata, lbc localBcache,
 	newFileBlocks fileBlockMap) *pathTreeNode {
 	var root *pathTreeNode
+	var undoFn func()
+	defer func() {
+		if undoFn != nil {
+			undoFn()
+		}
+	}()
 	for _, p := range resolvedPaths {
 		fup.log.CDebugf(ctx, "Creating tree from merged path: %v", p.path)
 		var parent *pathTreeNode
@@ -885,7 +898,8 @@ func (fup *folderUpdatePrepper) makeSyncTree(
 				FolderBranch: p.FolderBranch,
 				path:         p.path[:i+1],
 			}
-			dd := fup.blocks.newDirDataWithLBC(
+			var dd *dirData
+			dd, undoFn = fup.blocks.newDirDataWithLBC(
 				lState, currPath, keybase1.UserOrTeamID(""), kmd, lbc)
 
 			for name := range blocks {
@@ -921,6 +935,8 @@ func (fup *folderUpdatePrepper) makeSyncTree(
 				}
 				nextNode.children[name] = childNode
 			}
+			undoFn()
+			undoFn = nil
 		}
 	}
 	return root

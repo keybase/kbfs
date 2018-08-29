@@ -58,7 +58,7 @@ func setupDirDataTest(t *testing.T, maxPtrsPerBlock, numDirEntries int) (
 		return dirtyBcache.Put(id, ptr, MasterBranch, block)
 	}
 
-	dd := newDirData(
+	dd := newDirDataLocked(
 		dir, chargedTo, crypto, bsplit, kmd, getter, cacher,
 		logger.NewTestLogger(t))
 	return dd, cleanCache, dirtyBcache

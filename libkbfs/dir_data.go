@@ -27,7 +27,7 @@ type dirData struct {
 	tree   *blockTree
 }
 
-func newDirData(dir path, chargedTo keybase1.UserOrTeamID,
+func newDirDataLocked(dir path, chargedTo keybase1.UserOrTeamID,
 	crypto cryptoPure, bsplit BlockSplitter, kmd KeyMetadata,
 	getter dirBlockGetter, cacher dirtyBlockCacher,
 	log logger.Logger) *dirData {
