@@ -224,6 +224,12 @@ func (fup *folderUpdatePrepper) prepUpdateForPath(
 			for newInfo := range newInfos {
 				md.AddRefBlock(newInfo)
 			}
+
+			dirUnrefs := fup.blocks.GetDirtyDirUnrefs(
+				lState, currDD.rootBlockPointer())
+			for _, unref := range dirUnrefs {
+				md.AddUnrefBlock(unref)
+			}
 		}
 
 		info, plainSize, err := fup.readyBlockMultiple(
@@ -286,11 +292,6 @@ func (fup *folderUpdatePrepper) prepUpdateForPath(
 			currBlock = prevDblock
 			currDD = dd
 			nextName = prevDir.tailName()
-			dirUnrefs := fup.blocks.GetDirtyDirUnrefs(
-				lState, prevDir.tailPointer())
-			for _, unref := range dirUnrefs {
-				md.AddUnrefBlock(unref)
-			}
 		}
 
 		if de.Type == Dir {
