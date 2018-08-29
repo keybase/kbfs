@@ -272,7 +272,7 @@ type IdentifyNotifier interface {
 	Send(ctx context.Context, update keybase1.CanonicalTLFNameAndIDWithBreaks)
 }
 type UPAKFinder interface {
-	LookupUsernameAndDevice(ctx context.Context, uid keybase1.UID, deviceID keybase1.DeviceID) (username kbun.NormalizedUsername, deviceName string, deviceType string, err error)
+	LookupUsernameAndDevice(ctx context.Context, uid keybase1.UID, deviceID keybase1.DeviceID) (username libkb.NormalizedUsername, deviceName string, deviceType string, err error)
 	CheckKIDForUID(ctx context.Context, uid keybase1.UID, kid keybase1.KID) (found bool, revokedAt *keybase1.KeybaseTime, deleted bool, err error)
 }
 
