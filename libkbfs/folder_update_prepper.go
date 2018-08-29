@@ -645,7 +645,7 @@ func addUnrefToFinalResOp(ops opsList, ptr BlockPointer,
 		resOp = newResolutionOp()
 		ops = append(ops, resOp)
 	}
-	resOp.AddUnrefBlock(ptr)
+	resOp.AddUncommittedUnrefBlock(ptr)
 	return ops
 }
 
