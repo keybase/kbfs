@@ -28,6 +28,11 @@
 			"revisionTime": "2015-11-25T17:25:30Z"
 		},
 		{
+			"path": "github.com/Microsoft/go-winio",
+			"revision": "97e4973ce50b2ff5f09635a57e2b88a037aae829",
+			"revisionTime": "2018-08-23T15:24:21-07:00"
+		},
+		{
 			"path": "github.com/PuerkitoBio/goquery",
 			"revision": "64f61c25cc3595b1aeecdaf86a61bfec00b04c5f",
 			"revisionTime": "2016-03-16T16:25:20-04:00"
@@ -240,8 +245,8 @@
 		{
 			"checksumSHA1": "+bQx8RbUOzmss+tsyqfBvbU4Oi8=",
 			"path": "github.com/keybase/client/go/libkb",
-			"revision": "adfba6190cfe7a03369a53c137837854cdc81d42",
-			"revisionTime": "2018-08-28T18:44:39Z"
+			"revision": "58eda3d84913dd8331b7650b35d5ab154177ed5d",
+			"revisionTime": "2018-09-04T08:23:02-07:00"
 		},
 		{
 			"checksumSHA1": "HCbc7z1ulXWC8N18wF9ZwIknbNg=",
@@ -456,11 +461,6 @@
 			"path": "github.com/keybase/gomounts",
 			"revision": "349507f4d353f455c72b0c1101229ddb67c38175",
 			"revisionTime": "2018-03-01T23:53:30Z"
-		},
-		{
-			"path": "github.com/keybase/npipe",
-			"revision": "fcc44a83dcb12dae0f3f325c449bef3e1f38892b",
-			"revisionTime": "2017-04-28T11:20:20-07:00"
 		},
 		{
 			"checksumSHA1": "fyXuOuqF3c4LqHm5ZRt20aFjjfw=",
