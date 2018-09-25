@@ -448,11 +448,11 @@
 			"revisionTime": "2018-09-12T22:12:20Z"
 		},
 		{
-			"checksumSHA1": "vecRkvbIBGmLUxH37v899JcgjO4=",
+			"checksumSHA1": "TGxhSwR5QPlxQfkYDbvnq7bl268=",
 			"origin": "github.com/keybase/client/go/vendor/github.com/keybase/go-jsonw",
 			"path": "github.com/keybase/go-jsonw",
-			"revision": "a7c5ee4a843ee6e4ccf898ae9e5ad1dd301a358e",
-			"revisionTime": "2016-08-26T20:58:34Z"
+			"revision": "a42159f5896a44271c1be81397d2a7f8fa03c73e",
+			"revisionTime": "2018-09-25T19:18:43Z"
 		},
 		{
 			"checksumSHA1": "SDnp6hhfnz8PkCZh1emnNz0ZVWA=",
