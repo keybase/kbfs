@@ -28,11 +28,6 @@
 			"revisionTime": "2015-11-25T17:25:30Z"
 		},
 		{
-			"path": "github.com/Microsoft/go-winio",
-			"revision": "97e4973ce50b2ff5f09635a57e2b88a037aae829",
-			"revisionTime": "2018-08-23T15:24:21-07:00"
-		},
-		{
 			"path": "github.com/PuerkitoBio/goquery",
 			"revision": "64f61c25cc3595b1aeecdaf86a61bfec00b04c5f",
 			"revisionTime": "2016-03-16T16:25:20-04:00"
@@ -485,6 +480,12 @@
 			"path": "github.com/keybase/go-triplesec/sha3",
 			"revision": "64f61c25cc3595b1aeecdaf86a61bfec00b04c5f",
 			"revisionTime": "2016-03-16T16:25:20-04:00"
+		},
+		{
+			"checksumSHA1": "Qf5BoWu9zbAenzOELUsnXwzvCz0=",
+			"path": "github.com/keybase/go-winio",
+			"revision": "97e4973ce50b2ff5f09635a57e2b88a037aae829",
+			"revisionTime": "2018-08-23T22:24:21Z"
 		},
 		{
 			"checksumSHA1": "RemfT/X5EGstZybyYmpblbx6/Zs=",
