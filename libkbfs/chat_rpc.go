@@ -536,7 +536,7 @@ func (c *ChatRPC) ReadChannel(
 		}
 
 	}
-	if res.Thread.Pagination != nil {
+	if res.Thread.Pagination != nil && !res.Thread.Pagination.Last {
 		nextPage = res.Thread.Pagination.Next
 	}
 	return messages, nextPage, nil
