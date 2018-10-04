@@ -498,7 +498,7 @@ func (c *ChatRPC) ReadChannel(
 	messages []string, nextPage []byte, err error) {
 	pagination := &chat1.Pagination{Num: readChannelPageSize}
 	if startPage != nil {
-		pagination = &chat1.Pagination{Num: readChannelPageSize, Next: startPage}
+		pagination.Next = startPage
 	}
 	arg := chat1.GetThreadLocalArg{
 		ConversationID:   convID,
