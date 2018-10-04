@@ -490,17 +490,20 @@ func (c *ChatRPC) GetChannels(
 	return convIDs, channelNames, nil
 }
 
+const readChannelPageSize = 100
+
 // ReadChannel implements the Chat interface.
 func (c *ChatRPC) ReadChannel(
 	ctx context.Context, convID chat1.ConversationID, startPage []byte) (
 	messages []string, nextPage []byte, err error) {
-	var pagination *chat1.Pagination
+	pagination := &chat1.Pagination{Num: readChannelPageSize}
 	if startPage != nil {
-		pagination = &chat1.Pagination{Next: startPage}
+		pagination = &chat1.Pagination{Num: readChannelPageSize, Next: startPage}
 	}
 	arg := chat1.GetThreadLocalArg{
 		ConversationID:   convID,
 		Pagination:       pagination,
+		Reason:           chat1.GetThreadReason_KBFSFILEACTIVITY,
 		IdentifyBehavior: keybase1.TLFIdentifyBehavior_KBFS_CHAT,
 	}
 	res, err := c.client.GetThreadLocal(ctx, arg)
