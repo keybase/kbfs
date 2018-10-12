@@ -148,7 +148,7 @@ func (p *proofServices) parseServiceConfigs(entry keybase1.MerkleStoreEntry) (re
 
 	// Do some basic validation of what we parsed
 	for _, config := range services.Services {
-		validConf, err := NewGenericSocialProofConfig(p.G(), config)
+		validConf, err := NewGenericSocialProofConfig(config)
 		if err != nil {
 			p.G().Log.CDebugf(context.TODO(), "Unable to validate config for %s: %v", config.DisplayName, err)
 			continue

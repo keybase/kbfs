@@ -27,14 +27,12 @@ func NewDNSChecker(p libkb.RemoteProofChainLink) (*DNSChecker, libkb.ProofError)
 
 func (rc *DNSChecker) GetTorError() libkb.ProofError { return libkb.ProofErrorDNSOverTor }
 
-func (rc *DNSChecker) CheckStatus(m libkb.MetaContext, h libkb.SigHint, pcm libkb.ProofCheckerMode,
-	pvlU keybase1.MerkleStoreEntry) (*libkb.SigHint, libkb.ProofError) {
-	// TODO CORE-8951 see if we can populate verifiedHint with anything useful.
+func (rc *DNSChecker) CheckStatus(m libkb.MetaContext, h libkb.SigHint, pcm libkb.ProofCheckerMode, pvlU keybase1.MerkleStoreEntry) libkb.ProofError {
 	if pcm != libkb.ProofCheckerModeActive {
 		m.CDebugf("DNS check skipped since proof checking was not in active mode (%s)", h.GetAPIURL())
-		return nil, libkb.ProofErrorUnchecked
+		return libkb.ProofErrorUnchecked
 	}
-	return nil, CheckProofPvl(m, keybase1.ProofType_DNS, rc.proof, h, pvlU)
+	return CheckProofPvl(m, keybase1.ProofType_DNS, rc.proof, h, pvlU)
 }
 
 //

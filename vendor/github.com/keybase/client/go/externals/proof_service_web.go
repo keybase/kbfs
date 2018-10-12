@@ -41,14 +41,12 @@ func (rc *WebChecker) GetTorError() libkb.ProofError {
 	return nil
 }
 
-func (rc *WebChecker) CheckStatus(mctx libkb.MetaContext, h libkb.SigHint, pcm libkb.ProofCheckerMode,
-	pvlU keybase1.MerkleStoreEntry) (*libkb.SigHint, libkb.ProofError) {
+func (rc *WebChecker) CheckStatus(m libkb.MetaContext, h libkb.SigHint, pcm libkb.ProofCheckerMode, pvlU keybase1.MerkleStoreEntry) libkb.ProofError {
 	if pcm != libkb.ProofCheckerModeActive {
-		mctx.CDebugf("Web check skipped since proof checking was not in active mode (%s)", h.GetAPIURL())
-		return nil, libkb.ProofErrorUnchecked
+		m.CDebugf("Web check skipped since proof checking was not in active mode (%s)", h.GetAPIURL())
+		return libkb.ProofErrorUnchecked
 	}
-	// TODO CORE-8951 see if we can populate verifiedHint with anything useful.
-	return nil, CheckProofPvl(mctx, keybase1.ProofType_GENERIC_WEB_SITE, rc.proof, h, pvlU)
+	return CheckProofPvl(m, keybase1.ProofType_GENERIC_WEB_SITE, rc.proof, h, pvlU)
 }
 
 //
@@ -88,20 +86,20 @@ func ParseWeb(s string) (hostname string, prot string, err error) {
 	return
 }
 
-func (t WebServiceType) NormalizeRemoteName(mctx libkb.MetaContext, s string) (ret string, err error) {
+func (t WebServiceType) NormalizeRemoteName(m libkb.MetaContext, s string) (ret string, err error) {
 	// The remote name is a full (case-preserved) URL.
 	var prot, host string
 	if host, prot, err = ParseWeb(s); err != nil {
 		return
 	}
 	var res *libkb.APIRes
-	res, err = mctx.G().GetAPI().Get(libkb.APIArg{
+	res, err = m.G().GetAPI().Get(libkb.APIArg{
 		Endpoint:    "remotes/check",
 		SessionType: libkb.APISessionTypeREQUIRED,
 		Args: libkb.HTTPArgs{
 			"hostname": libkb.S{Val: host},
 		},
-		MetaContext: mctx,
+		MetaContext: m,
 	})
 	if err != nil {
 		return
