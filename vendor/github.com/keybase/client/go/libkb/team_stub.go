@@ -83,10 +83,6 @@ func (n nullFastTeamLoader) VerifyTeamName(_ MetaContext, _ keybase1.TeamID, _ k
 	return nil
 }
 
-func (n nullFastTeamLoader) ForceRepollUntil(_ MetaContext, _ gregor.TimeOrOffset) error {
-	return nil
-}
-
 func (n nullFastTeamLoader) OnLogout() {}
 
 func newNullFastTeamLoader() nullFastTeamLoader { return nullFastTeamLoader{} }

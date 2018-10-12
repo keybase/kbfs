@@ -141,6 +141,7 @@ type RemoteProofChainLink interface {
 	ComputeTrackDiff(tl *TrackLookup) TrackDiff
 	GetProofType() keybase1.ProofType
 	ProofText() string
+	RequiresHint() bool
 }
 
 type WebProofChainLink struct {
@@ -198,6 +199,7 @@ func (w *WebProofChainLink) GetRemoteUsername() string { return "" }
 func (w *WebProofChainLink) GetHostname() string       { return w.hostname }
 func (w *WebProofChainLink) GetProtocol() string       { return w.protocol }
 func (w *WebProofChainLink) ProofText() string         { return w.proofText }
+func (w *WebProofChainLink) RequiresHint() bool        { return true }
 
 func (w *WebProofChainLink) CheckDataJSON() *jsonw.Wrapper {
 	ret := jsonw.NewDictionary()
@@ -249,19 +251,14 @@ func (s *SocialProofChainLink) GetRemoteUsername() string { return s.username }
 func (s *SocialProofChainLink) GetHostname() string       { return "" }
 func (s *SocialProofChainLink) GetProtocol() string       { return "" }
 func (s *SocialProofChainLink) ProofText() string         { return s.proofText }
-func (s *SocialProofChainLink) ToIDString() string        { return s.ToDisplayString() }
+func (s *SocialProofChainLink) RequiresHint() bool {
+	return !s.isGeneric
+}
+func (s *SocialProofChainLink) ToIDString() string { return s.ToDisplayString() }
 func (s *SocialProofChainLink) ToKeyValuePair() (string, string) {
 	return s.service, s.username
 }
 func (s *SocialProofChainLink) GetService() string { return s.service }
-
-func (s *SocialProofChainLink) ToTrackingStatement(state keybase1.ProofState) (*jsonw.Wrapper, error) {
-	ret := s.BaseToTrackingStatement(state)
-	if err := remoteProofToTrackingStatement(s, ret); err != nil {
-		return nil, err
-	}
-	return ret, nil
-}
 
 func (s *SocialProofChainLink) ComputeTrackDiff(tl *TrackLookup) TrackDiff {
 	k, v := s.ToKeyValuePair()
@@ -551,7 +548,7 @@ func (l *TrackChainLink) ToServiceBlocks() (ret []*ServiceBlock) {
 	w := l.RemoteKeyProofs()
 	ln, err := w.Len()
 	if err != nil {
-		return nil
+		return
 	}
 	for index := 0; index < ln; index++ {
 		proof := w.AtIndex(index).AtKey("remote_key_proof")
@@ -1153,6 +1150,7 @@ func (s *SelfSigChainLink) GetRemoteUsername() string { return s.GetUsername() }
 func (s *SelfSigChainLink) GetHostname() string       { return "" }
 func (s *SelfSigChainLink) GetProtocol() string       { return "" }
 func (s *SelfSigChainLink) ProofText() string         { return "" }
+func (s *SelfSigChainLink) RequiresHint() bool        { return true }
 
 func (s *SelfSigChainLink) GetPGPFullHash() string { return s.extractPGPFullHash("key") }
 
@@ -1515,11 +1513,7 @@ func (idt *IdentityTable) identifyActiveProof(m MetaContext, lcr *LinkCheckResul
 }
 
 type LinkCheckResult struct {
-	hint *SigHint
-	// The client checker fills this in with any knowledge it has about hint
-	// metadata if it is able to derive it without server help. This value is
-	// preferred to the plain old server-trust `hint`
-	verifiedHint         *SigHint
+	hint                 *SigHint
 	cached               *CheckResult
 	err                  ProofError
 	snoozedErr           ProofError
@@ -1533,15 +1527,10 @@ type LinkCheckResult struct {
 	torWarning           bool
 }
 
-func (l LinkCheckResult) GetDiff() TrackDiff        { return l.diff }
-func (l LinkCheckResult) GetError() error           { return l.err }
-func (l LinkCheckResult) GetProofError() ProofError { return l.err }
-func (l LinkCheckResult) GetHint() *SigHint {
-	if l.verifiedHint != nil {
-		return l.verifiedHint
-	}
-	return l.hint
-}
+func (l LinkCheckResult) GetDiff() TrackDiff            { return l.diff }
+func (l LinkCheckResult) GetError() error               { return l.err }
+func (l LinkCheckResult) GetProofError() ProofError     { return l.err }
+func (l LinkCheckResult) GetHint() *SigHint             { return l.hint }
 func (l LinkCheckResult) GetCached() *CheckResult       { return l.cached }
 func (l LinkCheckResult) GetPosition() int              { return l.position }
 func (l LinkCheckResult) GetTorWarning() bool           { return l.torWarning }
@@ -1592,7 +1581,7 @@ func (idt *IdentityTable) proofRemoteCheck(m MetaContext, hasPreviousTrack, forc
 
 		if doCache {
 			m.CDebugf("| Caching results under key=%s pvlHash=%s", sid, pvlHashUsed)
-			if cacheErr := idt.G().ProofCache.Put(sid, res, pvlHashUsed); cacheErr != nil {
+			if cacheErr := idt.G().ProofCache.Put(sid, res.err, pvlHashUsed); cacheErr != nil {
 				m.CWarningf("proof cache put error: %s", cacheErr)
 			}
 		}
@@ -1613,7 +1602,7 @@ func (idt *IdentityTable) proofRemoteCheck(m MetaContext, hasPreviousTrack, forc
 	pvlHashUsed = pvlU.Hash
 
 	res.hint = idt.sigHints.Lookup(sid)
-	if res.hint == nil {
+	if res.hint == nil && p.RequiresHint() {
 		res.err = NewProofError(keybase1.ProofStatus_NO_HINT, "No server-given hint for sig=%s", sid)
 		return
 	}
@@ -1639,7 +1628,6 @@ func (idt *IdentityTable) proofRemoteCheck(m MetaContext, hasPreviousTrack, forc
 		m.CDebugf("| Proof cache lookup for %s: %+v", sid, res.cached)
 		if res.cached != nil && res.cached.Freshness() == keybase1.CheckResultFreshness_FRESH {
 			res.err = res.cached.Status
-			res.verifiedHint = res.cached.VerifiedHint
 			m.CDebugf("| Early exit after proofCache hit for %s", sid)
 			return
 		}
@@ -1660,7 +1648,7 @@ func (idt *IdentityTable) proofRemoteCheck(m MetaContext, hasPreviousTrack, forc
 	if res.hint != nil {
 		hint = *res.hint
 	}
-	res.verifiedHint, res.err = pc.CheckStatus(m, hint, pcm, pvlU)
+	res.err = pc.CheckStatus(m, hint, pcm, pvlU)
 
 	// If no error than all good
 	if res.err == nil {

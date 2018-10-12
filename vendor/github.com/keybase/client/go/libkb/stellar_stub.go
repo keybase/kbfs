@@ -2,7 +2,6 @@ package libkb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/keybase/client/go/gregor"
@@ -38,7 +37,3 @@ func (n *nullStellar) GetServerDefinitions(ctx context.Context) (ret stellar1.St
 }
 
 func (n *nullStellar) KickAutoClaimRunner(MetaContext, gregor.MsgID) {}
-
-func (n *nullStellar) UpdateUnreadCount(context.Context, stellar1.AccountID, int) error {
-	return errors.New("nullStellar UpdateUnreadCount")
-}

@@ -14,7 +14,6 @@ import (
 	"net"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/keybase/client/go/jsonhelpers"
 	libkb "github.com/keybase/client/go/libkb"
 	keybase1 "github.com/keybase/client/go/protocol/keybase1"
 	jsonw "github.com/keybase/go-jsonw"
@@ -174,7 +173,8 @@ func checkProofInner(m metaContext, pvlS string, service keybase1.ProofType, inf
 
 	var errs []libkb.ProofError
 	if service == keybase1.ProofType_DNS {
-		if perr = runDNS(m, info.Hostname, scripts, mknewstate, sigID.ToMediumID()); perr != nil {
+		perr = runDNS(m, info.Hostname, scripts, mknewstate, sigID.ToMediumID())
+		if perr != nil {
 			errs = append(errs, perr)
 		}
 	} else {
@@ -212,49 +212,58 @@ func setupRegs(m metaContext, regs *namedRegsStore, info ProofInfo, sigBody []by
 	webish := (service == keybase1.ProofType_DNS || service == keybase1.ProofType_GENERIC_WEB_SITE)
 
 	// hint_url
-	if err := regs.Set("hint_url", info.APIURL); err != nil {
+	err := regs.Set("hint_url", info.APIURL)
+	if err != nil {
 		return err
 	}
 
 	// username_service
 	if webish {
-		if err := regs.Ban("username_service"); err != nil {
+		err = regs.Ban("username_service")
+		if err != nil {
 			return err
 		}
 	} else {
-		if err := regs.Set("username_service", info.RemoteUsername); err != nil {
+		err = regs.Set("username_service", info.RemoteUsername)
+		if err != nil {
 			return err
 		}
 	}
 
 	// username_keybase
-	if err := regs.Set("username_keybase", info.Username); err != nil {
+	err = regs.Set("username_keybase", info.Username)
+	if err != nil {
 		return err
 	}
 
 	// sig
 	// Store it b64 encoded. This is rarely used, assert_find_base64 is better.
-	if err := regs.Set("sig", b64.StdEncoding.EncodeToString(sigBody)); err != nil {
+	err = regs.Set("sig", b64.StdEncoding.EncodeToString(sigBody))
+	if err != nil {
 		return err
 	}
 
 	// sig_id_medium
-	if err := regs.Set("sig_id_medium", sigID.ToMediumID()); err != nil {
+	err = regs.Set("sig_id_medium", sigID.ToMediumID())
+	if err != nil {
 		return err
 	}
 
 	// sig_id_short
-	if err := regs.Set("sig_id_short", sigID.ToShortID()); err != nil {
+	err = regs.Set("sig_id_short", sigID.ToShortID())
+	if err != nil {
 		return err
 	}
 
 	// hostname
 	if webish {
-		if err := regs.Set("hostname", info.Hostname); err != nil {
+		err = regs.Set("hostname", info.Hostname)
+		if err != nil {
 			return err
 		}
 	} else {
-		if err := regs.Ban("hostname"); err != nil {
+		err = regs.Ban("hostname")
+		if err != nil {
 			return err
 		}
 	}
@@ -266,11 +275,13 @@ func setupRegs(m metaContext, regs *namedRegsStore, info ProofInfo, sigBody []by
 			return libkb.NewProofError(keybase1.ProofStatus_BAD_SIGNATURE,
 				"Bad protocol in sig: %s", info.Protocol)
 		}
-		if err := regs.Set("protocol", canonicalProtocol); err != nil {
+		err = regs.Set("protocol", canonicalProtocol)
+		if err != nil {
 			return err
 		}
 	} else {
-		if err := regs.Ban("protocol"); err != nil {
+		err = regs.Ban("protocol")
+		if err != nil {
 			return err
 		}
 	}
@@ -527,11 +538,13 @@ func runDNSOne(m metaContext, domain string, scripts []scriptT, mknewstate state
 				return err
 			}
 
-			if err = state.Regs.Set("txt", record); err != nil {
+			err = state.Regs.Set("txt", record)
+			if err != nil {
 				return err
 			}
 
-			if err = runScript(m, &script, state); err == nil {
+			err = runScript(m, &script, state)
+			if err == nil {
 				return nil
 			}
 
@@ -769,7 +782,8 @@ func stepReplaceAll(m metaContext, ins replaceAllT, state scriptState) (scriptSt
 	}
 
 	replaced := strings.Replace(from, ins.Old, ins.New, -1)
-	if err = state.Regs.Set(ins.Into, replaced); err != nil {
+	err = state.Regs.Set(ins.Into, replaced)
+	if err != nil {
 		return state, err
 	}
 
@@ -979,8 +993,7 @@ func stepFill(m metaContext, ins fillT, state scriptState) (scriptState, libkb.P
 // Run a PVL CSS selector.
 // selectors is a list like [ "div .foo", 0, ".bar"] ].
 // Each string runs a selector, each integer runs a Eq.
-func runCSSSelectorInner(m metaContext, html *goquery.Selection,
-	selectors []keybase1.SelectorEntry) (*goquery.Selection, libkb.ProofError) {
+func runCSSSelectorInner(m metaContext, html *goquery.Selection, selectors []selectorEntryT) (*goquery.Selection, libkb.ProofError) {
 	if len(selectors) < 1 {
 		return nil, libkb.NewProofError(keybase1.ProofStatus_INVALID_PVL,
 			"CSS selectors array must not be empty")
@@ -1006,25 +1019,68 @@ func runCSSSelectorInner(m metaContext, html *goquery.Selection,
 	return selection, nil
 }
 
-func runSelectorJSONInner(m metaContext, state scriptState, selectedObject *jsonw.Wrapper,
-	selectors []keybase1.SelectorEntry) ([]string, libkb.ProofError) {
-	logger := func(format string, args ...interface{}) {
-		debugWithState(m, state, format, args)
-	}
-	jsonResults, perr := jsonhelpers.AtSelectorPath(selectedObject, selectors, logger)
-	if perr != nil {
-		return nil, perr
-	}
-	results := []string{}
-	for _, object := range jsonResults {
-		s, err := jsonhelpers.JSONStringSimple(object)
+// Most failures here log instead of returning an error. If an error occurs, ([], nil) will be returned.
+// This is because a selector may descend into many subtrees and fail in all but one.
+func runSelectorJSONInner(m metaContext, state scriptState, selectedObject *jsonw.Wrapper, selectors []selectorEntryT) ([]string, libkb.ProofError) {
+	// The terminating condition is when we've consumed all the selectors.
+	if len(selectors) == 0 {
+		s, err := jsonStringSimple(selectedObject)
 		if err != nil {
-			logger("JSON could not read object: %v (%v)", err, object)
-			continue
+			debugWithState(m, state, "JSON could not read object: %v (%v)", err, selectedObject)
+			return []string{}, nil
 		}
-		results = append(results, s)
+		return []string{s}, nil
 	}
-	return results, nil
+
+	selector := selectors[0]
+	nextselectors := selectors[1:]
+
+	switch {
+	case selector.IsIndex:
+		object, err := selectedObject.ToArray()
+		if err != nil {
+			debugWithState(m, state, "JSON select by index from non-array: %v (%v) (%v)", err, selector.Index, object)
+			return []string{}, nil
+		}
+		length, err := object.Len()
+		if err != nil {
+			return []string{}, nil
+		}
+
+		index, ok := pyindex(selector.Index, length)
+		if !ok || index < 0 {
+			return []string{}, nil
+		}
+		nextobject := object.AtIndex(index)
+		return runSelectorJSONInner(m, state, nextobject, nextselectors)
+	case selector.IsKey:
+		object, err := selectedObject.ToDictionary()
+		if err != nil {
+			debugWithState(m, state, "JSON select by key from non-map: %v (%v) (%v)", err, selector.Key, object)
+			return []string{}, nil
+		}
+
+		nextobject := object.AtKey(selector.Key)
+		return runSelectorJSONInner(m, state, nextobject, nextselectors)
+	case selector.IsAll:
+		children, err := jsonGetChildren(selectedObject)
+		if err != nil {
+			debugWithState(m, state, "JSON select could not get children: %v (%v)", err, selectedObject)
+			return []string{}, nil
+		}
+		var results []string
+		for _, child := range children {
+			innerresults, perr := runSelectorJSONInner(m, state, child, nextselectors)
+			if perr != nil {
+				return nil, perr
+			}
+			results = append(results, innerresults...)
+		}
+		return results, nil
+	default:
+		return nil, libkb.NewProofError(keybase1.ProofStatus_INVALID_PVL,
+			"JSON selector entry must be a string, int, or 'all' %v", selector)
+	}
 }
 
 // Take a regex descriptor, do variable substitution, and build a regex.
