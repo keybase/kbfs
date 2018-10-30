@@ -506,10 +506,10 @@
 			"revisionTime": "2016-03-16T16:25:20-04:00"
 		},
 		{
-			"checksumSHA1": "Qf5BoWu9zbAenzOELUsnXwzvCz0=",
+			"checksumSHA1": "3dP57YjvS8nVX6GMCgbA9fTSXKc=",
 			"path": "github.com/keybase/go-winio",
-			"revision": "97e4973ce50b2ff5f09635a57e2b88a037aae829",
-			"revisionTime": "2018-08-23T22:24:21Z"
+			"revision": "41191563760e6b6b3374d77fc0a3b1cb58094433",
+			"revisionTime": "2018-10-30T21:08:04Z"
 		},
 		{
 			"checksumSHA1": "RemfT/X5EGstZybyYmpblbx6/Zs=",
