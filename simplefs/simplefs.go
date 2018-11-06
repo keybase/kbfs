@@ -923,14 +923,20 @@ func (k *SimpleFS) doCopyFromSource(
 	defer dst.Close()
 
 	if pathType, _ := destPath.PathType(); pathType == keybase1.PathType_LOCAL {
-		defer Quarantine(ctx, destPath.Local())
+		defer func() {
+			qerr := Quarantine(ctx, destPath.Local())
+			if err == nil {
+				err = qerr
+			}
+		}()
 	}
 
-	return copyWithCancellation(
+	err = copyWithCancellation(
 		ctx,
 		&progressWriter{k, opID, dst},
 		&progressReader{k, opID, src},
 	)
+	return err
 }
 
 func (k *SimpleFS) doCopy(
