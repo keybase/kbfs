@@ -3931,7 +3931,8 @@ func TestInodes(t *testing.T) {
 	syncFilename(t, p2)
 
 	inode2 := getInode(p2)
-	if inode != inode2 {
+	if runtime.GOOS != "darwin" && inode != inode2 {
+		// (See KBFS-3576 for the darwin restriction here.)
 		t.Fatalf("Inode changed after rename: %d vs %d", inode, inode2)
 	}
 

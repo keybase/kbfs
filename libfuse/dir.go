@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -731,6 +732,22 @@ func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest,
 
 	switch e := err.(type) {
 	case nil:
+		// Because of https://github.com/osxfuse/osxfuse/issues/553, a
+		// node that's moved to a different directory needs to get a
+		// new Node object (and inode) on the next lookup.  The
+		// easiest way to do that is to remove the moved node from
+		// this folder's local cache. See KBFS-3576.
+		if runtime.GOOS == "darwin" &&
+			d.node.GetID() != realNewDir.node.GetID() {
+			movedNode, _, err := d.folder.fs.config.KBFSOps().Lookup(
+				ctx, realNewDir.node, req.NewName)
+			if err == nil {
+				d.folder.nodesMu.Lock()
+				delete(d.folder.nodes, movedNode.GetID())
+				d.folder.nodesMu.Unlock()
+			}
+		}
+
 		return nil
 	case libkbfs.RenameAcrossDirsError:
 		var execPathErr error
