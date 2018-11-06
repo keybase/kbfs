@@ -4,6 +4,8 @@ package simplefs
 
 /*
 #cgo CFLAGS: -x objective-c -fobjc-arc
+#cgo LDFLAGS: -framework Foundation -framework CoreServices -lobjc
+
 #include <Foundation/Foundation.h>
 void quarantineFile(const char* inFilename) {
 	NSError* error = NULL;
