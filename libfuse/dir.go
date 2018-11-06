@@ -743,6 +743,11 @@ func (d *Dir) Rename(ctx context.Context, req *fuse.RenameRequest,
 				ctx, realNewDir.node, req.NewName)
 			if err == nil {
 				d.folder.nodesMu.Lock()
+				n := d.folder.nodes[movedNode.GetID()]
+				if n != nil {
+					d.folder.invalidateNodeDataRange(
+						n, libkbfs.WriteRange{Off: 0, Len: 0})
+				}
 				delete(d.folder.nodes, movedNode.GetID())
 				d.folder.nodesMu.Unlock()
 			}
