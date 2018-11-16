@@ -182,25 +182,25 @@ type DiskBlockCacheClient struct {
 
 // GetBlock gets a block from the disk cache.
 func (c DiskBlockCacheClient) GetBlock(ctx context.Context, __arg GetBlockArg) (res GetBlockRes, err error) {
-	err = c.Cli.CallCompressed(ctx, "kbgitkbfs.1.DiskBlockCache.GetBlock", []interface{}{__arg}, &res, rpc.CompressionNone)
+	err = c.Cli.Call(ctx, "kbgitkbfs.1.DiskBlockCache.GetBlock", []interface{}{__arg}, &res)
 	return
 }
 
 // PutBlock puts a block into the disk cache.
 func (c DiskBlockCacheClient) PutBlock(ctx context.Context, __arg PutBlockArg) (err error) {
-	err = c.Cli.CallCompressed(ctx, "kbgitkbfs.1.DiskBlockCache.PutBlock", []interface{}{__arg}, nil, rpc.CompressionNone)
+	err = c.Cli.Call(ctx, "kbgitkbfs.1.DiskBlockCache.PutBlock", []interface{}{__arg}, nil)
 	return
 }
 
 // DeleteBlocks deletes a set of blocks from the disk cache.
 func (c DiskBlockCacheClient) DeleteBlocks(ctx context.Context, blockIDs [][]byte) (res DeleteBlocksRes, err error) {
 	__arg := DeleteBlocksArg{BlockIDs: blockIDs}
-	err = c.Cli.CallCompressed(ctx, "kbgitkbfs.1.DiskBlockCache.DeleteBlocks", []interface{}{__arg}, &res, rpc.CompressionNone)
+	err = c.Cli.Call(ctx, "kbgitkbfs.1.DiskBlockCache.DeleteBlocks", []interface{}{__arg}, &res)
 	return
 }
 
 // UpdateBlockMetadata updates the metadata for a block in the disk cache.
 func (c DiskBlockCacheClient) UpdateBlockMetadata(ctx context.Context, __arg UpdateBlockMetadataArg) (err error) {
-	err = c.Cli.CallCompressed(ctx, "kbgitkbfs.1.DiskBlockCache.UpdateBlockMetadata", []interface{}{__arg}, nil, rpc.CompressionNone)
+	err = c.Cli.Call(ctx, "kbgitkbfs.1.DiskBlockCache.UpdateBlockMetadata", []interface{}{__arg}, nil)
 	return
 }
