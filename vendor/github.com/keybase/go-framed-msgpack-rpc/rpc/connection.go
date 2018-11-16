@@ -325,6 +325,9 @@ type Connection struct {
 
 	initialReconnectBackoffWindow func() time.Duration
 	randomTimer                   CancellableRandomTimer
+
+	// for tests
+	reconnectCompleteForTest chan struct{}
 }
 
 // This struct contains all the connection parameters that are optional. The
@@ -489,8 +492,14 @@ func newConnectionWithTransportAndProtocols(handler ConnectionHandler,
 		newConnectionLogUnstructured(log, "CONN "+handler.HandlerName()), opts)
 }
 
+func (c *Connection) setReconnectCompleteForTest(ch chan struct{}) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.reconnectCompleteForTest = ch
+}
+
 // connect performs the actual connect() and rpc setup.
-func (c *Connection) connect(ctx context.Context, reconnectChan chan struct{}) error {
+func (c *Connection) connect(ctx context.Context) error {
 	c.log.Debug("Connection: %s",
 		LogField{Key: ConnectionLogMsgKey, Value: "dialing transport"})
 
@@ -528,11 +537,6 @@ func (c *Connection) connect(ctx context.Context, reconnectChan chan struct{}) e
 	c.client = client
 	c.server = server
 	c.transport.Finalize()
-	// close the reconnect channel to signal we're connected.
-	close(reconnectChan)
-	c.reconnectChan = nil
-	c.cancelFunc = nil
-	c.reconnectErrPtr = nil
 
 	c.log.Debug("Connection: %s", LogField{Key: ConnectionLogMsgKey, Value: "connected"})
 	return nil
@@ -699,7 +703,7 @@ func (c *Connection) doReconnect(ctx context.Context, disconnectStatus Disconnec
 			c.log.Debug("RetryNotify operation result: %s", LogField{Key: ConnectionLogMsgKey, Value: err})
 		}()
 		// try to connect
-		err = c.connect(ctx, reconnectChan)
+		err = c.connect(ctx)
 		select {
 		case <-ctx.Done():
 			// context was canceled by Shutdown() or a user action
@@ -725,6 +729,18 @@ func (c *Connection) doReconnect(ctx context.Context, disconnectStatus Disconnec
 	if err != nil {
 		// this shouldn't happen, but just in case.
 		*reconnectErrPtr = err
+	}
+
+	// close the reconnect channel to signal we're connected.
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	close(reconnectChan)
+	c.reconnectChan = nil
+	c.cancelFunc = nil
+	c.reconnectErrPtr = nil
+	if c.reconnectCompleteForTest != nil {
+		close(c.reconnectCompleteForTest)
+		c.reconnectCompleteForTest = nil
 	}
 }
 
