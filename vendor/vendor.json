@@ -334,28 +334,28 @@
 			"revisionTime": "2018-10-12T20:20:19Z"
 		},
 		{
-			"checksumSHA1": "LidXS4Q2TnyEBPlgziuyRylVDjg=",
+			"checksumSHA1": "jAGvohABDrFiNRMynal5Ge3/Lrs=",
 			"path": "github.com/keybase/client/go/protocol/chat1",
-			"revision": "88d659cec33cd64dd8d1e72f107d9c21dd5caafc",
-			"revisionTime": "2018-11-15T22:03:34Z"
+			"revision": "467b0b2f5707857ed33a80385ba0a581ea18c841",
+			"revisionTime": "2018-11-19T16:13:56Z"
 		},
 		{
-			"checksumSHA1": "c4uDMFPGEzKR5ZYEfpOleIieNq0=",
+			"checksumSHA1": "+nD1gYj/g2jKBbWSsVf5IufQeME=",
 			"path": "github.com/keybase/client/go/protocol/gregor1",
-			"revision": "88d659cec33cd64dd8d1e72f107d9c21dd5caafc",
-			"revisionTime": "2018-11-15T22:03:34Z"
+			"revision": "467b0b2f5707857ed33a80385ba0a581ea18c841",
+			"revisionTime": "2018-11-19T16:13:56Z"
 		},
 		{
-			"checksumSHA1": "gmY4DP4Vnif1IBWmI/TcjtOKhDM=",
+			"checksumSHA1": "TgSfsDdJNIN3cvxafv4d/ZSwQkU=",
 			"path": "github.com/keybase/client/go/protocol/keybase1",
-			"revision": "7694a578a43660821c8040fd4337e1404d88a365",
-			"revisionTime": "2018-11-19T23:01:39Z"
+			"revision": "467b0b2f5707857ed33a80385ba0a581ea18c841",
+			"revisionTime": "2018-11-19T16:13:56Z"
 		},
 		{
-			"checksumSHA1": "6BFnXYhubmun+V/gYAikuiV0EvM=",
+			"checksumSHA1": "jvFWbgb5/iEJfgJBUJDBpBuAR5Y=",
 			"path": "github.com/keybase/client/go/protocol/stellar1",
-			"revision": "88d659cec33cd64dd8d1e72f107d9c21dd5caafc",
-			"revisionTime": "2018-11-15T22:03:34Z"
+			"revision": "467b0b2f5707857ed33a80385ba0a581ea18c841",
+			"revisionTime": "2018-11-19T16:13:56Z"
 		},
 		{
 			"checksumSHA1": "8+9jMCvjuPw9tqnUtZuqHkbGEKk=",
