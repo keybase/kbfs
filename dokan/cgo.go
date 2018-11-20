@@ -33,6 +33,7 @@ type SID syscall.SID
 const (
 	kbfsLibdokanDebug                   = MountFlag(C.kbfsLibdokanDebug)
 	kbfsLibdokanStderr                  = MountFlag(C.kbfsLibdokanStderr)
+	kbfsLibdokanAlternateStream         = MountFlag(C.kbfsLibdokanAlternateStream)
 	kbfsLibdokanRemovable               = MountFlag(C.kbfsLibdokanRemovable)
 	kbfsLibdokanMountManager            = MountFlag(C.kbfsLibdokanMountManager)
 	kbfsLibdokanCurrentSession          = MountFlag(C.kbfsLibdokanCurrentSession)
@@ -563,17 +564,46 @@ func kbfsLibdokanSetFileSecurity(
 	return ntstatusOk
 }
 
-/* FIXME add support for multiple streams per file?
 //export kbfsLibdokanFindStreams
-func kbfsLibdokanFindStreams (
+func kbfsLibdokanFindStreams(
 	fname C.LPCWSTR,
 	// call this function with PWIN32_FIND_STREAM_DATA
-	FindStreamData uintptr,
+	cb C.PFillFindStreamData,
 	pfi C.PDOKAN_FILE_INFO) C.NTSTATUS {
-
-
+	debugf("FindStreams '%v' %v", d16{fname}, *pfi)
+	ctx, cancel := getContext(pfi)
+	if cancel != nil {
+		defer cancel()
+	}
+	err := getfi(pfi).FindStreams(ctx,
+		&FindStreamsInfo{FileInfo{pfi, fname}, cb})
+	return errToNT(err)
 }
-*/
+
+type FindStreamsInfo struct {
+	FileInfo
+	callback C.PFillFindStreamData
+}
+
+func (fsc *FindStreamsInfo) AddStream(name string, size int64) error {
+	var sdata C.WIN32_FIND_STREAM_DATA
+	stringToUtf16Buffer(name, &sdata.cStreamName[0], C.DWORD(len(sdata.cStreamName)))
+	setLargeInteger(&sdata.StreamSize, size)
+	// Currently Dokan does not support returning errors here,
+	// and there is little that a FS implementation could do.
+	// If Dokan starts supporting failures (and there is an
+	// error that should be signaled to userspace then pass
+	// errors out of here.
+	C.kbfsLibdokanFillFindData(fsc.callback, &sdata, fsc.ptr)
+	return nil
+}
+
+// A LARGE_INTEGER is a large integer for compilers that don't
+// support 64 bit values, broken on big endian platforms and
+// disliked by cgo. Set it in a little endian fashion.
+func setLargeInteger(ptr *C.LARGE_INTEGER, value int64) {
+	*(*int64)(unsafe.Pointer(ptr)) = value
+}
 
 // FileInfo contains information about a file including the path.
 type FileInfo struct {

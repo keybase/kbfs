@@ -324,6 +324,10 @@ func (t emptyFile) UnlockFile(ctx context.Context, fi *FileInfo, offset int64, l
 	debug("emptyFile.UnlockFile")
 	return nil
 }
+func (t emptyFile) FindStreams(ctx context.Context, fi *FindStreamsInfo) error {
+	debug("emptyFile.FindStreams")
+	return nil
+}
 
 type testFS struct {
 	emptyFS

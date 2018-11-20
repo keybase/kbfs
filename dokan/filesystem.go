@@ -93,11 +93,12 @@ type MountFlag uint32
 
 // Flags for mounting the filesystem. See Dokan documentation for these.
 const (
-	CDebug         = MountFlag(kbfsLibdokanDebug)
-	CStderr        = MountFlag(kbfsLibdokanStderr)
-	Removable      = MountFlag(kbfsLibdokanRemovable)
-	MountManager   = MountFlag(kbfsLibdokanMountManager)
-	CurrentSession = MountFlag(kbfsLibdokanCurrentSession)
+	CDebug          = MountFlag(kbfsLibdokanDebug)
+	CStderr         = MountFlag(kbfsLibdokanStderr)
+	AlternateStream = MountFlag(kbfsLibdokanAlternateStream)
+	Removable       = MountFlag(kbfsLibdokanRemovable)
+	MountManager    = MountFlag(kbfsLibdokanMountManager)
+	CurrentSession  = MountFlag(kbfsLibdokanCurrentSession)
 	// UseFindFilesWithPattern enables FindFiles calls to be with a search
 	// pattern string. Otherwise the string will be empty in all calls.
 	UseFindFilesWithPattern = MountFlag(kbfsLibdokanUseFindFilesWithPattern)
@@ -215,6 +216,9 @@ type File interface {
 	Cleanup(ctx context.Context, fi *FileInfo)
 	// CloseFile is called when closing a handle to the file.
 	CloseFile(ctx context.Context, fi *FileInfo)
+
+	// FindStreams for alternate streams.
+	FindStreams(ctx context.Context, fsi *FindStreamsInfo) error
 }
 
 // FreeSpace - semantics as with WINAPI GetDiskFreeSpaceEx

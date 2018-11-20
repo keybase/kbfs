@@ -46,6 +46,7 @@ func unmount(path string) error {
 const (
 	kbfsLibdokanDebug = MountFlag(0)
 	kbfsLibdokanStderr
+	kbfsLibdokanAlternateStream
 	kbfsLibdokanRemovable
 	kbfsLibdokanMountManager
 	kbfsLibdokanCurrentSession
@@ -55,3 +56,7 @@ const (
 func currentProcessUserSid() (*winacl.SID, error) {
 	return nil, errNotWindows
 }
+
+type FindStreamsInfo struct{ FileInfo }
+
+func (FindStreamsInfo) AddStream(name string, size int64) error { return nil }

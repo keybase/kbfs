@@ -72,3 +72,6 @@ func (ef *errorFile) Cleanup(ctx context.Context, fi *FileInfo) {
 func (ef *errorFile) CloseFile(ctx context.Context, fi *FileInfo) {
 	ef.print("CloseFile", fi)
 }
+func (ef *errorFile) FindStreams(ctx context.Context, fi *FindStreamsInfo) error {
+	return ef.print("FindStreams", &fi.FileInfo)
+}

@@ -267,13 +267,21 @@ static DOKAN_CALLBACK NTSTATUS kbfsLibdokanC_SetFileSecurity(LPCWSTR FileName,
 	return kbfsLibdokanSetFileSecurity(FileName, SecurityInformation, SecurityDescriptor, SecurityDescriptorLength, FileInfo);
 }
 
-/*
 extern NTSTATUS kbfsLibdokanFindStreams(LPCWSTR FileName,
 										  // call this function with PWIN32_FIND_STREAM_DATA
 										  PFillFindStreamData FindStreamData, 
 										  PDOKAN_FILE_INFO FileInfo);
-*/
+static DOKAN_CALLBACK NTSTATUS kbfsLibdokanC_FindStreams(LPCWSTR FileName,
+										  PFillFindStreamData FindStreamData, 
+										  PDOKAN_FILE_INFO FileInfo) {
+  return kbfsLibdokanFindStreams(FileName, FindStreamData, FileInfo);
+}
 
+void kbfsLibdokanFillFindData(PFillFindStreamData fptr,
+  PWIN32_FIND_STREAM_DATA psdata,
+  PDOKAN_FILE_INFO pfi) {
+  fptr(psdata, pfi);              
+}
 
 
 struct kbfsLibdokanCtx* kbfsLibdokanAllocCtx(ULONG64 slot) {
@@ -308,8 +316,7 @@ struct kbfsLibdokanCtx* kbfsLibdokanAllocCtx(ULONG64 slot) {
   ctx->dokan_operations.Mounted = kbfsLibdokanC_Mounted;
   ctx->dokan_operations.GetFileSecurity = kbfsLibdokanC_GetFileSecurity;
   ctx->dokan_operations.SetFileSecurity = kbfsLibdokanC_SetFileSecurity;
-  // FIXME: Multiple streams per file for e.g. resource forks
-  //   ctx->dokan_operations.FindStreams = kbfsLibdokanC_FindStreams;
+  ctx->dokan_operations.FindStreams = kbfsLibdokanC_FindStreams;
   return ctx;
 }
 

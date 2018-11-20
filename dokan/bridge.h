@@ -15,15 +15,6 @@
 #include <ntdef.h>
 #include <ntstatus.h>
 
-/* Compatibility for older toolchains */
-#define PWIN32_FIND_DATAW LPWIN32_FIND_DATAW
-typedef struct kbfs_WIN32_FIND_STREAM_DATA_ {
-    LARGE_INTEGER StreamSize;
-    WCHAR cStreamName[MAX_PATH + 36];
-} kbfs_WIN32_FIND_STREAM_DATA,*kbfs_PWIN32_FIND_STREAM_DATA;
-#define PWIN32_FIND_STREAM_DATA kbfs_PWIN32_FIND_STREAM_DATA
-
-
 #include "dokan_header/dokan.h"
 
 typedef int32_t error_t;
@@ -47,6 +38,7 @@ HANDLE kbfsLibdokan_OpenRequestorToken(PDOKAN_FILE_INFO DokanFileInfo);
 enum {
   kbfsLibdokanDebug = DOKAN_OPTION_DEBUG,
   kbfsLibdokanStderr = DOKAN_OPTION_STDERR,
+  kbfsLibdokanAlternateStream = DOKAN_OPTION_ALT_STREAM,
   kbfsLibdokanRemovable = DOKAN_OPTION_REMOVABLE,
   kbfsLibdokanMountManager = DOKAN_OPTION_MOUNT_MANAGER,
   kbfsLibdokanCurrentSession = DOKAN_OPTION_CURRENT_SESSION,
@@ -67,6 +59,10 @@ extern void *kbfsLibdokanPtr_OpenRequestorToken;
 extern void *kbfsLibdokanPtr_Main;
 
 ULONG kbfsLibDokan_GetVersion(void *proc);
+
+void kbfsLibdokanFillFindData(PFillFindStreamData fptr,
+  PWIN32_FIND_STREAM_DATA psdata,
+  PDOKAN_FILE_INFO pfi);
 
 #endif /* windows check */
 
