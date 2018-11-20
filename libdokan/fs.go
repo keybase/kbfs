@@ -40,7 +40,7 @@ type FS struct {
 }
 
 // DefaultMountFlags are the default mount flags for libdokan.
-const DefaultMountFlags = dokan.CurrentSession
+const DefaultMountFlags = dokan.CurrentSession | dokan.AlternateStream
 
 // currentUserSID stores the Windows identity of the user running
 // this process. This is the same process-wide.

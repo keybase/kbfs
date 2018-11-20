@@ -73,3 +73,6 @@ func (t emptyFile) GetFileSecurity(ctx context.Context, fi *dokan.FileInfo, si w
 func (t emptyFile) SetFileSecurity(ctx context.Context, fi *dokan.FileInfo, si winacl.SecurityInformation, sd *winacl.SecurityDescriptor) error {
 	return dokan.ErrAccessDenied
 }
+func (t emptyFile) FindStreams(ctx context.Context, fsi *dokan.FindStreamsInfo) error {
+	return dokan.ErrAccessDenied
+}
