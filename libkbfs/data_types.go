@@ -1057,3 +1057,12 @@ func (bra BlockRequestAction) AddSync() BlockRequestAction {
 	}
 	return bra | blockRequestSync
 }
+
+// CacheType returns the disk block cache type that should be used,
+// according to the type of action.
+func (bra BlockRequestAction) CacheType() DiskBlockCacheType {
+	if bra.Sync() {
+		return DiskBlockSyncCache
+	}
+	return DiskBlockAnyCache
+}
