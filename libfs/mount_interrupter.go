@@ -59,7 +59,8 @@ func (mi *MountInterrupter) MountAndSetUnmount(mounter Mounter) error {
 
 // Done signals Wait and runs the unmounter if set by MountAndSetUnmount.
 // It can be called multiple times with no harm. Each call triggers a call to
-// the unmounter.
+// the unmounter. Even if the function fails with an error the done channel
+// will be closed.
 func (mi *MountInterrupter) Done() {
 	mi.Lock()
 	defer mi.Unlock()
@@ -67,7 +68,6 @@ func (mi *MountInterrupter) Done() {
 		err := mi.fun()
 		if err != nil {
 			mi.log.Errorf("Mount interrupter callback failed: %v", err)
-			return
 		}
 	}
 	mi.once.Do(func() {
