@@ -23,6 +23,7 @@ type blockOpsConfig interface {
 	syncedTlfGetterSetter
 	initModeGetter
 	blockCryptVersioner
+	clockGetter
 }
 
 // BlockOpsStandard implements the BlockOps interface by relaying

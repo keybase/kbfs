@@ -23,6 +23,7 @@ type testBlockRetrievalConfig struct {
 	*testDiskBlockCacheGetter
 	*testSyncedTlfGetterSetter
 	initModeGetter
+	clock Clock
 }
 
 func newTestBlockRetrievalConfig(t *testing.T, bg blockGetter,
@@ -35,6 +36,7 @@ func newTestBlockRetrievalConfig(t *testing.T, bg blockGetter,
 		newTestDiskBlockCacheGetter(t, dbc),
 		newTestSyncedTlfGetterSetter(),
 		testInitModeGetter{InitDefault},
+		newTestClockNow(),
 	}
 }
 
@@ -44,6 +46,10 @@ func (c *testBlockRetrievalConfig) BlockCache() BlockCache {
 
 func (c testBlockRetrievalConfig) DataVersion() DataVer {
 	return ChildHolesDataVer
+}
+
+func (c testBlockRetrievalConfig) Clock() Clock {
+	return c.clock
 }
 
 func (c testBlockRetrievalConfig) blockGetter() blockGetter {

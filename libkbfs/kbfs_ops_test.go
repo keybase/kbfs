@@ -127,9 +127,10 @@ func kbfsOpsInit(t *testing.T) (mockCtrl *gomock.Controller,
 	config.mockBops.EXPECT().Archive(gomock.Any(), gomock.Any(),
 		gomock.Any()).AnyTimes().Return(nil)
 	// Ignore BlockRetriever calls
-	brc := &testBlockRetrievalConfig{nil, newTestLogMaker(t),
-		config.BlockCache(), nil, newTestDiskBlockCacheGetter(t, nil),
-		newTestSyncedTlfGetterSetter(), testInitModeGetter{InitDefault}}
+	brc := &testBlockRetrievalConfig{
+		nil, newTestLogMaker(t), config.BlockCache(), nil,
+		newTestDiskBlockCacheGetter(t, nil), newTestSyncedTlfGetterSetter(),
+		testInitModeGetter{InitDefault}, newTestClockNow()}
 	brq := newBlockRetrievalQueue(0, 0, brc)
 	config.mockBops.EXPECT().BlockRetriever().AnyTimes().Return(brq)
 	config.mockBops.EXPECT().Prefetcher().AnyTimes().Return(brq.prefetcher)
