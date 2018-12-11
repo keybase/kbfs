@@ -162,7 +162,7 @@ func doBlockPuts(ctx context.Context, bserv BlockServer, bcache BlockCache,
 				log.CWarningf(ctx, "Couldn't delete ptr for a block: %v", err)
 			}
 			if err := bcache.DeleteTransient(
-				blocksToRemove[len(blocksToRemove)-1], tlfID); err != nil {
+				blocksToRemove[len(blocksToRemove)-1].ID, tlfID); err != nil {
 				log.CWarningf(ctx, "Couldn't delete block: %v", err)
 			}
 		}
