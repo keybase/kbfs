@@ -132,8 +132,8 @@ var _ Chat = (*ChatRPC)(nil)
 //
 // When sending:
 //   * chat1.NewConversationLocal
-//   * chat1.PostTestNonblock
-//     * ClientPrev can be 0.  Can outbox ID be nil?
+//   * chat1.PostLocalNonblock
+//     * ClientPrev can be 0.  Can outbox ID be nil? mikem: yes
 
 // Gathering recent notifications:
 //   * chat1.GetInboxAndUnboxLocal (pagination not needed)
