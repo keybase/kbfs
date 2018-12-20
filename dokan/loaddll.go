@@ -70,7 +70,7 @@ func isDokanCurrent(path string) (bool, error) {
 // loadLibrary calls win32 LoadLibrary and logs the result.
 func loadLibrary(epc *errorPrinter, path string) (windows.Handle, error) {
 	hdl, err := windows.LoadLibrary(path)
-	if hdl && err == nil {
+	if err == nil {
 		current, err2 := isDokanCurrent(path)
 		if !current {
 			windows.Close(hdl)
@@ -94,6 +94,11 @@ func doLoadDLL(epc *errorPrinter, path string) (windows.Handle, error) {
 	const loadLibrarySearchSystem32 = 0x800
 	const flags = loadLibrarySearchSystem32
 	hdl, err := windows.LoadLibraryEx(path, 0, flags)
+	current, err2 := isDokanCurrent(path)
+	if !current {
+		windows.Close(hdl)
+	}
+	err = err2
 	epc.Printf("loadDokanDLL LoadLibraryEx(%q,0,%x) -> %v,%v\n", path, flags, hdl, err)
 	if err == nil || !guessPath {
 		return hdl, err
