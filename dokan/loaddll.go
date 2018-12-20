@@ -18,7 +18,6 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/gonutz/w32"
 	"golang.org/x/sys/windows"
 )
 
@@ -35,49 +34,32 @@ func (ep *errorPrinter) Printf(s string, os ...interface{}) {
 }
 
 // adapted from keybase/client/go/install/fuse_status_windows.go
-func isDokanCurrent(path string) (bool, error) {
-	size := w32.GetFileVersionInfoSize(path)
-	if size <= 0 {
-		return false, errors.New("GetFileVersionInfoSize failed")
+func isDokanCurrent(path string) error {
+	v, err := GetFileVersion(path)
+	if err != nil {
+		return err
 	}
-
-	info := make([]byte, size)
-	ok := w32.GetFileVersionInfo(path, info)
-	if !ok {
-		return false, errors.New("GetFileVersionInfo failed")
-	}
-
-	fixed, ok := w32.VerQueryValueRoot(info)
-	if !ok {
-		return false, errors.New("VerQueryValueRoot failed")
-	}
-	version := fixed.FileVersion()
-
-	major := version & 0xFFFF000000000000 >> 48
-	minor := version & 0x0000FFFF00000000 >> 32
-	patch := version & 0x00000000FFFF0000 >> 16
-	build := version & 0x000000000000FFFF
-
 	// we're looking for 1.2.1.1000
-	result := major > 1 || (major == 1 && (minor > 2 || (minor == 2 && (patch > 1 || (patch == 1 && build >= 1000)))))
+	result := v.major > 1 || (v.major == 1 && (v.minor > 2 || (v.minor == 2 && (v.patch > 1 || (v.patch == 1 && v.build >= 1000)))))
 
 	if !result {
-		return result, fmt.Errorf("Dokan version %d.%d.%d.%d (need 1.2.1.1000)", major, minor, patch, build)
+		return fmt.Errorf("Dokan version %d.%d.%d.%d (need 1.2.1.1000)", major, minor, patch, build)
 	}
-	return result, nil
+	return nil
 }
 
 // loadLibrary calls win32 LoadLibrary and logs the result.
 func loadLibrary(epc *errorPrinter, path string) (windows.Handle, error) {
 	hdl, err := windows.LoadLibrary(path)
-	if err == nil {
-		current, err2 := isDokanCurrent(path)
-		if !current {
+	epc.Printf("LoadLibrary(%q) -> %v,%v\n", path, hdl, err)
+	if err!=nil {
+		return hdl, err
+	}
+	err = isDokanCurrent(path)
+	if err != nil {
 			windows.Close(hdl)
 		}
-		err = err2
 	}
-	epc.Printf("LoadLibrary(%q) -> %v,%v\n", path, hdl, err)
 	return hdl, err
 }
 
@@ -94,8 +76,8 @@ func doLoadDLL(epc *errorPrinter, path string) (windows.Handle, error) {
 	const loadLibrarySearchSystem32 = 0x800
 	const flags = loadLibrarySearchSystem32
 	hdl, err := windows.LoadLibraryEx(path, 0, flags)
-	current, err2 := isDokanCurrent(path)
-	if !current {
+	err2 := isDokanCurrent(path)
+	if err2 != nil {
 		windows.Close(hdl)
 	}
 	err = err2
