@@ -13,10 +13,12 @@ import "C"
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"runtime"
 
+	"github.com/gonutz/w32"
 	"golang.org/x/sys/windows"
 )
 
@@ -32,9 +34,49 @@ func (ep *errorPrinter) Printf(s string, os ...interface{}) {
 	fmt.Fprintf(&ep.buf, s, os...)
 }
 
+// adapted from keybase/client/go/install/fuse_status_windows.go
+func isDokanCurrent(path string) (bool, error) {
+	size := w32.GetFileVersionInfoSize(path)
+	if size <= 0 {
+		return false, errors.New("GetFileVersionInfoSize failed")
+	}
+
+	info := make([]byte, size)
+	ok := w32.GetFileVersionInfo(path, info)
+	if !ok {
+		return false, errors.New("GetFileVersionInfo failed")
+	}
+
+	fixed, ok := w32.VerQueryValueRoot(info)
+	if !ok {
+		return false, errors.New("VerQueryValueRoot failed")
+	}
+	version := fixed.FileVersion()
+
+	major := version & 0xFFFF000000000000 >> 48
+	minor := version & 0x0000FFFF00000000 >> 32
+	patch := version & 0x00000000FFFF0000 >> 16
+	build := version & 0x000000000000FFFF
+
+	// we're looking for 1.2.1.1000
+	result := major > 1 || (major == 1 && (minor > 2 || (minor == 2 && (patch > 1 || (patch == 1 && build >= 1000)))))
+
+	if !result {
+		return result, fmt.Errorf("Dokan version %d.%d.%d.%d (need 1.2.1.1000)".major, minor, patch, build)
+	}
+	return result, nil
+}
+
 // loadLibrary calls win32 LoadLibrary and logs the result.
 func loadLibrary(epc *errorPrinter, path string) (windows.Handle, error) {
 	hdl, err := windows.LoadLibrary(path)
+	if hdl && err == nil {
+		current, err2 := isDokanCurrent(path)
+		if !current {
+			windows.Close(hdl)
+		}
+		err = err2
+	}
 	epc.Printf("LoadLibrary(%q) -> %v,%v\n", path, hdl, err)
 	return hdl, err
 }
