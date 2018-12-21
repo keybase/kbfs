@@ -11,10 +11,12 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-version  = windows.NewLazyDLL("version.dll")
-getFileVersionInfoSize = version.NewProc("GetFileVersionInfoSizeW")
-getFileVersionInfo     = version.NewProc("GetFileVersionInfoW")
-verQueryValue          = version.NewProc("VerQueryValueW")
+var (
+	version = windows.NewLazyDLL("version.dll")
+	getFileVersionInfoSize = version.NewProc("GetFileVersionInfoSizeW")
+	getFileVersionInfo     = version.NewProc("GetFileVersionInfoW")
+	verQueryValue          = version.NewProc("VerQueryValueW")
+)
 
 type VS_FIXEDFILEINFO struct {
 	Signature        uint32
