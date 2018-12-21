@@ -13,6 +13,7 @@ import "C"
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"runtime"
@@ -32,31 +33,12 @@ func (ep *errorPrinter) Printf(s string, os ...interface{}) {
 	fmt.Fprintf(&ep.buf, s, os...)
 }
 
-// adapted from keybase/client/go/install/fuse_status_windows.go
-func isDokanCurrent(path string) error {
-	v, err := GetFileVersion(path)
-	if err != nil {
-		return err
-	}
-	// we're looking for 1.2.1.1000
-	result := v.Major > 1 || (v.Major == 1 && (v.Minor > 2 || (v.Minor == 2 && (v.Patch > 1 || (v.Patch == 1 && v.Build >= 1000)))))
-
-	if !result {
-		return fmt.Errorf("Dokan version %d.%d.%d.%d (need 1.2.1.1000)", v.Major, v.Minor, v.Patch, v.Build)
-	}
-	return nil
-}
-
 // loadLibrary calls win32 LoadLibrary and logs the result.
 func loadLibrary(epc *errorPrinter, path string) (windows.Handle, error) {
 	hdl, err := windows.LoadLibrary(path)
 	epc.Printf("LoadLibrary(%q) -> %v,%v\n", path, hdl, err)
 	if err != nil {
 		return hdl, err
-	}
-	err = isDokanCurrent(path)
-	if err != nil {
-		windows.Close(hdl)
 	}
 	return hdl, err
 }
@@ -74,12 +56,6 @@ func doLoadDLL(epc *errorPrinter, path string) (windows.Handle, error) {
 	const loadLibrarySearchSystem32 = 0x800
 	const flags = loadLibrarySearchSystem32
 	hdl, err := windows.LoadLibraryEx(path, 0, flags)
-	if err == nil {
-		err = isDokanCurrent(path)
-		if err != nil {
-			windows.Close(hdl)
-		}
-	}
 	epc.Printf("loadDokanDLL LoadLibraryEx(%q,0,%x) -> %v,%v\n", path, flags, hdl, err)
 	if err == nil || !guessPath {
 		return hdl, err
@@ -128,9 +104,15 @@ func doLoadDokanAndGetSymbols(epc *errorPrinter, path string) error {
 		}
 		*v.ptr = C.uintptr_t(uptr)
 	}
+	dokanDriverVersion := C.kbfsLibDokan_GetVersion(dokanDriverVersionProc)
 	epc.Printf("Dokan version: %d driver %d\n",
 		C.kbfsLibDokan_GetVersion(dokanVersionProc),
-		C.kbfsLibDokan_GetVersion(dokanDriverVersionProc))
+		dokanDriverVersion)
+
+	if dokanDriverVersion < 121 {
+		return errors.New("Blocking load on old Dokan")
+	}
+
 	return nil
 }
 
