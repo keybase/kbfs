@@ -74,11 +74,12 @@ func doLoadDLL(epc *errorPrinter, path string) (windows.Handle, error) {
 	const loadLibrarySearchSystem32 = 0x800
 	const flags = loadLibrarySearchSystem32
 	hdl, err := windows.LoadLibraryEx(path, 0, flags)
-	err2 := isDokanCurrent(path)
-	if err2 != nil {
-		windows.Close(hdl)
+	if err == nil {
+		err = isDokanCurrent(path)
+		if err != nil {
+			windows.Close(hdl)
+		}
 	}
-	err = err2
 	epc.Printf("loadDokanDLL LoadLibraryEx(%q,0,%x) -> %v,%v\n", path, flags, hdl, err)
 	if err == nil || !guessPath {
 		return hdl, err

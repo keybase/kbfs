@@ -71,27 +71,27 @@ func GetFileVersionInfo(path string, data []byte) bool {
 // VerQueryValueRoot calls VerQueryValue
 // (https://msdn.microsoft.com/en-us/library/windows/desktop/ms647464(v=vs.85).aspx)
 // with `\` (root) to retieve the VS_FIXEDFILEINFO.
-func VerQueryValueRoot(block []byte) (VS_FIXEDFILEINFO, bool) {
+func VerQueryValueRoot(block []byte) (VS_FIXEDFILEINFO, error) {
 	var offset uintptr
 	var length uint
-	blockStart := uintptr(unsafe.Pointer(&block[0]))
+	blockStart := unsafe.Pointer(&block[0])
 	ret, _, _ := verQueryValue.Call(
-		blockStart,
+		uintptr(blockStart),
 		uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(`\`))),
 		uintptr(unsafe.Pointer(&offset)),
 		uintptr(unsafe.Pointer(&length)),
 	)
 	if ret == 0 {
-		return VS_FIXEDFILEINFO{}, false
+		return VS_FIXEDFILEINFO{}, errors.New("VerQueryValueRoot: verQueryValue failed")
 	}
 	start := int(offset) - int(blockStart)
 	end := start + int(length)
 	if start < 0 || start >= len(block) || end < start || end > len(block) {
-		return VS_FIXEDFILEINFO{}, false
+		return VS_FIXEDFILEINFO{}, errors.New("VerQueryValueRoot: find failed")
 	}
 	data := block[start:end]
 	info := *((*VS_FIXEDFILEINFO)(unsafe.Pointer(&data[0])))
-	return info, true
+	return info, nil
 }
 
 func GetFileVersion(path string) (WinVersion, error) {
@@ -107,9 +107,9 @@ func GetFileVersion(path string) (WinVersion, error) {
 		return result, errors.New("GetFileVersionInfo failed")
 	}
 
-	fixed, ok := VerQueryValueRoot(info)
-	if !ok {
-		return result, errors.New("VerQueryValueRoot failed")
+	fixed, err := VerQueryValueRoot(info)
+	if err != nil {
+		return result, err
 	}
 	version := fixed.FileVersion()
 
