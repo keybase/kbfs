@@ -13,7 +13,6 @@ import "C"
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"runtime"
@@ -52,13 +51,12 @@ func isDokanCurrent(path string) error {
 func loadLibrary(epc *errorPrinter, path string) (windows.Handle, error) {
 	hdl, err := windows.LoadLibrary(path)
 	epc.Printf("LoadLibrary(%q) -> %v,%v\n", path, hdl, err)
-	if err!=nil {
+	if err != nil {
 		return hdl, err
 	}
 	err = isDokanCurrent(path)
 	if err != nil {
-			windows.Close(hdl)
-		}
+		windows.Close(hdl)
 	}
 	return hdl, err
 }
