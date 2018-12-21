@@ -8,12 +8,15 @@
 package dokan
 
 import (
+	"errors"
+	"syscall"
 	"unsafe"
+
 	"golang.org/x/sys/windows"
 )
 
 var (
-	version = windows.NewLazyDLL("version.dll")
+	version                = windows.NewLazyDLL("version.dll")
 	getFileVersionInfoSize = version.NewProc("GetFileVersionInfoSizeW")
 	getFileVersionInfo     = version.NewProc("GetFileVersionInfoW")
 	verQueryValue          = version.NewProc("VerQueryValueW")
@@ -110,10 +113,10 @@ func GetFileVersion(path string) (WinVersion, error) {
 	}
 	version := fixed.FileVersion()
 
-	result.Major := version & 0xFFFF000000000000 >> 48
-	result.Minor := version & 0x0000FFFF00000000 >> 32
-	result.Patch := version & 0x00000000FFFF0000 >> 16
-	result.Build := version & 0x000000000000FFFF
+	result.Major = version & 0xFFFF000000000000 >> 48
+	result.Minor = version & 0x0000FFFF00000000 >> 32
+	result.Patch = version & 0x00000000FFFF0000 >> 16
+	result.Build = version & 0x000000000000FFFF
 
 	return result, nil
 }
