@@ -42,7 +42,7 @@ func isDokanCurrent(path string) error {
 	result := v.Major > 1 || (v.Major == 1 && (v.Minor > 2 || (v.Minor == 2 && (v.Patch > 1 || (v.Patch == 1 && v.Build >= 1000)))))
 
 	if !result {
-		return fmt.Errorf("Dokan version %d.%d.%d.%d (need 1.2.1.1000)", major, minor, patch, build)
+		return fmt.Errorf("Dokan version %d.%d.%d.%d (need 1.2.1.1000)", v.Major, v.Minor, v.Patch, v.Build)
 	}
 	return nil
 }
