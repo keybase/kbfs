@@ -113,10 +113,10 @@ func GetFileVersion(path string) (WinVersion, error) {
 	}
 	version := fixed.FileVersion()
 
-	result.Major = version & 0xFFFF000000000000 >> 48
-	result.Minor = version & 0x0000FFFF00000000 >> 32
-	result.Patch = version & 0x00000000FFFF0000 >> 16
-	result.Build = version & 0x000000000000FFFF
+	result.Major = uint32(version & 0xFFFF000000000000 >> 48)
+	result.Minor = uint32(version & 0x0000FFFF00000000 >> 32)
+	result.Patch = uint32(version & 0x00000000FFFF0000 >> 16)
+	result.Build = uint32(version & 0x000000000000FFFF)
 
 	return result, nil
 }
