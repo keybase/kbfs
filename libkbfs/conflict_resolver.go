@@ -3197,19 +3197,19 @@ outer:
 const conflictRecordVersion = 1
 
 type conflictRecord struct {
-	Version int
-	time.Time
-	Merged      string
-	Unmerged    string
-	ErrorTime   time.Time
-	ErrorString string
-	PanicString string
-	codec.UnknownFieldSetHandler
+	Version                      int `json:"-"`
+	Time                         time.Time
+	Merged                       string
+	Unmerged                     string
+	ErrorTime                    time.Time
+	ErrorString                  string
+	PanicString                  string
+	codec.UnknownFieldSetHandler `json:"-"`
 }
 
 func (cr *ConflictResolver) recordStartResolve(ci conflictInput) error {
 	db := cr.config.KBFSOps().GetConflictResolutionDB()
-	conflictsSoFarSerialized, err := db.Get([]byte(cr.fbo.id().String()), nil)
+	conflictsSoFarSerialized, err := db.Get(cr.fbo.id().Bytes(), nil)
 	var conflictsSoFar []conflictRecord
 	switch err {
 	case leveldb.ErrNotFound:
@@ -3236,7 +3236,7 @@ func (cr *ConflictResolver) recordStartResolve(ci conflictInput) error {
 	if err != nil {
 		return err
 	}
-	return db.Put([]byte(cr.fbo.id().String()), conflictsSerialized, nil)
+	return db.Put(cr.fbo.id().Bytes(), conflictsSerialized, nil)
 }
 
 // recordFinishResolve does one of two things:
@@ -3252,7 +3252,7 @@ func (cr *ConflictResolver) recordFinishResolve(
 	// If we neither errored nor panicked, this CR succeeded and we can wipe
 	// the DB entry.
 	if receivedErr == nil && panicVar == nil {
-		err := db.Delete([]byte(cr.fbo.id().String()), nil)
+		err := db.Delete(cr.fbo.id().Bytes(), nil)
 		if err != nil {
 			cr.log.CWarningf(ctx,
 				"Could not record conflict resolution success: %v", err)
@@ -3277,7 +3277,7 @@ func (cr *ConflictResolver) recordFinishResolve(
 	// Otherwise we need to decode the most recent entry, modify it, and put it
 	// back in the DB.
 	var conflictsSerialized []byte
-	conflictsSerialized, err = db.Get([]byte(cr.fbo.id().String()), nil)
+	conflictsSerialized, err = db.Get(cr.fbo.id().Bytes(), nil)
 	var conflictsSoFar []conflictRecord
 	switch err {
 	case leveldb.ErrNotFound:
@@ -3306,7 +3306,7 @@ func (cr *ConflictResolver) recordFinishResolve(
 	if err != nil {
 		return
 	}
-	err = db.Put([]byte(cr.fbo.id().String()), conflictsSerialized, nil)
+	err = db.Put(cr.fbo.id().Bytes(), conflictsSerialized, nil)
 }
 
 // CRWrapError wraps an error that happens during conflict resolution.
@@ -3330,7 +3330,7 @@ func (cr *ConflictResolver) doResolve(ctx context.Context, ci conflictInput) {
 		cr.log.CWarningf(ctx,
 			"Could not record conflict resolution attempt: %v", err)
 	} else {
-		defer cr.recordFinishResolve(ctx, ci, err)
+		defer func() { cr.recordFinishResolve(ctx, ci, err) }()
 	}
 
 	cr.log.CDebugf(ctx, "Starting conflict resolution with input %+v", ci)

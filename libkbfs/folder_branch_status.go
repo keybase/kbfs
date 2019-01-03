@@ -12,6 +12,7 @@ import (
 	kbname "github.com/keybase/client/go/kbun"
 	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/tlf"
+	"github.com/syndtr/goleveldb/leveldb"
 	"golang.org/x/net/context"
 )
 
@@ -47,6 +48,8 @@ type FolderBranchStatus struct {
 	// diverging operations per-file
 	Unmerged []*crChainSummary
 	Merged   []*crChainSummary
+
+	ConflictResolutionAttempts []conflictRecord
 
 	Journal *TLFJournalStatus `json:",omitempty"`
 
@@ -90,19 +93,23 @@ type folderBranchStatusKeeper struct {
 	merged     []*crChainSummary
 	quotaUsage *EventuallyConsistentQuotaUsage
 
+	fboIDBytes []byte
+
 	updateChan  chan StatusUpdate
 	updateMutex sync.Mutex
 }
 
 func newFolderBranchStatusKeeper(
 	config Config, nodeCache NodeCache,
-	quotaUsage *EventuallyConsistentQuotaUsage) *folderBranchStatusKeeper {
+	quotaUsage *EventuallyConsistentQuotaUsage,
+	fboIDBytes []byte) *folderBranchStatusKeeper {
 	return &folderBranchStatusKeeper{
 		config:     config,
 		nodeCache:  nodeCache,
 		dirtyNodes: make(map[NodeID]Node),
 		updateChan: make(chan StatusUpdate, 1),
 		quotaUsage: quotaUsage,
+		fboIDBytes: fboIDBytes,
 	}
 }
 
@@ -261,6 +268,31 @@ func (fbsk *folderBranchStatusKeeper) getStatusWithoutJournaling(
 		fbs.GitUsageBytes = gitUsageBytes
 		fbs.GitArchiveBytes = gitArchiveBytes
 		fbs.GitLimitBytes = gitLimitBytes
+	}
+
+	if !fbsk.config.IsTestMode() {
+		crDB := fbsk.config.KBFSOps().GetConflictResolutionDB()
+		conflictsSoFarSerialized, crErr := crDB.Get(fbsk.fboIDBytes, nil)
+		var conflictsSoFar []conflictRecord
+		switch crErr {
+		case leveldb.ErrNotFound:
+			conflictsSoFar = nil
+		case nil:
+			crErr = fbsk.config.Codec().Decode(conflictsSoFarSerialized,
+				&conflictsSoFar)
+			if crErr != nil {
+				// The error is ignored here so that other fields can
+				// still be populated even if this fails.
+				log := fbsk.config.MakeLogger("")
+				log.CDebugf(ctx, "Error while getting CR status: %v", crErr)
+			}
+		default:
+			// The error is ignored here so that other fields can
+			// still be populated even if this fails.
+			log := fbsk.config.MakeLogger("")
+			log.CDebugf(ctx, "Getting quota usage error: %v", crErr)
+		}
+		fbs.ConflictResolutionAttempts = conflictsSoFar
 	}
 
 	fbs.DirtyPaths = fbsk.convertNodesToPathsLocked(fbsk.dirtyNodes)
