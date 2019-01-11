@@ -5,14 +5,18 @@
 package libkbfs
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"sync"
 	"time"
 
+	"github.com/dgraph-io/badger"
 	"github.com/keybase/client/go/logger"
 	"github.com/keybase/client/go/protocol/keybase1"
 	"github.com/keybase/kbfs/kbfsblock"
@@ -38,8 +42,8 @@ const (
 	defaultNumUnmarkedBlocksToCheck int    = 100
 	defaultClearTickerDuration             = 1 * time.Second
 	maxEvictionsPerPut              int    = 4
-	blockDbFilename                 string = "diskCacheBlocks.leveldb"
-	metaDbFilename                  string = "diskCacheMetadata.leveldb"
+	blockDbFilename                 string = "diskCacheBlocks.badgerdb"
+	metaDbFilename                  string = "diskCacheMetadata.badgerdb"
 	tlfDbFilename                   string = "diskCacheTLF.leveldb"
 	lastUnrefDbFilename             string = "diskCacheLastUnref.leveldb"
 	initialDiskBlockCacheVersion    uint64 = 1
@@ -72,8 +76,8 @@ type DiskBlockCacheLocal struct {
 	// Protect the disk caches from being shutdown while they're being
 	// accessed, and mutable data.
 	lock        sync.RWMutex
-	blockDb     *levelDb
-	metaDb      *levelDb
+	blockDb     *badger.DB
+	metaDb      *badger.DB
 	tlfDb       *levelDb
 	lastUnrefDb *levelDb
 	cacheType   diskLimitTrackerType
@@ -151,7 +155,7 @@ type lastUnrefEntry struct {
 // cache.
 func newDiskBlockCacheLocalFromStorage(
 	config diskBlockCacheConfig, cacheType diskLimitTrackerType,
-	blockStorage, metadataStorage, tlfStorage,
+	blockDbPath string, metaDbPath string, tlfStorage storage.Storage,
 	lastUnrefStorage storage.Storage) (
 	cache *DiskBlockCacheLocal, err error) {
 	log := config.MakeLogger("KBC")
@@ -170,18 +174,23 @@ func newDiskBlockCacheLocalFromStorage(
 			closer()
 		}
 	}()
-	blockDbOptions := *leveldbOptions
-	blockDbOptions.CompactionTableSize = defaultBlockCacheTableSize
-	blockDb, err := openLevelDBWithOptions(blockStorage, &blockDbOptions)
+	blockDbOpts := badger.DefaultOptions
+	blockDbOpts.Dir = blockDbPath
+	blockDbOpts.ValueDir = blockDbPath
+	blockDb, err := badger.Open(blockDbOpts)
 	if err != nil {
 		return nil, err
 	}
 	closers = append(closers, blockDb)
 
-	metaDb, err := openLevelDB(metadataStorage)
+	metaDbOpts := badger.DefaultOptions
+	metaDbOpts.Dir = metaDbPath
+	metaDbOpts.ValueDir = metaDbPath
+	metaDb, err := badger.Open(metaDbOpts)
 	if err != nil {
 		return nil, err
 	}
+
 	closers = append(closers, metaDb)
 
 	tlfDb, err := openLevelDB(tlfStorage)
@@ -231,6 +240,7 @@ func newDiskBlockCacheLocalFromStorage(
 		shutdownCh:               make(chan struct{}),
 		closer:                   closer,
 	}
+	log.CDebugf(context.Background(), "newDiskBlockCacheLocalFromStorage %p metaDb=%p blockDbPath=%s metaDbPath=%s\n", cache, metaDb, blockDbPath, metaDbPath)
 	// Sync the block counts asynchronously so syncing doesn't block init.
 	// Since this method blocks, any Get or Put requests to the disk block
 	// cache will block until this is done. The log will contain the beginning
@@ -274,25 +284,8 @@ func newDiskBlockCacheLocal(config diskBlockCacheConfig,
 		return nil, err
 	}
 	blockDbPath := filepath.Join(versionPath, blockDbFilename)
-	blockStorage, err := storage.OpenFile(blockDbPath, false)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if err != nil {
-			blockStorage.Close()
-		}
-	}()
 	metaDbPath := filepath.Join(versionPath, metaDbFilename)
-	metadataStorage, err := storage.OpenFile(metaDbPath, false)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if err != nil {
-			metadataStorage.Close()
-		}
-	}()
+
 	tlfDbPath := filepath.Join(versionPath, tlfDbFilename)
 	tlfStorage, err := storage.OpenFile(tlfDbPath, false)
 	if err != nil {
@@ -314,7 +307,7 @@ func newDiskBlockCacheLocal(config diskBlockCacheConfig,
 		}
 	}()
 	cache, err = newDiskBlockCacheLocalFromStorage(config, cacheType,
-		blockStorage, metadataStorage, tlfStorage, lastUnrefStorage)
+		blockDbPath, metaDbPath, tlfStorage, lastUnrefStorage)
 	if err != nil {
 		return nil, err
 	}
@@ -323,11 +316,15 @@ func newDiskBlockCacheLocal(config diskBlockCacheConfig,
 }
 
 func newDiskBlockCacheLocalForTest(config diskBlockCacheConfig,
-	cacheType diskLimitTrackerType) (*DiskBlockCacheLocal, error) {
+	cacheType diskLimitTrackerType, cacheDir string) (*DiskBlockCacheLocal, error) {
+	blockDbPath := filepath.Join(cacheDir, blockDbFilename)
+	metaDbPath := filepath.Join(cacheDir, metaDbFilename)
+	//delete old db files for testing
+	os.RemoveAll(blockDbPath)
+	os.RemoveAll(metaDbPath)
 	return newDiskBlockCacheLocalFromStorage(
-		config, cacheType, storage.NewMemStorage(),
-		storage.NewMemStorage(), storage.NewMemStorage(),
-		storage.NewMemStorage())
+		config, cacheType, blockDbPath, metaDbPath,
+		storage.NewMemStorage(), storage.NewMemStorage())
 }
 
 // WaitUntilStarted waits until this cache has started.
@@ -371,20 +368,29 @@ func (cache *DiskBlockCacheLocal) syncBlockCountsAndUnrefsFromDb() error {
 	tlfSizes := make(map[tlf.ID]uint64)
 	numBlocks := 0
 	totalSize := uint64(0)
-	iter := cache.metaDb.NewIterator(nil, nil)
-	defer iter.Release()
-	for iter.Next() {
-		metadata := DiskBlockCacheMetadata{}
-		err := cache.config.Codec().Decode(iter.Value(), &metadata)
-		if err != nil {
-			return err
+	err := cache.metaDb.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			metadata := DiskBlockCacheMetadata{}
+			err := it.Item().Value(func(val []byte) error {
+				return cache.config.Codec().Decode(val, &metadata)
+			})
+			if err != nil {
+				return err
+			}
+			size := uint64(metadata.BlockSize)
+			tlfCounts[metadata.TlfID]++
+			tlfSizes[metadata.TlfID] += size
+			numBlocks++
+			totalSize += size
 		}
-		size := uint64(metadata.BlockSize)
-		tlfCounts[metadata.TlfID]++
-		tlfSizes[metadata.TlfID] += size
-		numBlocks++
-		totalSize += size
+		return nil
+	})
+	if err != nil {
+		return err
 	}
+
 	cache.tlfCounts = tlfCounts
 	cache.numBlocks = numBlocks
 	cache.tlfSizes = tlfSizes
@@ -432,7 +438,14 @@ func (cache *DiskBlockCacheLocal) updateMetadataLocked(ctx context.Context,
 	if metered {
 		putMeter = cache.updateMeter
 	}
-	err = cache.metaDb.PutWithMeter(blockKey, encodedMetadata, putMeter)
+	err = cache.metaDb.Update(func(txn *badger.Txn) error {
+		return txn.Set(blockKey, encodedMetadata)
+	})
+	cache.log.CDebugf(ctx, "updateMetadataLocked finished metadb=%p key=%s err=%v", cache.metaDb, hex.EncodeToString(blockKey), err)
+
+	if err == nil && putMeter != nil {
+		putMeter.Mark(1)
+	}
 	if err != nil {
 		cache.log.CWarningf(ctx, "Error writing to disk cache meta "+
 			"database: %+v", err)
@@ -451,12 +464,28 @@ func (cache *DiskBlockCacheLocal) getMetadataLocked(
 		missMeter = cache.missMeter
 	}
 
-	metadataBytes, err := cache.metaDb.GetWithMeter(
-		blockID.Bytes(), hitMeter, missMeter)
+	var item *badger.Item
+	err = cache.metaDb.View(func(txn *badger.Txn) error {
+		item, err = txn.Get(blockID.Bytes())
+		return err
+	})
+	if err == nil {
+		if hitMeter != nil {
+			hitMeter.Mark(1)
+		}
+	} else {
+		cache.log.CDebugf(context.Background(), "getMetadataLocked metaDb=%p key=%s err=%v\n", cache.metaDb, blockID.String(), err)
+		if missMeter != nil {
+			missMeter.Mark(1)
+		}
+		return DiskBlockCacheMetadata{}, err
+	}
+	err = item.Value(func(val []byte) error {
+		return cache.config.Codec().Decode(val, &metadata)
+	})
 	if err != nil {
 		return DiskBlockCacheMetadata{}, err
 	}
-	err = cache.config.Codec().Decode(metadataBytes, &metadata)
 	return metadata, err
 }
 
@@ -532,7 +561,11 @@ func (cache *DiskBlockCacheLocal) Get(
 	}
 
 	blockKey := blockID.Bytes()
-	entry, err := cache.blockDb.Get(blockKey, nil)
+	var item *badger.Item
+	err = cache.blockDb.View(func(txn *badger.Txn) error {
+		item, err = txn.Get(blockKey)
+		return err
+	})
 	if err != nil {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, NoPrefetch,
 			NoSuchBlockError{blockID}
@@ -545,7 +578,10 @@ func (cache *DiskBlockCacheLocal) Get(
 	if err != nil {
 		return nil, kbfscrypto.BlockCryptKeyServerHalf{}, NoPrefetch, err
 	}
-	buf, serverHalf, err = cache.decodeBlockCacheEntry(entry)
+	err = item.Value(func(val []byte) error {
+		buf, serverHalf, err = cache.decodeBlockCacheEntry(val)
+		return err
+	})
 	prefetchStatus = NoPrefetch
 	if md.FinishedPrefetch {
 		prefetchStatus = FinishedPrefetch
@@ -605,17 +641,26 @@ func (cache *DiskBlockCacheLocal) Put(
 	}
 	encodedLen := int64(len(entry))
 	defer func() {
-		cache.log.CDebugf(ctx, "Cache Put id=%s tlf=%s bSize=%d entrySize=%d "+
-			"err=%+v", blockID, tlfID, blockLen, encodedLen, err)
+		name := "Dontcare"
+		if cache.cacheType == syncCacheLimitTrackerType {
+			name = syncCacheName
+			debug.PrintStack()
+		}
+		cache.log.CDebugf(ctx, "Cache %s Put id=%s tlf=%s bSize=%d entrySize=%d "+
+			"err=%+v numBlocks=%d", name, blockID, tlfID, blockLen, encodedLen, err, cache.numBlocks)
 	}()
 	blockKey := blockID.Bytes()
-	hasKey, err := cache.blockDb.Has(blockKey, nil)
-	if err != nil {
+	err = cache.blockDb.View(func(txn *badger.Txn) error {
+		_, err := txn.Get(blockKey)
+		return err
+	})
+
+	if err != nil && err != badger.ErrKeyNotFound {
 		cache.log.CDebugf(ctx, "Cache Put failed due to error from "+
 			"blockDb.Has: %+v", err)
 		return err
 	}
-	if !hasKey {
+	if err == badger.ErrKeyNotFound {
 		if cache.cacheType == syncCacheLimitTrackerType {
 			bytesAvailable, err := cache.config.DiskLimiter().reserveBytes(
 				ctx, cache.cacheType, encodedLen)
@@ -636,7 +681,14 @@ func (cache *DiskBlockCacheLocal) Put(
 				return cachePutCacheFullError{blockID}
 			}
 		}
-		err = cache.blockDb.PutWithMeter(blockKey, entry, cache.putMeter)
+		err = cache.blockDb.Update(func(txn *badger.Txn) error {
+			return txn.Set(blockKey, entry)
+		})
+		cache.log.CDebugf(ctx, "cache.blockDb.Update finished key=%s err=%v\n", blockID.String(), err)
+
+		if err == nil && cache.putMeter != nil {
+			cache.putMeter.Mark(1)
+		}
 		if err != nil {
 			cache.config.DiskLimiter().commitOrRollback(ctx,
 				cache.cacheType, encodedLen, 0, false, "")
@@ -651,7 +703,7 @@ func (cache *DiskBlockCacheLocal) Put(
 		cache.currBytes += encodedLenUint
 	}
 	tlfKey := cache.tlfKey(tlfID, blockKey)
-	hasKey, err = cache.tlfDb.Has(tlfKey, nil)
+	hasKey, err := cache.tlfDb.Has(tlfKey, nil)
 	if err != nil {
 		cache.log.CWarningf(ctx, "Error reading from TLF cache database: %+v",
 			err)
@@ -724,26 +776,36 @@ func (cache *DiskBlockCacheLocal) deleteLocked(ctx context.Context,
 			cache.deleteSizeMeter.Mark(sizeRemoved)
 		}
 	}()
-	blockBatch := new(leveldb.Batch)
-	metadataBatch := new(leveldb.Batch)
+	blockBatch := cache.blockDb.NewWriteBatch()
+	metadataBatch := cache.metaDb.NewWriteBatch()
 	tlfBatch := new(leveldb.Batch)
 	removalCounts := make(map[tlf.ID]int)
 	removalSizes := make(map[tlf.ID]uint64)
 	for _, entry := range blockEntries {
 		blockKey := entry.Bytes()
-		metadataBytes, err := cache.metaDb.Get(blockKey, nil)
+		var item *badger.Item
+		err = cache.metaDb.View(func(txn *badger.Txn) error {
+			item, err = txn.Get(blockKey)
+			return err
+		})
 		if err != nil {
 			// If we can't retrieve the block, don't try to delete it, and
 			// don't account for its non-presence.
 			continue
 		}
 		metadata := DiskBlockCacheMetadata{}
-		err = cache.config.Codec().Decode(metadataBytes, &metadata)
+		err = item.Value(func(val []byte) error {
+			return cache.config.Codec().Decode(val, &metadata)
+		})
 		if err != nil {
 			return 0, 0, err
 		}
-		blockBatch.Delete(blockKey)
-		metadataBatch.Delete(blockKey)
+		if err = blockBatch.Delete(blockKey); err != nil {
+			return 0, 0, err
+		}
+		if err = metadataBatch.Delete(blockKey); err != nil {
+			return 0, 0, err
+		}
 		tlfDbKey := cache.tlfKey(metadata.TlfID, blockKey)
 		tlfBatch.Delete(tlfDbKey)
 		removalCounts[metadata.TlfID]++
@@ -752,13 +814,13 @@ func (cache *DiskBlockCacheLocal) deleteLocked(ctx context.Context,
 		numRemoved++
 	}
 	// TODO: more gracefully handle non-atomic failures here.
-	if err := cache.metaDb.Write(metadataBatch, nil); err != nil {
+	if err := metadataBatch.Flush(); err != nil {
 		return 0, 0, err
 	}
 	if err := cache.tlfDb.Write(tlfBatch, nil); err != nil {
 		return 0, 0, err
 	}
-	if err := cache.blockDb.Write(blockBatch, nil); err != nil {
+	if err := blockBatch.Flush(); err != nil {
 		return 0, 0, err
 	}
 
@@ -785,7 +847,16 @@ func (cache *DiskBlockCacheLocal) Delete(ctx context.Context,
 		return 0, 0, err
 	}
 
-	cache.log.CDebugf(ctx, "Cache Delete numBlocks=%d", len(blockIDs))
+	defer func() {
+		name := "Dontcare"
+		if cache.cacheType == syncCacheLimitTrackerType {
+			name = syncCacheName
+		}
+		for _, v := range blockIDs {
+			name += fmt.Sprintf(" %s", v.String())
+		}
+		cache.log.CDebugf(ctx, "Cache %s Delete %d blocks numBlocks=%d numRemoved=%d err=%v", name, len(blockIDs), cache.numBlocks, numRemoved, err)
+	}()
 	return cache.deleteLocked(ctx, blockIDs)
 }
 
@@ -902,33 +973,37 @@ func (cache *DiskBlockCacheLocal) evictLocked(ctx context.Context,
 	if err != nil {
 		return 0, 0, err
 	}
-	rng := &util.Range{Start: blockID.Bytes(), Limit: cache.maxBlockID}
-	iter := cache.metaDb.NewIterator(rng, nil)
-	defer iter.Release()
 
 	blockIDs := make(blockIDsByTime, 0, numElements)
 
-	for i := 0; i < numElements; i++ {
-		if !iter.Next() {
-			break
+	err = cache.metaDb.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Seek(blockID.Bytes()); it.Valid(); it.Next() {
+			item := it.Item()
+			key := item.Key()
+			blockID, err := kbfsblock.IDFromBytes(key)
+			if err != nil {
+				cache.log.CWarningf(ctx, "Error getting id from bytes %x", key)
+				continue
+			}
+			metadata := DiskBlockCacheMetadata{}
+			err = it.Item().Value(func(val []byte) error {
+				return cache.config.Codec().Decode(val, &metadata)
+			})
+			if err != nil {
+				cache.log.CWarningf(ctx, "Error decoding metadata for block %s",
+					blockID)
+				continue
+			}
+			blockIDs = append(blockIDs, lruEntry{blockID, metadata.LRUTime.Time})
+			if len(blockIDs) >= numElements {
+				break
+			}
 		}
-		key := iter.Key()
-
-		blockID, err := kbfsblock.IDFromBytes(key)
-		if err != nil {
-			cache.log.CWarningf(ctx, "Error getting id from bytes %x", key)
-			continue
-		}
-		metadata := DiskBlockCacheMetadata{}
-		err = cache.config.Codec().Decode(iter.Value(), &metadata)
-		if err != nil {
-			cache.log.CWarningf(ctx, "Error decoding metadata for block %s",
-				blockID)
-			continue
-		}
-		blockIDs = append(blockIDs, lruEntry{blockID, metadata.LRUTime.Time})
-	}
-
+		return nil
+	})
 	return cache.evictSomeBlocks(ctx, numBlocks, blockIDs)
 }
 

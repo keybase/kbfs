@@ -8,13 +8,13 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/dgraph-io/badger"
 	"github.com/keybase/kbfs/kbfsblock"
 	"github.com/keybase/kbfs/kbfscrypto"
 	"github.com/keybase/kbfs/kbfsmd"
 	"github.com/keybase/kbfs/kbfssync"
 	"github.com/keybase/kbfs/tlf"
 	"github.com/pkg/errors"
-	ldberrors "github.com/syndtr/goleveldb/leveldb/errors"
 	"golang.org/x/net/context"
 )
 
@@ -67,7 +67,7 @@ func (cache *diskBlockCacheWrapped) enableCache(
 	}
 	if cache.config.IsTestMode() {
 		*cachePtr, err = newDiskBlockCacheLocalForTest(
-			cache.config, typ)
+			cache.config, typ, filepath.Join(testCacheDbDir, cacheFolder))
 	} else {
 		cacheStorageRoot := filepath.Join(cache.storageRoot, cacheFolder)
 		*cachePtr, err = newDiskBlockCacheLocal(cache.config, typ,
@@ -199,7 +199,7 @@ func (cache *diskBlockCacheWrapped) GetMetadata(ctx context.Context,
 		switch errors.Cause(err) {
 		case nil:
 			return md, nil
-		case ldberrors.ErrNotFound:
+		case badger.ErrKeyNotFound:
 		default:
 			return md, err
 		}
