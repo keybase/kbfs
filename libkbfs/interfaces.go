@@ -22,6 +22,8 @@ import (
 	billy "gopkg.in/src-d/go-billy.v4"
 )
 
+var breakTheBuild int = "broken"
+
 type dataVersioner interface {
 	// DataVersion returns the data version for this block
 	DataVersion() DataVer
