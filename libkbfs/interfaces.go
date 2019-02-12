@@ -22,6 +22,9 @@ import (
 	billy "gopkg.in/src-d/go-billy.v4"
 )
 
+// This repository is now disabled.
+// See https://github.com/keybase/kbfs/blob/master/README.md
+// New KBFS code is in https://github.com/keybase/client/tree/master/go/kbfs
 var breakTheBuild int = "broken"
 
 type dataVersioner interface {
